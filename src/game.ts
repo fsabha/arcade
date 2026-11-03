@@ -1,5 +1,5 @@
 import {
-  W, PLAY_H, SPEED, PLAYER_VX, PLAYER_W, PLAYER_H, PLAYER_Y_OFFSET, BULLET_VY, MAX_BULLETS,
+  W, PLAY_H, SPEED, PLAYER_VX, PLAYER_ACCEL, PLAYER_DECEL, PLAYER_W, PLAYER_H, PLAYER_Y_OFFSET, BULLET_VY, MAX_BULLETS,
   FIRE_COOLDOWN, FUEL_MAX, FUEL_REFILL, FUEL_LOW, POINTS, SECTION_LEN, DYING_TIME, SpeedMode,
 } from './config';
 import { River, SpawnDef, SpawnKind, difficulty } from './river';
@@ -54,6 +54,7 @@ export class Game {
   score = new ScoreKeeper();
   section = 0;
   speedMode: SpeedMode = 'normal';
+  private playerVx = 0;
   refueling = false;
   deathReason = '';
 
@@ -101,6 +102,7 @@ export class Game {
     this.enemies = [];
     this.explosions = [];
     this.speedMode = 'normal';
+    this.playerVx = 0;
     this.fireCd = 0;
     this.lowFuelTimer = 0;
     this.refueling = false;
@@ -224,7 +226,15 @@ export class Game {
 
     // Player lateral movement
     const dir = (inp.isDown('right') ? 1 : 0) - (inp.isDown('left') ? 1 : 0);
-    this.player.x += dir * PLAYER_VX * dt;
+    if (dir !== 0) {
+      // reverse quickly, then ramp up to full speed
+      if (Math.sign(this.playerVx) !== dir) this.playerVx = 0;
+      this.playerVx = Math.min(PLAYER_VX, Math.abs(this.playerVx) + PLAYER_ACCEL * dt) * dir;
+    } else {
+      const mag = Math.max(0, Math.abs(this.playerVx) - PLAYER_DECEL * dt);
+      this.playerVx = mag * Math.sign(this.playerVx);
+    }
+    this.player.x += this.playerVx * dt;
     this.player.x = Math.max(0, Math.min(W - this.player.w, this.player.x));
     this.player.y = this.camY + PLAYER_Y_OFFSET;
 
