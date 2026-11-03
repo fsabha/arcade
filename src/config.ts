@@ -37,7 +37,7 @@ export const CRASH_COOLDOWN = 0.7;
 export const CRASH_SPEED_KEEP = 0.25;
 
 // Race rules
-export const DAY_LEN = 320; // seconds per day
+export const DAY_LEN = 270; // seconds per day (~4.5 min, close to the 2600 pace)
 export const QUOTA_DAY1 = 200;
 export const QUOTA_NEXT = 300;
 export const UNITS_PER_KM = 60000;
