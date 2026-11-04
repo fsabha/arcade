@@ -27,9 +27,9 @@ describe('sprite maps', () => {
     expect([maps.shark0[0].length, maps.shark0.length]).toEqual([16, 8]);
     expect([maps.shark1[0].length, maps.shark1.length]).toEqual([16, 8]);
     expect([maps.shark2[0].length, maps.shark2.length]).toEqual([16, 8]);
-    expect([maps.diver0[0].length, maps.diver0.length]).toEqual([16, 5]);
-    expect([maps.diver1[0].length, maps.diver1.length]).toEqual([16, 5]);
-    expect([maps.diver2[0].length, maps.diver2.length]).toEqual([16, 5]);
+    expect([maps.diver0[0].length, maps.diver0.length]).toEqual([20, 5]);
+    expect([maps.diver1[0].length, maps.diver1.length]).toEqual([20, 5]);
+    expect([maps.diver2[0].length, maps.diver2.length]).toEqual([20, 5]);
     expect([maps.patrol[0].length, maps.patrol.length]).toEqual([24, 8]);
     expect([maps.life[0].length, maps.life.length]).toEqual([8, 5]);
     expect([maps.diverIcon[0].length, maps.diverIcon.length]).toEqual([8, 4]);
