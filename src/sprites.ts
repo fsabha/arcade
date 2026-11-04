@@ -10,62 +10,77 @@ const PALETTE: Record<string, string> = {
   '.': '',
 };
 
-// Written at Atari resolution (1 char = one wide pixel), expanded 2:1 horizontally.
-const ATARI: Record<string, string[]> = {
+// 1:1 pixel art (the chicken needs more definition than the 2600's wide pixels).
+const MAPS: Record<string, string[]> = {
   chicken0: [
-    '..RR..',
-    '.YYYO.',
-    '.YYYO.',
-    'YYYYY.',
-    'yYYYY.',
-    '.YYYy.',
-    '..OO..',
-    '.O..O.',
+    '....RR......',
+    '...RRR......',
+    '...YYYY.....',
+    '..YYKYYO....',
+    '..YYYYYOO...',
+    '.YYYYYYY....',
+    'YYyYYYYY....',
+    'YYYYYYYy....',
+    '.yYYYYYy....',
+    '..yYYYy.....',
+    '...OO.O.....',
+    '..OO..OO....',
   ],
   chicken1: [
-    '..RR..',
-    '.YYYO.',
-    '.YYYO.',
-    'YYYYY.',
-    'yYYYY.',
-    '.YYYy.',
-    '..OO..',
-    '..O.O.',
+    '....RR......',
+    '...RRR......',
+    '...YYYY.....',
+    '..YYKYYO....',
+    '..YYYYYOO...',
+    '.YYYYYYY....',
+    'YYyYYYYY....',
+    'YYYYYYYy....',
+    '.yYYYYYy....',
+    '..yYYYy.....',
+    '...O..O.....',
+    '...OO.OO....',
   ],
   chickenHit: [
-    '......',
-    '.O..R.',
-    '..YYYY',
-    'YYYYYY',
-    'yYYYyO',
-    '..YY..',
-    'O....O',
-    '......',
+    '............',
+    '..O.........',
+    '...O...RR...',
+    '....YYYYRR..',
+    '..YYYYYYYK..',
+    '.YYYYYYYYYO.',
+    'yYYYYYYYYYOO',
+    '.yyYYYYYy...',
+    '....yyyy....',
+    '..O......O..',
+    '.O........O.',
+    '............',
   ],
-  // vehicles: B = body (tinted per lane)
+  // vehicles: B = body (tinted per lane), drawn facing right
   car: [
-    '..BBBB..',
-    '.BGGGGB.',
-    'BBBBBBBB',
-    'kBBBBBBk',
+    '....BBBBBBB.....',
+    '...BGGGBGGGB....',
+    '..BBGGGBGGGBB...',
+    '.BBBBBBBBBBBBBB.',
+    'BBBBBBBBBBBBBBBW',
+    'BBBBBBBBBBBBBBBB',
+    '.kkk.......kkk..',
+    '.kkk.......kkk..',
   ],
   truck: [
-    '.BBBBBBBBBBBB.GG',
-    'BBBBBBBBBBBBBBBB',
-    'BBBBBBBBBBBBBBBB',
-    'kkBBBBBkkBBBBkkB',
-    '.kk....kk....kk.',
+    '........................BBBBBBB.',
+    '.BBBBBBBBBBBBBBBBBBBBBB.BGGGGBB.',
+    '.BBBBBBBBBBBBBBBBBBBBBB.BGGGGBBW',
+    '.BBBBBBBBBBBBBBBBBBBBBB.BBBBBBBB',
+    '.BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+    '.BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+    'BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB',
+    '..kkk....kkk.........kkk..kkk...',
+    '..kkk....kkk.........kkk..kkk...',
+    '................................',
   ],
 };
 
-function wide(rows: string[]): string[] {
-  return rows.map((r) => r.split('').map((c) => c + c).join(''));
-}
-
 export function spriteMaps(): Record<string, string[]> {
-  const out: Record<string, string[]> = {};
-  for (const k of Object.keys(ATARI)) out[k] = wide(ATARI[k]);
-  return out;
+  return MAPS;
 }
 
 const cache = new Map<string, HTMLCanvasElement>();
@@ -75,7 +90,7 @@ export function sprite(name: string, tint = '', flip = false): HTMLCanvasElement
   const key = `${name}:${tint}:${flip ? 'L' : 'R'}`;
   let s = cache.get(key);
   if (s) return s;
-  const rows = wide(ATARI[name]);
+  const rows = MAPS[name];
   const c = document.createElement('canvas');
   c.width = rows[0].length;
   c.height = rows.length;

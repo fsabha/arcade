@@ -151,7 +151,7 @@ export class Renderer {
     drawTextCentered(ctx, 'FREEWAY', W / 2 + 2, 14 + 2, '#5a3a00', 3);
     drawTextCentered(ctx, 'FREEWAY', W / 2, 14, C.gold, 3);
     drawTextCentered(ctx, 'EDICAO BROWSER', W / 2, 36, C.dim, 1);
-    ctx.drawImage(sprite('chicken0'), W / 2 - 12, 46 + bob, 24, 16);
+    ctx.drawImage(sprite('chicken0'), W / 2 - 12, 44 + bob, 24, 24);
 
     const s = g.spec;
     const startY = 76;
