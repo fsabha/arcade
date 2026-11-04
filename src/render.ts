@@ -1,7 +1,7 @@
 import { W, H, TILE, COLS, ROWS, MAZE_Y, FRUIT_POS, POINTS } from './config';
 import { Maze, MAP, tileCenter } from './maze';
 import { Game, Ghost, MENU_ITEMS, PAUSE_ITEMS } from './game';
-import { fruitSprite, ghostSprite, drawPac, GHOST_COLORS, PAC_YELLOW } from './sprites';
+import { fruitSprite, ghostSprite, drawPac, pacSprite, GHOST_COLORS } from './sprites';
 import { drawText, drawTextCentered, textWidth } from './font';
 import { GHOSTS, GhostName } from './ghostai';
 
@@ -219,16 +219,12 @@ export class Renderer {
       if (t < 0.5) { drawPac(ctx, cx, cy, p.dir, 0.5); return; }
       const k = Math.min(1, (t - 0.5) / 1.2);
       if (k < 1) {
-        // mouth opens from the top until the body vanishes
-        const half = k * Math.PI;
-        ctx.fillStyle = PAC_YELLOW;
-        ctx.beginPath();
-        ctx.moveTo(cx, cy);
-        ctx.arc(cx, cy, 6.5, -Math.PI / 2 + half, -Math.PI / 2 - half + Math.PI * 2);
-        ctx.closePath();
-        ctx.fill();
+        // mouth opens from the top until the body vanishes (quantized like the arcade frames)
+        const q = Math.floor(k * 12) / 12;
+        const s = pacSprite('up', q, 6.5, Math.PI);
+        ctx.drawImage(s, cx - 6, cy - 6);
       } else if (t < 2.1) {
-        ctx.fillStyle = PAC_YELLOW;
+        ctx.fillStyle = C.yellow;
         const r = 3 + (t - 1.7) * 10;
         for (let i = 0; i < 8; i++) {
           const a = (i * Math.PI) / 4;

@@ -237,18 +237,41 @@ export function ghostSprite(name: GhostName, frame: 0 | 1, dir: Dir, look: 'norm
   return c;
 }
 
-/** Pac-Man as a 13px disc with a mouth; `open` 0..1 is the mouth angle fraction. */
-export function drawPac(ctx: CanvasRenderingContext2D, cx: number, cy: number, dir: Dir, open: number, radius = 6.5, color = PAC_YELLOW): void {
+/**
+ * Pac-Man rasterized pixel by pixel (no anti-aliasing): a 13px disc with a wedge mouth.
+ * `open` 0..1 is the mouth angle fraction (0 = closed, 1 = fully open, ~90 degrees).
+ * `halfTurns` lets the death animation open the mouth past 180 degrees.
+ */
+export function pacSprite(dir: Dir, open: number, radius = 6.5, maxHalf = Math.PI / 2, color = PAC_YELLOW): HTMLCanvasElement {
+  const half = open * maxHalf;
+  const key = `pac:${dir}:${half.toFixed(3)}:${radius}:${color}`;
+  let s = cache.get(key);
+  if (s) return s;
+  const size = Math.round(radius * 2);
+  const [c, ctx] = make(size, size);
   const base = dir === 'right' ? 0 : dir === 'down' ? Math.PI / 2 : dir === 'left' ? Math.PI : -Math.PI / 2;
-  const half = (open * Math.PI) / 2 * 0.9;
+  const cx = size / 2, cy = size / 2;
   ctx.fillStyle = color;
-  ctx.beginPath();
-  if (half <= 0.01) {
-    ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  } else {
-    ctx.moveTo(cx, cy);
-    ctx.arc(cx, cy, radius, base + half, base - half + Math.PI * 2);
-    ctx.closePath();
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const dx = x + 0.5 - cx, dy = y + 0.5 - cy;
+      if (dx * dx + dy * dy > radius * radius) continue;
+      if (half > 0.001) {
+        let a = Math.atan2(dy, dx) - base;
+        while (a > Math.PI) a -= Math.PI * 2;
+        while (a < -Math.PI) a += Math.PI * 2;
+        if (Math.abs(a) < half) continue;
+      }
+      ctx.fillRect(x, y, 1, 1);
+    }
   }
-  ctx.fill();
+  cache.set(key, c);
+  return c;
+}
+
+/** Draws Pac-Man centred at (cx, cy); the mouth is quantized to the arcade's three frames. */
+export function drawPac(ctx: CanvasRenderingContext2D, cx: number, cy: number, dir: Dir, open: number, radius = 6.5, color = PAC_YELLOW): void {
+  const q = open <= 0.17 ? 0 : open <= 0.67 ? 0.5 : 1;
+  const s = pacSprite(dir, q, radius, Math.PI / 2, color);
+  ctx.drawImage(s, Math.round(cx - s.width / 2), Math.round(cy - s.height / 2));
 }
