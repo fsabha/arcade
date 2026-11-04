@@ -286,9 +286,8 @@ export class Renderer {
       'PULE NO CIPO  BAIXO OU ESPACO SOLTA',
       'TORAS TIRAM PONTOS  BURACO TIRA 100',
       'FOGO COBRA ESCORPIAO E PANTANO MATAM',
-      'JACARE SO SEGURA COM A BOCA FECHADA',
+      'JACARE: PULE DE CABECA EM CABECA','SO COM A BOCA FECHADA',
       'NO TUNEL CADA TELA VALE TRES',
-      'P PAUSA  M SOM  C CRT  T TOQUE',
     ];
     lines.forEach((l, i) => drawTextCentered(ctx, l, W / 2, 48 + i * 12, C.text));
     drawTextCentered(ctx, 'ENTER VOLTA', W / 2, 170, C.dim);

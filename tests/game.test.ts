@@ -127,7 +127,7 @@ describe('game rules', () => {
     // crocodiles: standing on a closed head is safe, open jaws kill
     game.enterRoom(0b00100001);
     game.roomTime = cfg.CROC_PERIOD + 0.01;
-    game.harry.x = 58 * cfg.PX;
+    game.harry.x = 56 * cfg.PX; // feet centred on the first head
     step(1);
     expect(game.harry.mode).toBe('ground');
     game.roomTime = 0;

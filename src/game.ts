@@ -465,10 +465,10 @@ export class Game {
     this.walls();
   }
 
-  /** Harry is on the surface at ground level: hole, pit or crocodile? */
+  /** Harry is on the surface at ground level: hole, pit or crocodile? Checked under the centre of his feet. */
   private checkGround(): void {
     const h = this.harry;
-    const g = groundAt(this.room, h.x / PX, this.roomTime);
+    const g = groundAt(this.room, (h.x + HARRY_W / 2) / PX, this.roomTime);
     if (g === 'hole') {
       h.mode = 'fall';
       h.t = 0;
