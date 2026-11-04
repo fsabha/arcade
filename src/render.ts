@@ -267,12 +267,13 @@ export class Renderer {
       let label: string = item;
       if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
       if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
+      if (item === 'MUSICA') label = `MUSICA: ${g.settings.music ? 'LIGADA' : 'DESLIGADA'}`;
       const sel = i === g.menuIndex;
       if (sel && Math.floor(g.time * 4) % 2 === 0) drawText(ctx, '>', W / 2 - textWidth(label) / 2 - 10, y, C.gold);
       drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text);
     });
-    drawTextCentered(ctx, 'SETAS MOVEM  ESPACO PULA  ENTER CONFIRMA', W / 2, 150, C.dim);
-    drawTextCentered(ctx, 'ACTIVISION 1982  EDICAO BROWSER', W / 2, 162, C.dim);
+    drawTextCentered(ctx, 'SETAS MOVEM  ESPACO PULA  ENTER CONFIRMA', W / 2, 162, C.dim);
+    drawTextCentered(ctx, 'ACTIVISION 1982  EDICAO BROWSER', W / 2, 172, C.dim);
   }
 
   private drawHowTo(): void {

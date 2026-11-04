@@ -44,6 +44,7 @@ No celular na mesma rede, use o endereço "Network" que o Vite imprime (controle
 - Túnel: cada tela equivale a três telas da superfície. Nas telas com escada há uma parede de tijolos (lado dado pelo bit 7 da tela); nas outras, o escorpião.
 - Ao morrer, Harry volta pela esquerda da mesma tela (caindo das árvores na superfície).
 - Ranking top 10 por pontos, salvo em `localStorage`.
+- Grito de Tarzan ao agarrar o cipó, como no original. O cartucho de 2600 não tinha música de fundo (só o Pitfall II); aqui há uma trilha sintetizada própria, opcional (item MUSICA no menu).
 
 ## Geração do mundo
 

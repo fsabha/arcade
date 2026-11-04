@@ -16,7 +16,7 @@ export type State = 'menu' | 'howto' | 'ranking' | 'playing' | 'paused' | 'gameo
 export type Mode = 'ground' | 'jump' | 'fall' | 'sink' | 'climb' | 'swing' | 'drop' | 'kneel' | 'dying';
 export type EndReason = 'lives' | 'time' | 'finished';
 
-export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
+export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM', 'MUSICA'] as const;
 export const PAUSE_ITEMS = ['CONTINUAR', 'SAIR PARA O MENU'] as const;
 const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
 
@@ -82,6 +82,7 @@ export class Game {
 
   constructor(private input: Input, private audio: SoundFx) {
     this.audio.setMuted(!this.settings.sound);
+    this.audio.setMusicEnabled(this.settings.music);
     this.enterRoom(START_ROOM);
   }
 
@@ -135,6 +136,7 @@ export class Game {
     this.enterRoom(START_ROOM);
     this.lastTick = -1;
     this.setState('playing');
+    this.audio.musicStart();
   }
 
   private setState(s: State): void {
@@ -145,6 +147,12 @@ export class Game {
   toggleCrt(): void {
     this.settings = { ...this.settings, crt: !this.settings.crt };
     saveSettings(this.settings);
+  }
+
+  toggleMusic(): void {
+    this.settings = { ...this.settings, music: !this.settings.music };
+    saveSettings(this.settings);
+    this.audio.setMusicEnabled(this.settings.music);
   }
 
   toggleSound(): void {
@@ -164,6 +172,7 @@ export class Game {
     this.endReason = reason;
     this.highScores = loadHighScores();
     this.qualifiesForRank = qualifies(this.highScores, this.score);
+    this.audio.musicStop();
     if (reason === 'finished') this.audio.finished();
     else this.audio.gameOver();
     this.setState('gameover');
@@ -207,6 +216,7 @@ export class Game {
         case 'RANKING': this.highScores = loadHighScores(); this.setState('ranking'); break;
         case 'CRT': this.toggleCrt(); break;
         case 'SOM': this.toggleSound(); break;
+        case 'MUSICA': this.toggleMusic(); break;
       }
     }
   }
@@ -216,18 +226,24 @@ export class Game {
     const n = PAUSE_ITEMS.length;
     if (inp.justPressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.blip(); }
     if (inp.justPressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('pause')) { this.setState('playing'); return; }
+    if (inp.justPressed('pause')) { this.resume(); return; }
     if (inp.justPressed('back')) { this.setState('menu'); return; }
     if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      if (this.pauseIndex === 0) this.setState('playing');
+      if (this.pauseIndex === 0) this.resume();
       else this.setState('menu');
     }
+  }
+
+  private resume(): void {
+    this.setState('playing');
+    this.audio.musicStart();
   }
 
   private updatePlaying(dt: number): void {
     const inp = this.input;
     if (inp.justPressed('pause')) {
       this.pauseIndex = 0;
+      this.audio.musicStop();
       this.setState('paused');
       return;
     }
@@ -413,7 +429,7 @@ export class Game {
     if (overlaps(hands, t)) {
       h.mode = 'swing';
       h.t = 0;
-      this.audio.grab();
+      this.audio.yell();
     }
   }
 

@@ -8,6 +8,7 @@ export interface HighScore {
 export interface Settings {
   crt: boolean;
   sound: boolean;
+  music: boolean;
 }
 
 const HS_KEY = 'pitfall.highscores';
@@ -63,14 +64,14 @@ export function saveHighScores(list: HighScore[]): void {
 }
 
 export function loadSettings(): Settings {
-  const def: Settings = { crt: false, sound: true };
+  const def: Settings = { crt: false, sound: true, music: true };
   const s = storage();
   if (!s) return def;
   try {
     const raw = s.getItem(ST_KEY);
     if (!raw) return def;
     const p = JSON.parse(raw);
-    return { crt: !!p.crt, sound: p.sound !== false };
+    return { crt: !!p.crt, sound: p.sound !== false, music: p.music !== false };
   } catch {
     return def;
   }
