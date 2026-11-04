@@ -1,49 +1,15 @@
+import { SoundBase } from '@arcade/shared';
 /** All sounds are synthesized with Web Audio; no asset files. */
-export class SoundFx {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
+export class SoundFx extends SoundBase {
+  constructor() {
+    super(0.5);
+  }
+
   private sirenOsc: OscillatorNode | null = null;
   private sirenGain: GainNode | null = null;
   private sirenLfo: OscillatorNode | null = null;
   private sirenMode: 'off' | 'siren' | 'fright' | 'eyes' = 'off';
   private wakaFlip = false;
-  private _muted = false;
-
-  get muted(): boolean {
-    return this._muted;
-  }
-
-  unlock(): void {
-    if (!this.ctx) {
-      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) return;
-      this.ctx = new Ctor();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = this._muted ? 0 : 0.5;
-      this.master.connect(this.ctx.destination);
-    }
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
-  }
-
-  setMuted(m: boolean): void {
-    this._muted = m;
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.5, this.ctx.currentTime, 0.02);
-  }
-
-  private tone(freq: number, dur: number, type: OscillatorType, vol: number, slideTo?: number, delay = 0): void {
-    if (!this.ctx || !this.master) return;
-    const t0 = this.ctx.currentTime + delay;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
-    g.gain.setValueAtTime(vol, t0);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(g).connect(this.master);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.02);
-  }
 
   /** Alternating "waka" chomp. */
   waka(): void {

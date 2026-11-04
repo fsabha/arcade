@@ -5,16 +5,17 @@ Homenagem ao clássico Freeway da Activision (Atari 2600, 1981), rodando no nave
 ## Rodar
 
 ```bash
-npm install
-npm run dev      # abre em http://localhost:5173
+npm install                 # uma vez, na raiz do monorepo (arcade/)
+npm run dev -w games/freeway   # só este jogo, em http://localhost:5173
+npm run dev                 # ou o hub com todos os jogos
 ```
 
 Outros comandos:
 
 ```bash
-npm test         # testes unitários + smoke test headless (Vitest)
-npm run build    # typecheck + build em dist/
-npm run preview  # serve o build
+npm test -w games/freeway      # testes deste jogo (na raiz: npm test roda todos)
+npm run build -w games/freeway # build isolado em games/freeway/dist/
+npm run preview -w games/freeway
 ```
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime (controles de toque aparecem automaticamente).
@@ -54,10 +55,7 @@ src/
   game.ts       máquina de estados, cronômetro, colisões, dificuldade A/B
   render.ts     rodovia, veículos, galinha, HUD e telas
   sprites.ts    pixel art 2600 (galinha, carro, caminhão), cor por faixa
-  audio.ts      sons sintetizados (Web Audio)
-  storage.ts    ranking e configurações (localStorage)
-  input.ts      teclado + toque
-  font.ts       fonte pixel 3x5
-  rng.ts        PRNG determinístico
+  audio.ts      sons sintetizados (Web Audio), sobre SoundBase do @arcade/shared
+  storage.ts    ranking e configurações deste jogo sobre o store genérico do @arcade/shared
   main.ts       bootstrap, loop e escala do canvas
 ```

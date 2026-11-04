@@ -5,16 +5,17 @@ Homenagem ao arcade da Namco de 1980, rodando no navegador. Vite + TypeScript + 
 ## Rodar
 
 ```bash
-npm install
-npm run dev      # abre em http://localhost:5173
+npm install                 # uma vez, na raiz do monorepo (arcade/)
+npm run dev -w games/pacman   # só este jogo, em http://localhost:5173
+npm run dev                 # ou o hub com todos os jogos
 ```
 
 Outros comandos:
 
 ```bash
-npm test         # testes unitários + smoke test headless (Vitest)
-npm run build    # typecheck + build em dist/
-npm run preview  # serve o build
+npm test -w games/pacman      # testes deste jogo (na raiz: npm test roda todos)
+npm run build -w games/pacman # build isolado em games/pacman/dist/
+npm run preview -w games/pacman
 ```
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime (controles de toque aparecem automaticamente).
@@ -58,10 +59,7 @@ src/
   game.ts       máquina de estados, casa dos fantasmas, modos, frutas, mortes, fases
   render.ts     paredes com contorno arcade, pastilhas, atores, HUD, attract, intermissões
   sprites.ts    fantasmas, frutas e Pac-Man
-  audio.ts      sons sintetizados (Web Audio)
-  storage.ts    ranking e configurações (localStorage)
-  input.ts      teclado + toque
-  font.ts       fonte pixel 3x5
-  rng.ts        PRNG determinístico
+  audio.ts      sons sintetizados (Web Audio), sobre SoundBase do @arcade/shared
+  storage.ts    ranking e configurações deste jogo sobre o store genérico do @arcade/shared
   main.ts       bootstrap, loop e escala do canvas
 ```

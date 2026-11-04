@@ -1,6 +1,6 @@
 import { W, LANES, LANE_H, laneTop, laneDir, CAR_W, CAR_H, TRUCK_W, TRUCK_H, WRAP_MARGIN } from './config';
 import { gameSpec, GameSpec, LaneSpec } from './games';
-import { Rng } from './rng';
+import { Rng } from '@arcade/shared';
 
 export interface Vehicle {
   lane: number; // 1..10

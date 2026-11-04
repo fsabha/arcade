@@ -1,0 +1,154 @@
+:root {
+  color-scheme: dark;
+  --bg: #05070c;
+  --fg: #dfe6ee;
+  --dim: #8a97a6;
+  --panel: #0e131b;
+  --line: #22303f;
+}
+
+html, body {
+  margin: 0;
+  min-height: 100%;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: ui-monospace, Menlo, Consolas, monospace;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px 40px;
+  box-sizing: border-box;
+  min-height: 100dvh;
+}
+
+header {
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+#title {
+  image-rendering: pixelated;
+  display: block;
+  margin: 0 auto 6px;
+}
+
+header p {
+  margin: 0 0 20px;
+  color: var(--dim);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+
+#grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  width: 100%;
+  max-width: 820px;
+}
+
+.card {
+  position: relative;
+  text-align: left;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  padding: 18px 16px 16px;
+  color: var(--fg);
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s, transform 0.12s;
+}
+
+.card:hover, .card:focus-visible {
+  border-color: var(--accent);
+  transform: translateY(-2px);
+  outline: none;
+}
+
+.card-title {
+  image-rendering: pixelated;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.card .meta {
+  color: var(--dim);
+  font-size: 11px;
+  margin-bottom: 8px;
+}
+
+.card .blurb {
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.card .key {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 11px;
+  color: var(--dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
+
+footer {
+  margin-top: 28px;
+  color: var(--dim);
+  font-size: 12px;
+  text-align: center;
+  line-height: 1.6;
+}
+
+#player {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+  flex-direction: column;
+}
+
+body.in-game #player {
+  display: flex;
+}
+
+body.in-game header, body.in-game #grid, body.in-game footer {
+  display: none;
+}
+
+#bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12px;
+  color: var(--dim);
+}
+
+#bar button {
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+#bar button:hover {
+  border-color: var(--fg);
+}
+
+#frame {
+  flex: 1;
+  width: 100%;
+  border: 0;
+  background: #000;
+}

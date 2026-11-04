@@ -5,7 +5,7 @@ import {
 import { Sea, Enemy } from './sea';
 import { aabb, shrink, Box } from './collision';
 import { ScoreKeeper, enemyValue, rescueBonus } from './scoring';
-import type { Input } from './input';
+import type { Input } from '@arcade/shared';
 import type { SoundFx } from './audio';
 import {
   loadHighScores, saveHighScores, qualifies, insertHighScore,

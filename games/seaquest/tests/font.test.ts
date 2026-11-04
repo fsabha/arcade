@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeText, textWidth } from '../src/font';
+import { normalizeText, textWidth } from '@arcade/shared';
 import { spriteMaps, sharkColor, SHARK_COLORS } from '../src/sprites';
 
 describe('font', () => {

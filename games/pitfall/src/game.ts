@@ -6,7 +6,7 @@ import {
   JUNGLE_TOP,
 } from './config';
 import { Room, decodeRoom, nextRoom, prevRoom, groundAt } from './world';
-import type { Input } from './input';
+import type { Input } from '@arcade/shared';
 import type { SoundFx } from './audio';
 import {
   loadHighScores, saveHighScores, qualifies, insertHighScore, loadSettings, saveSettings, HighScore, Settings,

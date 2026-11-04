@@ -4,8 +4,8 @@ import {
 import { Game, MENU_ITEMS, PAUSE_ITEMS, Explosion } from './game';
 import { Sea } from './sea';
 import { sprite, sharkColor } from './sprites';
-import { drawText, drawTextCentered, textWidth } from './font';
-import { Rng } from './rng';
+import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import { Rng } from '@arcade/shared';
 
 const C = {
   sky: '#84c4f4',

@@ -5,16 +5,17 @@ Homenagem ao clássico River Raid do Atari 2600, rodando no navegador. Vite + Ty
 ## Rodar
 
 ```bash
-npm install
-npm run dev      # abre em http://localhost:5173
+npm install                 # uma vez, na raiz do monorepo (arcade/)
+npm run dev -w games/riverraid   # só este jogo, em http://localhost:5173
+npm run dev                 # ou o hub com todos os jogos
 ```
 
 Outros comandos:
 
 ```bash
 npm test         # testes unitários (Vitest)
-npm run build    # typecheck + build em dist/
-npm run preview  # serve o build
+npm run build -w games/riverraid # build isolado em games/riverraid/dist/
+npm run preview -w games/riverraid
 ```
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime (controles de toque aparecem automaticamente).
@@ -46,14 +47,11 @@ No celular na mesma rede, use o endereço "Network" que o Vite imprime (controle
 ```
 src/
   config.ts     constantes de jogo (tamanhos, velocidades, pontos)
-  rng.ts        PRNG determinístico (mulberry32)
   river.ts      geração procedural do rio, seções, pontes e spawns
   collision.ts  AABB, colisão com margem/ilha, bounce no canal
   scoring.ts    pontuação e vidas extras
-  storage.ts    high scores e configurações (localStorage)
-  input.ts      teclado + botões de toque
-  audio.ts      sons sintetizados (Web Audio)
-  font.ts       fonte pixel 3x5
+  audio.ts      sons sintetizados (Web Audio), sobre SoundBase do @arcade/shared
+  storage.ts    ranking e configurações deste jogo sobre o store genérico do @arcade/shared
   sprites.ts    pixel art dos sprites
   game.ts       máquina de estados e lógica de jogo
   render.ts     desenho do rio, entidades, HUD e telas

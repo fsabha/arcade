@@ -5,16 +5,17 @@ Homenagem ao clássico Enduro do Atari 2600, rodando no navegador. Vite + TypeSc
 ## Rodar
 
 ```bash
-npm install
-npm run dev      # abre em http://localhost:5173
+npm install                 # uma vez, na raiz do monorepo (arcade/)
+npm run dev -w games/endurance   # só este jogo, em http://localhost:5173
+npm run dev                 # ou o hub com todos os jogos
 ```
 
 Outros comandos:
 
 ```bash
-npm test         # testes unitários + smoke test headless (Vitest)
-npm run build    # typecheck + build em dist/
-npm run preview  # serve o build
+npm test -w games/endurance      # testes deste jogo (na raiz: npm test roda todos)
+npm run build -w games/endurance # build isolado em games/endurance/dist/
+npm run preview -w games/endurance
 ```
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime (controles de toque aparecem automaticamente).
@@ -47,16 +48,13 @@ No celular na mesma rede, use o endereço "Network" que o Vite imprime (controle
 ```
 src/
   config.ts     constantes (câmera, dinâmica, tráfego, regras)
-  rng.ts        PRNG determinístico (mulberry32)
   road.ts       geração procedural da pista (retas e curvas suavizadas)
   projection.ts projeção pseudo-3D (pista plana)
   daycycle.ts   fases do dia, paleta, neblina e gelo
   traffic.ts    spawn, movimento, contagem de ultrapassagens e colisão
   scoring.ts    meta por dia e curva de dificuldade
-  storage.ts    ranking e configurações (localStorage)
-  input.ts      teclado + botões de toque
-  audio.ts      sons sintetizados (Web Audio)
-  font.ts       fonte pixel 3x5
+  audio.ts      sons sintetizados (Web Audio), sobre SoundBase do @arcade/shared
+  storage.ts    ranking e configurações deste jogo sobre o store genérico do @arcade/shared
   sprites.ts    pixel art dos carros e ícones
   game.ts       máquina de estados e lógica de jogo
   render.ts     céu, montanhas, pista, carros, HUD e telas

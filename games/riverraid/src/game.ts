@@ -5,7 +5,7 @@ import {
 import { River, SpawnDef, SpawnKind, difficulty } from './river';
 import { aabb, hitsBank, bounceInChannel, Box } from './collision';
 import { ScoreKeeper, fuelDrainRate } from './scoring';
-import type { Input } from './input';
+import type { Input } from '@arcade/shared';
 import type { SoundFx } from './audio';
 import {
   loadHighScores, saveHighScores, qualifies, insertHighScore,

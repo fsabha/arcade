@@ -2,7 +2,7 @@ import { W, H, TILE, COLS, ROWS, MAZE_Y, FRUIT_POS, POINTS } from './config';
 import { Maze, MAP, tileCenter } from './maze';
 import { Game, Ghost, MENU_ITEMS, PAUSE_ITEMS } from './game';
 import { fruitSprite, ghostSprite, drawPac, pacSprite, GHOST_COLORS } from './sprites';
-import { drawText, drawTextCentered, textWidth } from './font';
+import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
 import { GHOSTS, GhostName } from './ghostai';
 
 const C = {

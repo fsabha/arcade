@@ -1,0 +1,11 @@
+{
+  "name": "@arcade/shared",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./testing": "./src/testing.ts",
+    "./style.css": "./src/style.css"
+  }
+}

@@ -4,7 +4,7 @@ import {
 import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
 import { Traffic } from './traffic';
 import { sprite, LANE_COLORS } from './sprites';
-import { drawText, drawTextCentered, textWidth } from './font';
+import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
 
 const C = {
   curb: '#9c9c9c',

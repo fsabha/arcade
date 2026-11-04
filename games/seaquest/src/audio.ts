@@ -1,69 +1,12 @@
+import { SoundBase } from '@arcade/shared';
 /** All sounds are synthesized with Web Audio; no asset files. */
-export class SoundFx {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
+export class SoundFx extends SoundBase {
+  constructor() {
+    super(0.6);
+  }
+
   private humOsc: OscillatorNode | null = null;
   private humGain: GainNode | null = null;
-  private noiseBuf: AudioBuffer | null = null;
-  private _muted = false;
-
-  get muted(): boolean {
-    return this._muted;
-  }
-
-  /** Must be called from a user gesture before anything is audible. Safe to call repeatedly. */
-  unlock(): void {
-    if (!this.ctx) {
-      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) return;
-      this.ctx = new Ctor();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = this._muted ? 0 : 0.6;
-      this.master.connect(this.ctx.destination);
-      const len = this.ctx.sampleRate;
-      this.noiseBuf = this.ctx.createBuffer(1, len, this.ctx.sampleRate);
-      const d = this.noiseBuf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
-    }
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
-  }
-
-  setMuted(m: boolean): void {
-    this._muted = m;
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.6, this.ctx.currentTime, 0.02);
-  }
-
-  private tone(freq: number, dur: number, type: OscillatorType, vol: number, slideTo?: number, delay = 0): void {
-    if (!this.ctx || !this.master) return;
-    const t0 = this.ctx.currentTime + delay;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
-    g.gain.setValueAtTime(vol, t0);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(g).connect(this.master);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.02);
-  }
-
-  private noise(dur: number, vol: number, filterFreq: number): void {
-    if (!this.ctx || !this.master || !this.noiseBuf) return;
-    const t0 = this.ctx.currentTime;
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.noiseBuf;
-    const f = this.ctx.createBiquadFilter();
-    f.type = 'lowpass';
-    f.frequency.setValueAtTime(filterFreq, t0);
-    f.frequency.exponentialRampToValueAtTime(80, t0 + dur);
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(vol, t0);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    src.connect(f).connect(g).connect(this.master);
-    src.start(t0);
-    src.stop(t0 + dur + 0.02);
-  }
 
   torpedo(): void {
     this.noise(0.18, 0.2, 1400);

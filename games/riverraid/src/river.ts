@@ -1,4 +1,4 @@
-import { Rng } from './rng';
+import { Rng } from '@arcade/shared';
 import {
   W, KEY_STEP, SECTION_KEYS, SECTION_LEN, BANK_MARGIN, MIN_CHANNEL,
   BRIDGE_WIDTH, BRIDGE_H, BRIDGE_Y_FROM_END,

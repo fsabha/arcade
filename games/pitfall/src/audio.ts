@@ -1,3 +1,4 @@
+import { SoundBase } from '@arcade/shared';
 // A minor pentatonic jungle loop: 32 eighth notes of melody over a 16-beat bass line.
 const A4 = 440, C5 = 523, D5 = 587, E5 = 659, G5 = 784, A5 = 880, G4 = 392, E4 = 330, D4 = 294;
 const MELODY = [
@@ -7,51 +8,16 @@ const MELODY = [
 const BASS = [110, 110, 82.4, 82.4, 98, 98, 73.4, 73.4, 110, 110, 82.4, 82.4, 98, 98, 65.4, 73.4];
 
 /** All sounds are synthesized with Web Audio; no asset files. */
-export class SoundFx {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
-  private _muted = false;
+export class SoundFx extends SoundBase {
+  constructor() {
+    super(0.5);
+  }
+
   private musicOn = true; // user setting
   private musicWanted = false; // game wants music playing
   private musicTimer: ReturnType<typeof setInterval> | null = null;
   private musicNext = 0;
   private musicStep = 0;
-
-  get muted(): boolean {
-    return this._muted;
-  }
-
-  unlock(): void {
-    if (!this.ctx) {
-      const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!Ctor) return;
-      this.ctx = new Ctor();
-      this.master = this.ctx.createGain();
-      this.master.gain.value = this._muted ? 0 : 0.5;
-      this.master.connect(this.ctx.destination);
-    }
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
-  }
-
-  setMuted(m: boolean): void {
-    this._muted = m;
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(m ? 0 : 0.5, this.ctx.currentTime, 0.02);
-  }
-
-  private tone(freq: number, dur: number, type: OscillatorType, vol: number, slideTo?: number, delay = 0): void {
-    if (!this.ctx || !this.master) return;
-    const t0 = this.ctx.currentTime + delay;
-    const osc = this.ctx.createOscillator();
-    const g = this.ctx.createGain();
-    osc.type = type;
-    osc.frequency.setValueAtTime(freq, t0);
-    if (slideTo !== undefined) osc.frequency.exponentialRampToValueAtTime(Math.max(1, slideTo), t0 + dur);
-    g.gain.setValueAtTime(vol, t0);
-    g.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
-    osc.connect(g).connect(this.master);
-    osc.start(t0);
-    osc.stop(t0 + dur + 0.02);
-  }
 
   blip(): void {
     this.tone(700, 0.05, 'square', 0.08);

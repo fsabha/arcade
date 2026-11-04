@@ -1,4 +1,4 @@
-import { Rng } from './rng';
+import { Rng } from '@arcade/shared';
 import { W, LANES, ENEMY_W, ENEMY_H, DIVER_W, DIVER_H, PATROL_W, PATROL_H, SURFACE_Y, ENEMY_TORPEDO_V } from './config';
 import { difficulty } from './scoring';
 import type { Box } from './collision';

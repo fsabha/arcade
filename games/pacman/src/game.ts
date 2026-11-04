@@ -7,8 +7,8 @@ import { Maze, tileCenter } from './maze';
 import { Actor } from './actors';
 import { GhostName, chaseTarget, scatterTarget, chooseDir, randomDir, Tile } from './ghostai';
 import { speeds, elroy, modeSchedule, fruitFor, houseLimits, houseTimeout, intermissionAfter, FruitKind } from './levels';
-import { Rng } from './rng';
-import type { Input } from './input';
+import { Rng } from '@arcade/shared';
+import type { Input } from '@arcade/shared';
 import type { SoundFx } from './audio';
 import {
   loadHighScores, saveHighScores, qualifies, insertHighScore, loadSettings, saveSettings, HighScore, Settings,

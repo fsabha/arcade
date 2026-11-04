@@ -4,7 +4,7 @@ import {
 } from './config';
 import { Traffic, Vehicle } from './traffic';
 import { Difficulty, gameSpec } from './games';
-import type { Input } from './input';
+import type { Input } from '@arcade/shared';
 import type { SoundFx } from './audio';
 import {
   loadHighScores, saveHighScores, qualifies, insertHighScore, loadSettings, saveSettings, HighScore, Settings,

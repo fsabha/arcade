@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { normalizeText } from '../src/font';
+import { normalizeText } from '@arcade/shared';
 import { spriteMaps } from '../src/sprites';
 
 describe('font and sprites', () => {

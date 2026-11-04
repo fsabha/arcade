@@ -1,4 +1,4 @@
-import { Rng } from './rng';
+import { Rng } from '@arcade/shared';
 import { SEG_LEN } from './config';
 
 export interface Segment {

@@ -1,0 +1,28 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#05070c" />
+    <title>Arcade</title>
+  </head>
+  <body>
+    <header>
+      <canvas id="title" width="1" height="1"></canvas>
+      <p>CLASSICOS DO ATARI E DO FLIPERAMA NO NAVEGADOR</p>
+    </header>
+    <div id="grid"></div>
+    <footer>
+      Clique em um jogo ou tecle o numero dele. Dentro do jogo: setas, Espaco, P pausa, M som, C CRT, T controles de toque.<br />
+      Ranking e configuracoes ficam salvos no navegador.
+    </footer>
+    <div id="player">
+      <div id="bar">
+        <button type="button" id="back">&larr; MENU</button>
+        <span id="playing"></span>
+      </div>
+      <iframe id="frame" title="Jogo" src="about:blank" allow="autoplay"></iframe>
+    </div>
+    <script type="module" src="./hub/main.ts"></script>
+  </body>
+</html>

@@ -8,8 +8,8 @@ import { Conditions, conditionsAt, css, fogAmount, Rgb } from './daycycle';
 import { project, screenWidth } from './projection';
 import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
 import { carSprite, playerSprite, sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from './font';
-import { Rng } from './rng';
+import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import { Rng } from '@arcade/shared';
 
 const C = {
   hud: '#0f1318',

@@ -5,16 +5,17 @@ Homenagem ao clássico Pitfall! da Activision (Atari 2600, 1982), rodando no nav
 ## Rodar
 
 ```bash
-npm install
-npm run dev      # abre em http://localhost:5173
+npm install                 # uma vez, na raiz do monorepo (arcade/)
+npm run dev -w games/pitfall   # só este jogo, em http://localhost:5173
+npm run dev                 # ou o hub com todos os jogos
 ```
 
 Outros comandos:
 
 ```bash
-npm test         # testes unitários + smoke test headless (Vitest)
-npm run build    # typecheck + build em dist/
-npm run preview  # serve o build
+npm test -w games/pitfall      # testes deste jogo (na raiz: npm test roda todos)
+npm run build -w games/pitfall # build isolado em games/pitfall/dist/
+npm run preview -w games/pitfall
 ```
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime (controles de toque aparecem automaticamente).
@@ -59,10 +60,7 @@ src/
   game.ts       máquina de estados, física do Harry, escada, cipó, colisões
   render.ts     selva, buracos, túnel, sprites, HUD e telas
   sprites.ts    pixel art 2600 (pixels largos 2:1)
-  audio.ts      sons sintetizados (Web Audio)
-  storage.ts    ranking e configurações (localStorage)
-  input.ts      teclado + toque
-  font.ts       fonte pixel 3x5
-  rng.ts        gerador determinístico (reservado)
+  audio.ts      sons sintetizados (Web Audio), sobre SoundBase do @arcade/shared
+  storage.ts    ranking e configurações deste jogo sobre o store genérico do @arcade/shared
 tests/          regras do mundo e do jogo, smoke test headless
 ```

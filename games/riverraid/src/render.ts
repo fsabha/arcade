@@ -2,7 +2,7 @@ import { W, H, PLAY_H, HUD_H, FUEL_MAX, FUEL_LOW, MAX_LIVES_DISPLAY, POINTS } fr
 import { River } from './river';
 import { Game, MENU_ITEMS, PAUSE_ITEMS, Enemy, Explosion } from './game';
 import { sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from './font';
+import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
 
 const C = {
   water: '#1f47d6',

@@ -1,4 +1,4 @@
-import { Rng } from './rng';
+import { Rng } from '@arcade/shared';
 import { MAX_SPEED, ROAD_HALF, CAR_W, HIT_DX, HIT_DZ } from './config';
 import { difficulty } from './scoring';
 

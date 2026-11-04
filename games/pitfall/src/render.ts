@@ -5,7 +5,7 @@ import {
 import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
 import { Room, decodeRoom, crocOpen, shiftHalf, CROC_X, HOLE_SINGLE, HOLE_TRIPLE, PIT_ZONE, TREASURE_NAMES } from './world';
 import { sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from './font';
+import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
 
 const C = {
   leaves: '#1c5c1c',

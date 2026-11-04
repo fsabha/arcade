@@ -5,16 +5,17 @@ Homenagem ao clássico Seaquest do Atari 2600, rodando no navegador. Vite + Type
 ## Rodar
 
 ```bash
-npm install
-npm run dev      # abre em http://localhost:5173
+npm install                 # uma vez, na raiz do monorepo (arcade/)
+npm run dev -w games/seaquest   # só este jogo, em http://localhost:5173
+npm run dev                 # ou o hub com todos os jogos
 ```
 
 Outros comandos:
 
 ```bash
-npm test         # testes unitários + smoke test headless (Vitest)
-npm run build    # typecheck + build em dist/
-npm run preview  # serve o build
+npm test -w games/seaquest      # testes deste jogo (na raiz: npm test roda todos)
+npm run build -w games/seaquest # build isolado em games/seaquest/dist/
+npm run preview -w games/seaquest
 ```
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime (controles de toque aparecem automaticamente).
@@ -47,14 +48,11 @@ No celular na mesma rede, use o endereço "Network" que o Vite imprime (controle
 ```
 src/
   config.ts     constantes (tela, faixas, velocidades, oxigênio, regras)
-  rng.ts        PRNG determinístico (mulberry32)
   sea.ts        faixas: spawn de tubarões, submarinos, mergulhadores, torpedos e patrulha
   collision.ts  AABB
   scoring.ts    valor dos inimigos, bônus de resgate, vidas extras, dificuldade
-  storage.ts    ranking e configurações (localStorage)
-  input.ts      teclado + botões de toque
-  audio.ts      sons sintetizados (Web Audio)
-  font.ts       fonte pixel 3x5
+  audio.ts      sons sintetizados (Web Audio), sobre SoundBase do @arcade/shared
+  storage.ts    ranking e configurações deste jogo sobre o store genérico do @arcade/shared
   sprites.ts    pixel art (submarinos, tubarões, mergulhadores, patrulha)
   game.ts       máquina de estados e lógica de jogo
   render.ts     céu, mar, entidades, HUD e telas

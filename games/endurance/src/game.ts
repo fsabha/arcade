@@ -7,7 +7,7 @@ import { Road } from './road';
 import { Traffic, Car } from './traffic';
 import { conditionsAt, Conditions } from './daycycle';
 import { quotaFor } from './scoring';
-import type { Input } from './input';
+import type { Input } from '@arcade/shared';
 import type { SoundFx } from './audio';
 import {
   loadHighScores, saveHighScores, qualifies, insertHighScore,

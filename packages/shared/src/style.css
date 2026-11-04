@@ -99,6 +99,7 @@ body.touch #touch {
   padding: 0;
 }
 
+#touch button.gas,
 #touch button.fire {
   width: 76px;
   background: #1d4f6e;
@@ -108,6 +109,7 @@ body.touch #touch {
   letter-spacing: 1px;
 }
 
+#touch button.brake,
 #touch button.unused {
   width: 76px;
   background: #6e1d1d;
@@ -127,10 +129,12 @@ body.touch #touch {
   background: #2d3644;
 }
 
+#touch button.gas:active,
 #touch button.fire:active {
   background: #2a7ab0;
 }
 
+#touch button.brake:active,
 #touch button.unused:active {
   background: #a02a2a;
 }
