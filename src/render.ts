@@ -3,19 +3,21 @@ import {
 } from './config';
 import { Game, MENU_ITEMS, PAUSE_ITEMS, Explosion } from './game';
 import { Sea } from './sea';
-import { sprite } from './sprites';
+import { sprite, sharkColor } from './sprites';
 import { drawText, drawTextCentered, textWidth } from './font';
 import { Rng } from './rng';
 
 const C = {
-  sky: '#78c4f0',
-  skyLow: '#a8dcf8',
+  sky: '#84c4f4',
+  skyLow: '#b4e0fc',
   sun: '#ffe14a',
-  water: ['#1d5fd0', '#1a52b8', '#17479e', '#133a84'],
-  wave: '#dff4ff',
-  sand: '#c9b36a',
-  sand2: '#b39c55',
-  rock: '#6b5a3a',
+  water: ['#2868e0', '#2460d4', '#2058c8', '#1c50bc'],
+  surface: '#f0fcff',
+  wave: '#a8dcf8',
+  sand: '#d4a858',
+  sand2: '#b08838',
+  sandDark: '#7c5a20',
+  rock: '#5c4418',
   hud: '#0f1318',
   hudLine: '#3a4452',
   text: '#dfe6ee',
@@ -25,6 +27,10 @@ const C = {
   green: '#3ddc84',
   amber: '#ffb020',
 };
+
+const EXPLOSION_PATTERN: [number, number][] = [
+  [-1, -0.7], [1, -0.7], [-0.9, 0.6], [0.9, 0.6], [0, -1], [0, 1], [-1, 0.05], [1, 0.05], [-0.5, -0.3], [0.5, 0.3],
+];
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
@@ -37,7 +43,7 @@ export class Renderer {
     this.ctx = canvas.getContext('2d')!;
     this.ctx.imageSmoothingEnabled = false;
     const r = new Rng(11);
-    for (let i = 0; i < 22; i++) this.rocks.push([r.int(0, W - 6), r.int(0, 4), r.int(2, 5)]);
+    for (let i = 0; i < 18; i++) this.rocks.push([r.int(0, (W - 12) / 2) * 2, r.int(0, 3), r.int(2, 5)]);
     this.demoSea.patrolEnabled = true;
   }
 
@@ -48,7 +54,7 @@ export class Renderer {
 
     if (g.state === 'menu' || g.state === 'howto' || g.state === 'ranking') {
       this.demoSea.update(1 / 60, 2, W / 2);
-      this.drawSea(this.demoSea, g.time);
+      this.drawSea(this.demoSea, g.time, 1);
       this.dim(0.58);
       if (g.state === 'menu') this.drawMenu(g);
       else if (g.state === 'howto') this.drawHowTo();
@@ -58,7 +64,7 @@ export class Renderer {
       return;
     }
 
-    this.drawSea(g.sea, g.time);
+    this.drawSea(g.sea, g.time, g.level);
     this.drawPlayer(g);
     for (const ex of g.explosions) this.drawExplosion(ex);
     this.drawHud(g);
@@ -71,54 +77,75 @@ export class Renderer {
 
   // ---------- world ----------
 
-  private drawSea(sea: Sea, time: number): void {
+  /** Draw a sprite centred on an entity box (boxes keep gameplay sizes; art may differ). */
+  private blit(spr: HTMLCanvasElement, x: number, y: number, w: number, h: number): void {
+    this.ctx.drawImage(spr, Math.round(x + (w - spr.width) / 2), Math.round(y + (h - spr.height) / 2));
+  }
+
+  private drawSea(sea: Sea, time: number, level: number): void {
     const ctx = this.ctx;
-    // Sky
+    // Sky band
     ctx.fillStyle = C.sky;
     ctx.fillRect(0, HUD_TOP, W, SURFACE_Y - HUD_TOP);
     ctx.fillStyle = C.skyLow;
-    ctx.fillRect(0, SURFACE_Y - 6, W, 6);
+    ctx.fillRect(0, SURFACE_Y - 8, W, 8);
     ctx.fillStyle = C.sun;
-    ctx.fillRect(276, HUD_TOP + 4, 10, 10);
-    ctx.fillRect(274, HUD_TOP + 6, 14, 6);
-    ctx.fillRect(278, HUD_TOP + 2, 6, 14);
+    ctx.fillRect(274, HUD_TOP + 4, 12, 8);
+    ctx.fillRect(276, HUD_TOP + 2, 8, 12);
 
-    // Water bands
+    // Water: vivid 2600 blue, lightly banded towards the floor
     const bandH = (FLOOR_Y - SURFACE_Y) / C.water.length;
     C.water.forEach((col, i) => {
       ctx.fillStyle = col;
       ctx.fillRect(0, Math.round(SURFACE_Y + i * bandH), W, Math.ceil(bandH) + 1);
     });
-    // Waves
-    ctx.fillStyle = C.wave;
-    const off = Math.floor(time * 12) % 16;
-    for (let x = -16 + off; x < W; x += 16) ctx.fillRect(x, SURFACE_Y, 8, 1);
-    ctx.fillRect(0, SURFACE_Y - 1, W, 1);
 
-    // Sea floor
+    // Surface line and drifting wave crests (wide pixels)
+    ctx.fillStyle = C.surface;
+    ctx.fillRect(0, SURFACE_Y - 1, W, 2);
+    ctx.fillStyle = C.wave;
+    const off = Math.floor(time * 10) % 16;
+    for (let x = -16 + off; x < W; x += 16) {
+      ctx.fillRect(x, SURFACE_Y + 1, 6, 1);
+      ctx.fillRect(x + 8, SURFACE_Y + 3, 4, 1);
+    }
+
+    // Sea floor: sand with stepped relief and a darker base
     ctx.fillStyle = C.sand;
     ctx.fillRect(0, FLOOR_Y, W, HUD_BOTTOM - FLOOR_Y);
     ctx.fillStyle = C.sand2;
-    for (let x = 0; x < W; x += 8) ctx.fillRect(x + ((x >> 3) & 1) * 4, FLOOR_Y + 4, 4, 1);
-    ctx.fillStyle = C.rock;
-    for (const [x, dy, w] of this.rocks) ctx.fillRect(x, FLOOR_Y - 2 + dy, w, 3);
+    for (let x = 0; x < W; x += 8) ctx.fillRect(x + ((x >> 3) & 1) * 4, FLOOR_Y + 3, 4, 1);
+    for (let x = 4; x < W; x += 16) ctx.fillRect(x, FLOOR_Y + 6, 6, 1);
+    ctx.fillStyle = C.sandDark;
+    ctx.fillRect(0, HUD_BOTTOM - 2, W, 2);
+    for (const [x, dy, w] of this.rocks) {
+      ctx.fillStyle = C.sand;
+      ctx.fillRect(x - 2, FLOOR_Y - 1 - dy, w * 2 + 4, 2 + dy);
+      ctx.fillStyle = C.rock;
+      ctx.fillRect(x, FLOOR_Y - 2 - dy, w * 2, 2);
+      ctx.fillStyle = C.sand2;
+      ctx.fillRect(x, FLOOR_Y + dy, w * 2, 1);
+    }
 
     // Divers, enemies, torpedoes, patrol
-    const frame = Math.floor(time * 4) % 2;
+    const frame = Math.floor(time * 6) % 4; // 0 1 2 1 (ping-pong)
+    const f3 = frame === 3 ? 1 : frame;
+    const tint = sharkColor(level);
     for (const d of sea.divers) {
       if (d.dead) continue;
-      ctx.drawImage(sprite(frame ? 'diver1' : 'diver0', d.dir === -1), Math.round(d.x), Math.round(d.y));
+      this.blit(sprite(`diver${f3}`, d.dir === -1), d.x, d.y, d.w, d.h);
     }
+    const subFrame = Math.floor(time * 10) % 2;
     for (const e of sea.enemies) {
       if (e.dead) continue;
-      const name = e.kind === 'sub' ? 'esub' : frame ? 'shark1' : 'shark0';
-      ctx.drawImage(sprite(name, e.dir === -1), Math.round(e.x), Math.round(e.y));
+      const spr = e.kind === 'sub' ? sprite(`esub${subFrame}`, e.dir === -1) : sprite(`shark${f3}`, e.dir === -1, tint);
+      this.blit(spr, e.x, e.y, e.w, e.h);
     }
     ctx.fillStyle = C.red;
     for (const t of sea.torpedoes) ctx.fillRect(Math.round(t.x), Math.round(t.y), t.w, t.h);
     if (sea.patrol.active) {
       const p = sea.patrol;
-      ctx.drawImage(sprite('patrol', p.dir === -1), Math.round(p.x), Math.round(p.y));
+      this.blit(sprite('patrol', p.dir === -1), p.x, p.y, p.w, p.h);
     }
   }
 
@@ -126,36 +153,40 @@ export class Renderer {
     if (g.state !== 'playing' && g.state !== 'paused') return;
     const ctx = this.ctx;
     const p = g.player;
-    ctx.drawImage(sprite('sub', g.facing === -1), Math.round(p.x), Math.round(p.y));
+    const frame = g.moving ? Math.floor(g.time * 12) % 2 : 0;
+    this.blit(sprite(`sub${frame}`, g.facing === -1), p.x, p.y, p.w, p.h);
     if (g.torpedo) {
       ctx.fillStyle = C.gold;
       ctx.fillRect(Math.round(g.torpedo.x), Math.round(g.torpedo.y), g.torpedo.w, g.torpedo.h);
     }
-    if (g.moving && Math.floor(g.time * 20) % 2 === 0) {
-      ctx.fillStyle = C.wave;
-      const bx = g.facing === 1 ? p.x - 3 : p.x + p.w + 1;
-      ctx.fillRect(Math.round(bx), Math.round(p.y + 4), 2, 2);
+    if (g.moving && !g.atSurface && Math.floor(g.time * 20) % 2 === 0) {
+      ctx.fillStyle = C.surface;
+      const bx = g.facing === 1 ? p.x - 4 : p.x + p.w + 2;
+      ctx.fillRect(Math.round(bx), Math.round(p.y + 3), 2, 1);
     }
   }
 
+  /** Blocky 2600-style explosion: wide rectangles flung outwards, colour stepping white > yellow > orange > red > grey. */
   private drawExplosion(ex: Explosion): void {
     const ctx = this.ctx;
     const p = ex.t / ex.dur;
     const cx = Math.round(ex.x);
     const cy = Math.round(ex.y);
-    const maxR = ex.big ? 20 : 11;
-    const r = p * maxR;
-    const color = p < 0.25 ? '#ffffff' : p < 0.55 ? C.gold : p < 0.8 ? '#ff6a1a' : '#6b6b6b';
-    const size = ex.big ? 4 : 3;
-    ctx.fillStyle = color;
-    for (let i = 0; i < 8; i++) {
-      const a = (i * Math.PI) / 4 + p * 0.8;
-      ctx.fillRect(Math.round(cx + Math.cos(a) * r - size / 2), Math.round(cy + Math.sin(a) * r - size / 2), size, size);
+    const spread = (ex.big ? 20 : 12) * p;
+    const flicker = Math.floor(ex.t * 30) % 2;
+    const steps = ['#ffffff', C.gold, '#ff7a1a', '#e03820', '#707070'];
+    const idx = Math.min(steps.length - 1, Math.floor(p * steps.length) + flicker);
+    ctx.fillStyle = steps[Math.min(steps.length - 1, idx)];
+    const bw = ex.big ? 6 : 4;
+    for (const [dx, dy] of EXPLOSION_PATTERN) {
+      const x = Math.round(cx + dx * spread);
+      const y = Math.round(cy + dy * spread * 0.6);
+      ctx.fillRect(x - bw / 2, y - 1, bw, 2);
     }
-    const core = Math.round((1 - p) * (ex.big ? 9 : 5));
+    const core = Math.round((1 - p) * (ex.big ? 8 : 5));
     if (core > 0) {
-      ctx.fillStyle = p < 0.4 ? '#ffffff' : C.gold;
-      ctx.fillRect(cx - core, cy - core, core * 2, core * 2);
+      ctx.fillStyle = flicker ? C.gold : '#ffffff';
+      ctx.fillRect(cx - core * 2, cy - core, core * 4, core * 2);
     }
   }
 
@@ -219,10 +250,10 @@ export class Renderer {
     drawText(ctx, 'MERGULHADORES', 8, y0 + 20, C.dim, 1);
     const icon = sprite('diverIcon');
     for (let i = 0; i < MAX_DIVERS; i++) {
-      if (i < g.divers) ctx.drawImage(icon, 66 + i * 8, y0 + 19);
-      else { ctx.fillStyle = '#2a3340'; ctx.fillRect(66 + i * 8, y0 + 19, 4, 5); }
+      if (i < g.divers) ctx.drawImage(icon, 66 + i * 10, y0 + 19);
+      else { ctx.fillStyle = '#2a3340'; ctx.fillRect(66 + i * 10, y0 + 20, 8, 2); }
     }
-    if (g.divers >= MAX_DIVERS && blink) drawText(ctx, 'SUBA!', 120, y0 + 20, C.green, 1);
+    if (g.divers >= MAX_DIVERS && blink) drawText(ctx, 'SUBA!', 132, y0 + 20, C.green, 1);
 
     if (g.refilling && blink) drawText(ctx, 'ABASTECENDO', 210, y0 + 6, C.green, 1);
     else if (g.atSurface && g.state === 'playing') drawText(ctx, 'SUPERFICIE', 210, y0 + 6, C.dim, 1);
@@ -263,7 +294,7 @@ export class Renderer {
     drawTextCentered(ctx, 'SEAQUEST', W / 2 + 2, 34 + 2, '#5a3a00', 3);
     drawTextCentered(ctx, 'SEAQUEST', W / 2, 34, C.gold, 3);
     drawTextCentered(ctx, 'EDICAO BROWSER', W / 2, 56, C.dim, 1);
-    ctx.drawImage(sprite('sub'), W / 2 - 24, 68 + bob, 48, 24);
+    ctx.drawImage(sprite('sub0'), W / 2 - 24, 66 + bob, 48, 27);
 
     const startY = 104;
     MENU_ITEMS.forEach((item, i) => {
