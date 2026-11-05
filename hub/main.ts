@@ -1,6 +1,7 @@
 import './style.css';
 import { drawTextCentered, textWidth } from '@arcade/shared';
 import { GAMES, GameInfo } from './games';
+import { inject } from '@vercel/analytics';
 
 const grid = document.getElementById('grid') as HTMLDivElement;
 const frame = document.getElementById('frame') as HTMLIFrameElement;
@@ -53,6 +54,9 @@ function close(): void {
   document.body.classList.remove('in-game');
   history.replaceState(null, '', location.pathname);
 }
+
+// Initialize Vercel Analytics
+inject();
 
 pixelTitle(title, 'ARCADE', '#dfe6ee', 5);
 GAMES.forEach((g, i) => grid.appendChild(card(g, i)));
