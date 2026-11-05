@@ -45,9 +45,12 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
     }
   });
 
+  // Browsers only start audio inside a user gesture; mobile Safari is pickiest, so listen to all of them.
   const unlock = () => audio.unlock();
   window.addEventListener('keydown', unlock);
   window.addEventListener('pointerdown', unlock);
+  window.addEventListener('touchend', unlock, { passive: true });
+  window.addEventListener('click', unlock);
 
   function resize(): void {
     const touchH = document.body.classList.contains('touch') ? touchEl.offsetHeight + 8 : 0;

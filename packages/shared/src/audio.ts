@@ -19,6 +19,11 @@ export class SoundBase {
     if (!this.ctx) {
       const Ctor = window.AudioContext || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
       if (!Ctor) return;
+      // iOS 17+: play even with the ringer switch on silent, like a game app would.
+      const session = (navigator as unknown as { audioSession?: { type: string } }).audioSession;
+      if (session) {
+        try { session.type = 'playback'; } catch { /* unsupported value */ }
+      }
       this.ctx = new Ctor();
       this.master = this.ctx.createGain();
       this.master.gain.value = this._muted ? 0 : this.volume;
@@ -29,7 +34,8 @@ export class SoundBase {
       for (let i = 0; i < len; i++) d[i] = Math.random() * 2 - 1;
       this.onUnlock();
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume();
+    // 'interrupted' is iOS-only (phone call, switching apps); resume it like 'suspended'.
+    if (this.ctx.state !== 'running') void this.ctx.resume();
   }
 
   /** Hook for subclasses that need nodes created once the context exists. */
