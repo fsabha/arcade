@@ -171,6 +171,16 @@ body.in-game header, body.in-game #grid, body.in-game #about, body.in-game foote
   border-color: var(--fg);
 }
 
+#bar #credit {
+  margin-left: auto;
+  white-space: nowrap;
+}
+
+#bar #credit a {
+  color: #3ddc84;
+  text-decoration: none;
+}
+
 #frame {
   flex: 1;
   width: 100%;
