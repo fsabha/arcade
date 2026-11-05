@@ -1,5 +1,5 @@
 import './style.css';
-import { drawTextCentered, textWidth } from '@arcade/shared';
+import { drawTextCentered, textWidth, installAnalytics } from '@arcade/shared';
 import { GAMES, GameInfo } from './games';
 
 const grid = document.getElementById('grid') as HTMLDivElement;
@@ -54,6 +54,7 @@ function close(): void {
   history.replaceState(null, '', location.pathname);
 }
 
+installAnalytics();
 pixelTitle(title, 'ARCADE', '#dfe6ee', 5);
 GAMES.forEach((g, i) => grid.appendChild(card(g, i)));
 backBtn.addEventListener('click', close);

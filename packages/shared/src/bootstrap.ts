@@ -1,4 +1,5 @@
 import { Input, Action } from './input';
+import { installAnalytics } from './analytics';
 
 export interface GameLike {
   state: string;
@@ -29,6 +30,7 @@ export interface BootOptions<G extends GameLike> {
  */
 export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
   const { W, H, game, renderer, input, audio } = opts;
+  installAnalytics();
   const canvas = document.getElementById('game') as HTMLCanvasElement;
   const stage = document.getElementById('stage') as HTMLDivElement;
   const touchEl = document.getElementById('touch') as HTMLDivElement;
