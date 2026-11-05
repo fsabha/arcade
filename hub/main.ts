@@ -1,6 +1,10 @@
 import './style.css';
 import { drawTextCentered, textWidth } from '@arcade/shared';
 import { GAMES, GameInfo } from './games';
+import { inject } from '@vercel/analytics';
+
+// Initialize Vercel Analytics
+inject();
 
 const grid = document.getElementById('grid') as HTMLDivElement;
 const frame = document.getElementById('frame') as HTMLIFrameElement;
