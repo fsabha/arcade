@@ -97,8 +97,33 @@ header p {
   padding: 1px 5px;
 }
 
-footer {
+#about {
+  width: 100%;
+  max-width: 820px;
   margin-top: 28px;
+  padding: 18px 20px;
+  box-sizing: border-box;
+  background: var(--panel);
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+#about p {
+  margin: 0 0 10px;
+}
+
+#about p:last-child {
+  margin-bottom: 0;
+}
+
+#about a {
+  color: #3ddc84;
+}
+
+footer {
+  margin-top: 20px;
   color: var(--dim);
   font-size: 12px;
   text-align: center;
@@ -117,7 +142,7 @@ body.in-game #player {
   display: flex;
 }
 
-body.in-game header, body.in-game #grid, body.in-game footer {
+body.in-game header, body.in-game #grid, body.in-game #about, body.in-game footer {
   display: none;
 }
 
