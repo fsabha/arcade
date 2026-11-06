@@ -209,7 +209,7 @@ export class Renderer {
   }
 
   private drawRanking(g: Game, menu: boolean): void {
-    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  NIVEL ${String(h.level).padStart(2, ' ')}`);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')} ${h.initials.padEnd(3, ' ')} ${String(h.score).padStart(6, ' ')} NIV ${String(h.level).padStart(2, ' ')} ${(h.mode || '').slice(0, 3)}`);
     drawRankingScreen(this.ctx, W, H, rows, menu);
   }
 

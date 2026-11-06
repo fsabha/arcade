@@ -60,8 +60,8 @@ export class Game {
       audio,
       onStart: () => this.startGame(),
       onItem: (item) => { if (item === 'JOGO') this.variation = this.variation === 'regular' ? 'advanced' : 'regular'; },
-      entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
-      probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
+      entry: (initials) => ({ initials, score: this.score, level: this.level, mode: this.variation === 'advanced' ? 'AVANCADO' : 'NORMAL', date: new Date().toISOString() }),
+      probe: () => ({ initials: '', score: this.score, level: this.level, mode: '', date: '' }),
     });
   }
 
