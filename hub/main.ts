@@ -13,18 +13,6 @@ const frame = document.getElementById('frame') as HTMLIFrameElement;
 const playing = document.getElementById('playing') as HTMLSpanElement;
 const backBtn = document.getElementById('back') as HTMLButtonElement;
 const title = document.getElementById('title') as HTMLCanvasElement;
-const PLAYS_KEY = 'arcade.plays';
-
-function loadPlays(): Record<string, number> {
-  try { return JSON.parse(localStorage.getItem(PLAYS_KEY) ?? '{}') as Record<string, number>; } catch { return {}; }
-}
-
-function countPlay(id: string): void {
-  const plays = loadPlays();
-  plays[id] = (plays[id] ?? 0) + 1;
-  try { localStorage.setItem(PLAYS_KEY, JSON.stringify(plays)); } catch { /* private mode */ }
-}
-
 function pixelTitle(canvas: HTMLCanvasElement, text: string, color: string, scale: number): void {
   const w = textWidth(text, scale) + 8;
   const h = 5 * scale + 6;
@@ -37,27 +25,17 @@ function pixelTitle(canvas: HTMLCanvasElement, text: string, color: string, scal
 
 const thumbs: { id: string; ctx: CanvasRenderingContext2D }[] = [];
 
-function card(g: GameInfo, plays: number): HTMLButtonElement {
+function card(g: GameInfo): HTMLButtonElement {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'card';
   el.style.setProperty('--accent', g.accent);
-  const row = document.createElement('div');
-  row.className = 'row';
-  const text = document.createElement('div');
-  text.className = 'text';
   const c = document.createElement('canvas');
   c.className = 'card-title';
   pixelTitle(c, g.title, g.accent, 2);
   const meta = document.createElement('div');
   meta.className = 'meta';
   meta.textContent = `${g.original}, ${g.year}`;
-  if (plays > 0) {
-    const p = document.createElement('span');
-    p.className = 'plays';
-    p.textContent = ` · ${plays} ${plays === 1 ? 'partida' : 'partidas'}`;
-    meta.append(p);
-  }
   const blurb = document.createElement('div');
   blurb.className = 'blurb';
   blurb.textContent = g.blurb;
@@ -76,7 +54,6 @@ function card(g: GameInfo, plays: number): HTMLButtonElement {
       top.append(li);
     });
   }
-  text.append(c, meta, blurb, top);
   const thumb = document.createElement('canvas');
   thumb.className = 'thumb';
   thumb.width = TW;
@@ -84,8 +61,8 @@ function card(g: GameInfo, plays: number): HTMLButtonElement {
   const tctx = thumb.getContext('2d')!;
   tctx.imageSmoothingEnabled = false;
   thumbs.push({ id: g.id, ctx: tctx });
-  row.append(text, thumb);
-  el.append(row);
+  // name, animated picture, description (and the top 5 in ranking mode)
+  el.append(c, thumb, meta, blurb, top);
   el.addEventListener('click', () => open(g));
   return el;
 }
@@ -108,10 +85,9 @@ function loadBoard(): void {
 }
 
 function renderGrid(): void {
-  const plays = loadPlays();
   thumbs.length = 0;
   grid.replaceChildren();
-  visibleGames().forEach((g) => grid.appendChild(card(g, plays[g.id] ?? 0)));
+  visibleGames().forEach((g) => grid.appendChild(card(g)));
 }
 
 function open(g: GameInfo): void {
@@ -120,7 +96,6 @@ function open(g: GameInfo): void {
   document.body.classList.add('in-game');
   location.hash = g.id;
   frame.addEventListener('load', () => frame.contentWindow?.focus(), { once: true });
-  countPlay(g.id);
   trackEvent('play', { game: g.id });
 }
 
@@ -128,8 +103,7 @@ function close(): void {
   frame.src = 'about:blank';
   document.body.classList.remove('in-game');
   history.replaceState(null, '', location.pathname);
-  renderGrid(); // play counts may have changed
-  loadBoard(); // and someone may have entered the ranking
+  loadBoard(); // someone may have entered the ranking meanwhile
 }
 
 installAnalytics();

@@ -76,29 +76,17 @@ body:not(.ranking) .card .top {
   display: none;
 }
 
-.card .row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.card .text {
-  min-width: 0;
-  flex: 1;
-}
-
 .card .thumb {
   flex: none;
-  width: 64px;
-  height: 40px;
+  width: 100%;
+  max-width: 192px;
+  aspect-ratio: 64 / 40;
+  height: auto;
+  margin: 2px 0 6px;
   image-rendering: pixelated;
   border: 1px solid var(--line);
   border-radius: 4px;
   background: #000;
-}
-
-.card .plays {
-  color: #3ddc84;
 }
 
 .card .top {
@@ -140,7 +128,7 @@ body:not(.ranking) .card .top {
   position: relative;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
   text-align: left;
   background: var(--panel);
   border: 2px solid var(--line);
@@ -164,7 +152,7 @@ body:not(.ranking) .card .top {
   image-rendering: pixelated;
   display: block;
   max-width: 100%;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .card .meta {
@@ -178,11 +166,12 @@ body:not(.ranking) .card .top {
 
 .card .blurb {
   font-size: 10px;
-  line-height: 1.3;
-  color: var(--dim);
-  white-space: nowrap;
+  line-height: 1.35;
+  color: var(--fg);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 footer {

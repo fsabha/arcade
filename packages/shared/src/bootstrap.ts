@@ -69,7 +69,8 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
       availH -= touchEl.offsetHeight + 8;
     }
     let scale = Math.min(availW / W, availH / H);
-    if (scale >= 1) scale = Math.floor(scale * 2) / 2; // half-integer steps keep pixels crisp
+    // desktop: half-integer steps keep pixels crisp; phones (high DPR, small screens) use every pixel
+    if (scale >= 1 && !touch) scale = Math.floor(scale * 2) / 2;
     scale = Math.max(0.5, scale);
     canvas.style.width = `${Math.floor(W * scale)}px`;
     canvas.style.height = `${Math.floor(H * scale)}px`;

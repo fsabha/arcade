@@ -1,7 +1,7 @@
 /* Arcade service worker: the hub and every game keep working offline once visited.
  * Built assets carry content hashes, so cached copies never go stale; pages are
  * refreshed in the background (stale-while-revalidate). */
-const VERSION = 'arcade-v1';
+const VERSION = 'arcade-v2';
 const SHELL = ['/', '/manifest.webmanifest', '/icon-192.png', '/icon-512.png'];
 
 self.addEventListener('install', (event) => {

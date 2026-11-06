@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validate, submit, top, topAll, parseRange, Redis, Command, KEEP, RATE_LIMIT } from '../_lib/leaderboard';
+import { makeHandler, Req, Res } from '../scores';
 
 /** Just enough Redis to run the leaderboard: sorted sets, INCR/EXPIRE. */
 function fakeRedis(): Redis & { sets: Map<string, Map<string, number>>; counters: Map<string, number> } {
@@ -60,5 +61,26 @@ describe('leaderboard', () => {
     expect(parseRange(['AAA|NIVEL 2|2026-01-01', '300', 'BBB||', 100])).toEqual([
       { initials: 'AAA', score: 300, label: 'NIVEL 2', date: '2026-01-01' }, { initials: 'BBB', score: 100, label: '', date: '' },
     ]);
+  });
+});
+
+describe('http handler', () => {
+  function call(db: Redis | null, req: Partial<Req>): Promise<{ status: number; body: unknown }> {
+    return new Promise((resolve) => {
+      const res: Res = { statusCode: 200, setHeader() {}, end(b?: string) { resolve({ status: res.statusCode, body: b ? JSON.parse(b) : null }); } };
+      void makeHandler(() => db)({ headers: {}, ...req }, res);
+    });
+  }
+  it('503 without storage, 400 on bad input, then stores and lists', async () => {
+    expect((await call(null, { method: 'GET', query: { game: 'all' } })).status).toBe(503);
+    const r = fakeRedis();
+    expect((await call(r, { method: 'GET', query: { game: 'nope' } })).status).toBe(400);
+    expect((await call(r, { method: 'POST', body: { game: 'frogger', initials: 'FAB', score: 1500, label: 'NIVEL 2' } })).body).toEqual({ ok: true, rank: 1 });
+    expect((await call(r, { method: 'POST', body: JSON.stringify({ game: 'frogger', initials: 'ZZ', score: 900, label: '' }), headers: { 'x-forwarded-for': '9.9.9.9, 1.1.1.1' } })).body).toEqual({ ok: true, rank: 2 });
+    const one = await call(r, { method: 'GET', url: '/api/scores?game=frogger' });
+    expect((one.body as { entries: unknown[] }).entries).toHaveLength(2);
+    const all = await call(r, { method: 'GET', query: { game: 'all' } });
+    expect((all.body as { games: Record<string, unknown[]> }).games.frogger).toHaveLength(2);
+    expect((await call(r, { method: 'DELETE' })).status).toBe(405);
   });
 });

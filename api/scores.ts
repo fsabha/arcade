@@ -1,5 +1,5 @@
 /**
- * Global leaderboard (Vercel Function, Node runtime, Web Request/Response).
+ * Global leaderboard (Vercel Function, Node runtime).
  *   GET  /api/scores?game=<id>   -> { entries: [...] }            top 10 of one game
  *   GET  /api/scores?game=all    -> { games: { <id>: [...] } }    top 5 of every game, for the hub
  *   POST /api/scores { game, initials, score, label } -> { ok, rank }
@@ -9,6 +9,20 @@ import { isGame, validate, submit, top, topAll, upstash, Redis } from './_lib/le
 
 declare const process: { env: Record<string, string | undefined> };
 
+/** The subset of Vercel's Node request/response we use (no @vercel/node dependency). */
+export interface Req {
+  method?: string;
+  url?: string;
+  headers: Record<string, string | string[] | undefined>;
+  query?: Record<string, string | string[] | undefined>;
+  body?: unknown;
+}
+export interface Res {
+  statusCode: number;
+  setHeader(name: string, value: string): void;
+  end(body?: string): void;
+}
+
 function redis(): Redis | null {
   const env = process.env;
   const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL;
@@ -17,42 +31,55 @@ function redis(): Redis | null {
   return upstash(url, token);
 }
 
-const HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store', 'Access-Control-Allow-Origin': '*' };
-
-function json(body: unknown, status = 200, extra: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(body), { status, headers: { ...HEADERS, ...extra } });
+function send(res: Res, status: number, body: unknown, cache = 'no-store'): void {
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', cache);
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.end(JSON.stringify(body));
 }
 
-export async function GET(req: Request): Promise<Response> {
-  const db = redis();
-  if (!db) return json({ error: 'ranking global nao configurado' }, 503);
-  const game = new URL(req.url).searchParams.get('game');
+function first(v: string | string[] | undefined): string | undefined {
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function parseBody(req: Req): unknown {
+  if (req.body === undefined || req.body === null) return null;
+  if (typeof req.body === 'string') { try { return JSON.parse(req.body); } catch { return null; } }
+  return req.body;
+}
+
+/** Builds the handler around a Redis factory, so tests can inject a fake. */
+export function makeHandler(getDb: () => Redis | null) {
+  return async function handler(req: Req, res: Res): Promise<void> {
+  const method = (req.method ?? 'GET').toUpperCase();
+  if (method === 'OPTIONS') { send(res, 204, null); return; }
+  const db = getDb();
+  if (!db) { send(res, 503, { error: 'ranking global nao configurado' }); return; }
   try {
-    if (game === 'all') return json({ games: await topAll(db) }, 200, { 'Cache-Control': 's-maxage=30, stale-while-revalidate=120' });
-    if (!isGame(game)) return json({ error: 'jogo desconhecido' }, 400);
-    return json({ entries: await top(db, game) }, 200, { 'Cache-Control': 's-maxage=15, stale-while-revalidate=60' });
+    if (method === 'GET') {
+      const game = first(req.query?.game) ?? new URL(req.url ?? '/', 'http://x').searchParams.get('game');
+      if (game === 'all') { send(res, 200, { games: await topAll(db) }, 's-maxage=30, stale-while-revalidate=120'); return; }
+      if (!isGame(game)) { send(res, 400, { error: 'jogo desconhecido' }); return; }
+      send(res, 200, { entries: await top(db, game) }, 's-maxage=15, stale-while-revalidate=60');
+      return;
+    }
+    if (method === 'POST') {
+      const v = validate(parseBody(req));
+      if (!v.ok) { send(res, 400, { error: v.reason }); return; }
+      const ip = (first(req.headers['x-forwarded-for']) ?? '').split(',')[0].trim() || first(req.headers['x-real-ip']) || 'anon';
+      const r = await submit(db, v.value, ip);
+      if (!r.ok) { send(res, r.status, { error: r.reason }); return; }
+      send(res, 200, { ok: true, rank: r.rank });
+      return;
+    }
+    send(res, 405, { error: 'metodo nao permitido' });
   } catch (e) {
-    return json({ error: String((e as Error).message ?? e) }, 502);
+    send(res, 502, { error: String((e as Error).message ?? e) });
   }
+  };
 }
 
-export async function POST(req: Request): Promise<Response> {
-  const db = redis();
-  if (!db) return json({ error: 'ranking global nao configurado' }, 503);
-  let body: unknown;
-  try { body = await req.json(); } catch { return json({ error: 'json invalido' }, 400); }
-  const v = validate(body);
-  if (!v.ok) return json({ error: v.reason }, 400);
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0].trim() || req.headers.get('x-real-ip') || 'anon';
-  try {
-    const r = await submit(db, v.value, ip);
-    if (!r.ok) return json({ error: r.reason }, r.status);
-    return json({ ok: true, rank: r.rank });
-  } catch (e) {
-    return json({ error: String((e as Error).message ?? e) }, 502);
-  }
-}
-
-export async function OPTIONS(): Promise<Response> {
-  return new Response(null, { status: 204, headers: { ...HEADERS, 'Access-Control-Allow-Methods': 'GET, POST', 'Access-Control-Allow-Headers': 'Content-Type' } });
-}
+export default makeHandler(redis);
