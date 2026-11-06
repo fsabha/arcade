@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { validate, submit, top, topAll, parseRange, Redis, Command, KEEP, RATE_LIMIT } from '../_lib/leaderboard';
-import { makeHandler, Req, Res } from '../scores';
+import { validate, submit, top, topAll, parseRange, Redis, Command, KEEP, RATE_LIMIT } from '../_lib/leaderboard.js';
+import { makeHandler, Req, Res } from '../scores.js';
 
 /** Just enough Redis to run the leaderboard: sorted sets, INCR/EXPIRE. */
 function fakeRedis(): Redis & { sets: Map<string, Map<string, number>>; counters: Map<string, number> } {

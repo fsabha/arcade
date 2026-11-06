@@ -5,7 +5,7 @@
  *   POST /api/scores { game, initials, score, label } -> { ok, rank }
  * Storage: Upstash Redis through its REST API (Vercel Marketplace integration sets the env vars).
  */
-import { isGame, validate, submit, top, topAll, upstash, Redis } from './_lib/leaderboard';
+import { isGame, validate, submit, top, topAll, upstash, Redis } from './_lib/leaderboard.js';
 
 declare const process: { env: Record<string, string | undefined> };
 

@@ -57,7 +57,7 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
   function resize(): void {
     const touch = document.body.classList.contains('touch');
     // a portrait game on a landscape phone: the buttons move to the sides of the canvas
-    const side = touch && H > W && window.innerWidth > window.innerHeight * 1.2;
+    const side = touch && H > W && window.innerWidth > window.innerHeight * 1.2 && window.innerWidth >= 560;
     document.body.classList.toggle('side', side);
     let availW = window.innerWidth - 8;
     let availH = window.innerHeight - 8;
@@ -78,6 +78,18 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
     stage.style.height = canvas.style.height;
     // CRT scanlines follow the logical rows (one line per game pixel row)
     stage.style.setProperty('--scan', `${Math.max(2, scale)}px`);
+    if (debugEl) {
+      debugEl.textContent = `win ${window.innerWidth}x${window.innerHeight} dpr ${window.devicePixelRatio} touch ${touch} side ${side} ` +
+        `avail ${Math.round(availW)}x${Math.round(availH)} scale ${scale} canvas ${canvas.style.width}x${canvas.style.height} ` +
+        `touchbar ${touchEl.offsetHeight} iframe ${window !== window.parent} ua ${navigator.userAgent.slice(0, 60)}`;
+    }
+  }
+  // ?debug=1 shows the sizing maths on screen, for phones we cannot inspect
+  let debugEl: HTMLDivElement | null = null;
+  if (new URLSearchParams(location.search).has('debug')) {
+    debugEl = document.createElement('div');
+    debugEl.style.cssText = 'position:fixed;left:0;top:0;z-index:99;background:rgba(0,0,0,.8);color:#0f0;font:11px monospace;padding:4px;max-width:100%;white-space:normal;pointer-events:none';
+    document.body.appendChild(debugEl);
   }
   window.addEventListener('resize', resize);
   resize();

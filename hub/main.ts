@@ -94,6 +94,7 @@ function open(g: GameInfo): void {
   frame.src = `games/${g.id}/index.html`;
   playing.textContent = g.title;
   document.body.classList.add('in-game');
+  sizeFrame();
   location.hash = g.id;
   frame.addEventListener('load', () => frame.contentWindow?.focus(), { once: true });
   trackEvent('play', { game: g.id });
@@ -108,6 +109,13 @@ function close(): void {
 
 installAnalytics();
 pixelTitle(title, 'ARCADE', '#dfe6ee', 5);
+// give the game frame an explicit height: flex-sized iframes get odd sizes on some phones
+function sizeFrame(): void {
+  const bar = document.getElementById('bar') as HTMLDivElement;
+  frame.style.height = `${Math.max(100, window.innerHeight - bar.offsetHeight)}px`;
+}
+window.addEventListener('resize', sizeFrame);
+sizeFrame();
 renderGrid();
 loadBoard();
 backBtn.addEventListener('click', close);

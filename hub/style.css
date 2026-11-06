@@ -262,7 +262,17 @@ footer button:hover {
   }
   .card {
     min-height: 96px;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 64px;
+    grid-template-areas: 'title thumb' 'meta thumb' 'blurb thumb' 'top top';
+    align-items: center;
+    column-gap: 10px;
   }
+  .card .card-title { grid-area: title; }
+  .card .thumb { grid-area: thumb; width: 64px; height: 40px; max-width: none; margin: 0; }
+  .card .meta { grid-area: meta; }
+  .card .blurb { grid-area: blurb; }
+  .card .top { grid-area: top; }
 }
 
 #player {
@@ -318,6 +328,7 @@ body.in-game header, body.in-game #grid, body.in-game footer {
 
 #frame {
   flex: 1;
+  min-height: 0;
   width: 100%;
   border: 0;
   background: #000;
