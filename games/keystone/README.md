@@ -45,7 +45,7 @@ src/
   store.ts    elevador, escadas, Harry, obstáculos e tesouros
   game.ts     máquina de estados, Kelly, timer, pontuação
   render.ts   loja, scanner de segurança, HUD e telas
-  sprites.ts  pixel art 2600 (pixels largos 2:1)
+  sprites.ts  pixel art 1:1 (16 px de largura, o dobro do detalhe do 2600)
   audio.ts    sons sintetizados sobre SoundBase
   storage.ts  ranking deste jogo sobre o store genérico
 tests/        regras do jogo, sprites, smoke test headless

@@ -38,7 +38,7 @@ src/
   lanes.ts    faixas de estrada e rio, tartarugas que mergulham, cobra, lontra, jacaré
   game.ts     máquina de estados, sapo, casas, mosca, sapa, relógio
   render.ts   campo, sprites, HUD e telas
-  sprites.ts  pixel art 2x (16x16 por célula)
+  sprites.ts  pixel art 16x16 por célula, como o arcade
   audio.ts    sons sintetizados sobre SoundBase
   storage.ts  ranking deste jogo sobre o store genérico
 tests/        faixas, regras do jogo, sprites, smoke test headless
