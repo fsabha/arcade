@@ -22,6 +22,8 @@ No celular na mesma rede, use o endereço "Network" que o Vite imprime (controle
 
 ## Controles
 
+No celular, além dos botões, deslize o dedo na tela para virar e toque para confirmar.
+
 | Ação | Teclado | Toque |
 |---|---|---|
 | Mover | Setas ou WASD | ◀ ▶ ▲ ▼ |

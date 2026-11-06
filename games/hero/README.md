@@ -16,8 +16,8 @@ npm test -w games/hero
 | Ação | Teclado | Toque |
 |---|---|---|
 | Andar / voar para os lados | ← → ou A / D | ◀ ▶ |
-| Hélice (subir); solte para descer | ↑ ou W | ▲ |
-| Dinamite (no chão) | ↓ ou S | ▼ |
+| Hélice (subir); solte para descer | ↑ ou W | VOAR |
+| Dinamite (no chão) | ↓ ou S | DINAMITE |
 | Laser | Espaço ou X (segure) | LASER |
 | Confirmar | Enter ou Espaço | LASER |
 | Pausa | P ou Esc | II |

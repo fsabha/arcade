@@ -16,8 +16,8 @@ npm test -w games/asteroids
 | Ação | Teclado | Toque |
 |---|---|---|
 | Girar | ← → ou A / D | ◀ ▶ |
-| Propulsão | ↑ ou W | ▲ |
-| Hiperespaço / escudo / flip (conforme o jogo) | ↓ ou S | ▼ |
+| Propulsão | ↑ ou W | IMPULSO |
+| Hiperespaço / escudo / flip (conforme o jogo) | ↓ ou S | ESPECIAL |
 | Atirar | Espaço ou X | FOGO |
 | Pausa | P ou Esc | II |
 | Som / CRT / controles de toque | M / C / T | menu |

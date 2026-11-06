@@ -42,6 +42,7 @@ describe('asteroids rules', () => {
   it('shooting a large asteroid scores 20 and leaves two mediums', () => {
     const { game, input, step } = playing();
     const a = game.field.asteroids[0];
+    game.field.asteroids = [a]; // nothing else drifting into the line of fire
     game.ship.x = a.x - 30; game.ship.y = a.y; game.ship.dir = 4; // facing right
     a.vx = 0; a.vy = 0;
     input.tap('fire');

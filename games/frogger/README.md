@@ -13,6 +13,8 @@ npm test -w games/frogger
 
 ## Controles
 
+No celular, além dos botões, deslize o dedo na tela na direção do pulo.
+
 | Ação | Teclado | Toque |
 |---|---|---|
 | Pular | Setas ou W A S D | ◀ ▶ ▲ ▼ |
