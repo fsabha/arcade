@@ -37,7 +37,7 @@ function pixelTitle(canvas: HTMLCanvasElement, text: string, color: string, scal
 
 const thumbs: { id: string; ctx: CanvasRenderingContext2D }[] = [];
 
-function card(g: GameInfo, index: number, plays: number): HTMLButtonElement {
+function card(g: GameInfo, plays: number): HTMLButtonElement {
   const el = document.createElement('button');
   el.type = 'button';
   el.className = 'card';
@@ -86,12 +86,6 @@ function card(g: GameInfo, index: number, plays: number): HTMLButtonElement {
   thumbs.push({ id: g.id, ctx: tctx });
   row.append(text, thumb);
   el.append(row);
-  if (index >= 0 && index < 10) {
-    const key = document.createElement('div');
-    key.className = 'key';
-    key.textContent = String((index + 1) % 10); // 1-9, then 0 for the 10th
-    el.append(key);
-  }
   el.addEventListener('click', () => open(g));
   return el;
 }
@@ -117,7 +111,7 @@ function renderGrid(): void {
   const plays = loadPlays();
   thumbs.length = 0;
   grid.replaceChildren();
-  visibleGames().forEach((g, i) => grid.appendChild(card(g, i, plays[g.id] ?? 0)));
+  visibleGames().forEach((g) => grid.appendChild(card(g, plays[g.id] ?? 0)));
 }
 
 function open(g: GameInfo): void {
@@ -152,12 +146,6 @@ modeBtn.addEventListener('click', () => {
 });
 const aboutDlg = document.getElementById('about') as HTMLDialogElement;
 (document.getElementById('about-btn') as HTMLButtonElement).addEventListener('click', () => aboutDlg.showModal());
-window.addEventListener('keydown', (e) => {
-  if (document.body.classList.contains('in-game')) return; // the game owns the keys
-  const n = e.key === '0' ? 10 : Number(e.key); // keys 1-9 then 0 for the 10th card
-  const list = visibleGames();
-  if (n >= 1 && n <= list.length) open(list[n - 1]);
-});
 const initial = GAMES.find((g) => g.id === location.hash.slice(1));
 if (initial) open(initial);
 

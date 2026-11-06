@@ -185,17 +185,6 @@ body:not(.ranking) .card .top {
   text-overflow: ellipsis;
 }
 
-.card .key {
-  position: absolute;
-  top: 6px;
-  right: 8px;
-  font-size: 10px;
-  color: var(--dim);
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  padding: 0 4px;
-}
-
 footer {
   flex: none;
   margin-top: 10px;
