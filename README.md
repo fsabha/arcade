@@ -1,6 +1,6 @@
 # Arcade
 
-Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lugar. Vite + TypeScript + Canvas 2D, sem dependências em runtime, controles por teclado e toque, som sintetizado, ranking local, efeito CRT.
+Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lugar. Vite + TypeScript + Canvas 2D, sem dependências em runtime, controles por teclado, toque e gamepad, som e músicas sintetizados, ranking local, efeito CRT. Instalável como app (PWA) e funciona offline depois da primeira visita. No ar em https://arcade.fabianosabha.com.br.
 
 | Jogo | Original | Pasta |
 |---|---|---|
@@ -28,6 +28,7 @@ npm run dev          # hub com todos os jogos em http://localhost:5173
 npm test             # todos os testes (jogos + shared)
 npm run build        # typecheck de tudo + site completo em dist/
 npm run preview      # serve o build
+npm run images       # regenera ícones e imagem Open Graph em public/
 ```
 
 Cada jogo continua um projeto independente:
@@ -47,13 +48,19 @@ arcade/
   index.html, hub/      menu: cards com a fonte pixel, abre o jogo em um iframe (botão MENU volta)
   packages/shared/      código comum: @arcade/shared
     font.ts             fonte pixel 3x5 (drawText, drawTextCentered, textWidth, normalizeText)
-    input.ts            teclado + botões de toque (Input, Action)
+    input.ts            teclado, botões de toque (com vibração), gestos de deslizar e gamepad
+    shell.ts            Shell: menu, como jogar, ranking, pausa, fim de jogo e iniciais de todo jogo
+    screens.ts          desenho padrão dessas telas (cada jogo só passa seus textos)
     rng.ts              mulberry32 determinístico
     storage.ts          createScoreStore / createSettingsStore sobre localStorage
-    audio.ts            SoundBase: AudioContext, mute, tone(), noise()
-    bootstrap.ts        escala do canvas, loop rAF, toque, pausa ao esconder a aba
+    audio.ts            SoundBase: AudioContext, mute, tone(), noise(), music (MusicLoop)
+    music.ts            loops chiptune por nome de nota (melodia, baixo, bateria)
+    bootstrap.ts        escala do canvas, loop rAF, toque, controles laterais em paisagem, CRT
+    analytics.ts        Vercel Web Analytics sem dependência + eventos
     testing.ts          canvas/input/áudio falsos para testes headless
     style.css           layout da página e dos botões de toque
+  public/               manifest PWA, service worker, ícones e imagem Open Graph (gerados por scripts/make-images.mjs)
+  .github/workflows/    CI: testes + build a cada push e pull request
   games/<jogo>/         projeto Vite completo: index.html, src/, tests/, README.md
 ```
 
