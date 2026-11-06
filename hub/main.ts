@@ -70,3 +70,8 @@ window.addEventListener('keydown', (e) => {
 });
 const initial = GAMES.find((g) => g.id === location.hash.slice(1));
 if (initial) open(initial);
+
+// Installable and offline-capable (not on the dev server, where modules are not bundled).
+if ('serviceWorker' in navigator && location.hostname !== 'localhost' && !import.meta.env.DEV) {
+  navigator.serviceWorker.register('/sw.js').catch(() => undefined);
+}
