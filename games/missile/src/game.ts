@@ -53,6 +53,7 @@ export class Game {
         if (item === 'JOGO') this.cycleGame(delta || 1);
         if (item === 'DIFICULDADE') this.difficulty = this.difficulty === 'A' ? 'B' : 'A';
       },
+      remote: { game: 'missile', label: (e) => `ONDA ${e.wave} ${e.mode}` },
       entry: (initials) => ({ initials, score: this.score, wave: this.wave, mode: this.mode, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, wave: this.wave, mode: this.mode, date: '' }),
     });

@@ -6,12 +6,13 @@
   "workspaces": ["packages/*", "games/*"],
   "scripts": {
     "dev": "vite",
+    "dev:api": "node scripts/mock-api.mjs",
     "build": "npm run typecheck && vite build",
     "images": "node scripts/make-images.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc -p packages/shared && tsc -p hub && for g in games/*; do tsc -p $g || exit 1; done"
+    "typecheck": "tsc -p packages/shared && tsc -p hub && tsc -p api && for g in games/*; do tsc -p $g || exit 1; done"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

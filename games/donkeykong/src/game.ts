@@ -74,6 +74,7 @@ export class Game {
       onStop: () => this.audio.musicStop(),
       onMusic: (on) => this.audio.setMusicEnabled(on),
       onResume: () => this.audio.musicStart(),
+      remote: { game: 'donkeykong', label: (e) => `NIVEL ${e.level}` },
       entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
     });

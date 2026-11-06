@@ -394,7 +394,7 @@ export class Renderer {
 
   private drawRanking(g: Game, fromMenu: boolean): void {
     const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  DIA ${String(h.day).padStart(2, '0')}  ${h.km.toFixed(1).padStart(6, ' ')} KM`);
-    drawRankingScreen(this.ctx, W, PLAY_H, rows, fromMenu, { y0: 46 });
+    drawRankingScreen(this.ctx, W, PLAY_H, rows, fromMenu, { y0: 46, shell: g.shell });
   }
 
   private drawPaused(g: Game): void {

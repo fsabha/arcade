@@ -47,6 +47,7 @@ export class Game {
         if (item === 'JOGO') this.level = this.level === 'cadet' ? 'commander' : 'cadet';
         if (item === 'DIFICULDADE') this.difficulty = this.difficulty === 'A' ? 'B' : 'A';
       },
+      remote: { game: 'chopper', label: (e) => `ONDA ${e.wave} ${e.mode}` },
       entry: (initials) => ({ initials, score: this.score, wave: this.wave, mode: this.modeName, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, wave: this.wave, mode: this.modeName, date: '' }),
       onStop: () => this.audio.setRotor(false),

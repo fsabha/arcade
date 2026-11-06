@@ -53,6 +53,7 @@ export class Game {
       onStart: () => this.startGame(),
       onStop: () => audio.engineStop(),
       onResume: () => audio.engineStart(),
+      remote: { game: 'endurance', label: (e) => `DIA ${e.day} ${e.km} KM`, score: (e) => e.day * 100000 + Math.round(e.km * 10) },
       entry: (initials) => ({ initials, day: this.day, km: Math.round(this.km * 10) / 10, date: new Date().toISOString() }),
       probe: () => ({ initials: '', day: this.day, km: this.km, date: '' }),
     });

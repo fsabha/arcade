@@ -60,6 +60,7 @@ export class Game {
         if (item === 'JOGO') this.gameIndex = (this.gameIndex + (delta || 1) + GAME_NUMBERS.length) % GAME_NUMBERS.length;
         if (item === 'DIFICULDADE') this.difficulty = this.difficulty === 'A' ? 'B' : 'A';
       },
+      remote: { game: 'asteroids', label: (e) => `ONDA ${e.level} ${e.mode}` },
       entry: (initials) => ({ initials, score: this.score, level: this.wave, mode: this.mode, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.wave, mode: this.mode, date: '' }),
       // leaving play (pause, menu, game over) silences the engine and the saucer

@@ -60,6 +60,7 @@ export class Game {
       audio,
       onStart: () => this.startGame(),
       onItem: (item) => { if (item === 'JOGO') this.variation = this.variation === 'regular' ? 'advanced' : 'regular'; },
+      remote: { game: 'frostbite', label: (e) => `NIVEL ${e.level} ${e.mode}` },
       entry: (initials) => ({ initials, score: this.score, level: this.level, mode: this.variation === 'advanced' ? 'AVANCADO' : 'NORMAL', date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.level, mode: '', date: '' }),
     });

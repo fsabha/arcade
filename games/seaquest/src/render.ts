@@ -330,7 +330,7 @@ export class Renderer {
 
   private drawRanking(g: Game, fromMenu: boolean): void {
     const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}  NIVEL ${String(h.level).padStart(2, '0')}`);
-    drawRankingScreen(this.ctx, W, HUD_BOTTOM, rows, fromMenu);
+    drawRankingScreen(this.ctx, W, HUD_BOTTOM, rows, fromMenu, { shell: g.shell });
   }
 
   private drawPaused(g: Game): void {

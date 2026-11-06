@@ -80,6 +80,7 @@ export class Game {
         gameOver: () => (this.endReason === 'finished' ? audio.finished() : audio.gameOver()),
       },
       onStart: () => this.startGame(),
+      remote: { game: 'pitfall', label: (e) => `${e.level} TESOUROS` },
       entry: (initials) => ({ initials, score: this.score, level: this.treasures, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.treasures, date: '' }),
       onStop: () => audio.musicStop(),

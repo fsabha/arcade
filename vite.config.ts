@@ -10,7 +10,8 @@ const games = readdirSync(resolve(__dirname, 'games'), { withFileTypes: true })
 
 export default defineConfig({
   base: './',
-  server: { host: true },
+  // In dev, /api goes to the mock (npm run dev:api) or to any URL in ARCADE_API (e.g. the production site).
+  server: { host: true, proxy: { '/api': { target: process.env.ARCADE_API ?? 'http://localhost:5199', changeOrigin: true } } },
   build: {
     rollupOptions: {
       input: Object.fromEntries([
@@ -21,6 +22,6 @@ export default defineConfig({
   },
   test: {
     environment: 'node',
-    include: ['games/*/tests/**/*.test.ts', 'packages/*/tests/**/*.test.ts'],
+    include: ['games/*/tests/**/*.test.ts', 'packages/*/tests/**/*.test.ts', 'api/_tests/**/*.test.ts'],
   },
 });

@@ -60,6 +60,7 @@ export class Game {
       },
       onStop: () => audio.humStop(),
       onResume: () => audio.humStart(),
+      remote: { game: 'freeway', label: (e) => e.mode || `JOGO ${e.level}` },
       entry: (initials) => ({ initials, score: this.score, level: this.gameNumber, mode: this.mode, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.gameNumber, mode: this.mode, date: '' }),
     });

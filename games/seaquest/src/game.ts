@@ -60,6 +60,7 @@ export class Game {
       onStart: () => this.startGame(),
       onStop: () => audio.humStop(),
       onResume: () => audio.humStart(),
+      remote: { game: 'seaquest', label: (e) => `NIVEL ${e.level}` },
       entry: (initials) => ({ initials, score: this.score.score, level: this.level, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score.score, level: this.level, date: '' }),
     });

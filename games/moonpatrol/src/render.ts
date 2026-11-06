@@ -230,7 +230,7 @@ export class Renderer {
       const mode = h.mode ? ` ${h.mode}` : '';
       return `${String(i + 1).padStart(2, ' ')} ${h.initials.padEnd(3, ' ')} ${String(h.score).padStart(6, ' ')} LETRA ${String(h.course).padStart(2, ' ')}${mode}`;
     });
-    drawRankingScreen(this.ctx, W, H, rows, menu, { y0: 50 });
+    drawRankingScreen(this.ctx, W, H, rows, menu, { y0: 50, shell: g.shell });
   }
 
   private drawPaused(g: Game): void {

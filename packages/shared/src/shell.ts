@@ -36,7 +36,28 @@ export interface SettingsStoreLike<S> {
   save(value: S): void;
 }
 
+/** One row of the global leaderboard as the API returns it. */
+export interface GlobalEntry {
+  initials: string;
+  score: number;
+  label: string;
+  date: string;
+}
+
+export interface RemoteOptions<E> {
+  /** game id used by the API (same as the hub id) */
+  game: string;
+  /** what to show next to the score (level, wave, variation...) */
+  label(e: E): string;
+  /** numeric sort key when the entry has no `score` field */
+  score?(e: E): number;
+}
+
+export const API_SCORES = '/api/scores';
+
 export interface ShellOptions<E extends ScoreEntry, S extends ShellSettings> {
+  /** Global leaderboard: results are sent here and the ranking screen can show it. */
+  remote?: RemoteOptions<E>;
   /** Title menu entries, in order. 'JOGAR' starts; SHELL_ITEMS are built in; the rest go to onItem. */
   items: readonly string[];
   scores: ScoreStoreLike<E>;
@@ -68,6 +89,13 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
   qualifiesForRank = false;
   settings: S;
   highScores: E[];
+  /** global leaderboard, fetched when the ranking screen opens (null = not loaded, [] = empty) */
+  global: GlobalEntry[] | null = null;
+  globalError = false;
+  rankingView: 'local' | 'global' = 'local';
+  /** rank the API gave the last submitted result, if any */
+  lastGlobalRank: number | null = null;
+  private fetching = false;
 
   constructor(private opts: ShellOptions<E, S>) {
     this.settings = opts.settings.load();
@@ -82,6 +110,48 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
   setState(s: ShellState): void {
     this.state = s;
     this.stateTime = 0;
+    if (s === 'ranking') this.loadGlobal();
+  }
+
+  get hasRemote(): boolean {
+    return !!this.opts.remote && typeof fetch === 'function' && typeof location !== 'undefined';
+  }
+
+  /** Fetches the global top 10 once per visit to the ranking screen. */
+  loadGlobal(): void {
+    const r = this.opts.remote;
+    if (!r || this.fetching || !this.hasRemote) return;
+    this.fetching = true;
+    this.globalError = false;
+    fetch(`${API_SCORES}?game=${encodeURIComponent(r.game)}`)
+      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((data: { entries?: unknown }) => {
+        // never trust the wire: coerce every field
+        this.global = (Array.isArray(data.entries) ? data.entries : []).map((e) => {
+          const r = (e ?? {}) as Record<string, unknown>;
+          return { initials: String(r.initials ?? '').slice(0, 3), score: Number(r.score) || 0, label: String(r.label ?? '').slice(0, 24), date: String(r.date ?? '') };
+        });
+        if (this.global.length > 0) this.rankingView = 'global';
+      })
+      .catch(() => { this.globalError = true; })
+      .finally(() => { this.fetching = false; });
+  }
+
+  /** Sends a result to the global leaderboard (fire and forget). */
+  private submitGlobal(entry: E): void {
+    const r = this.opts.remote;
+    if (!r || !this.hasRemote) return;
+    const score = r.score ? r.score(entry) : (entry as unknown as { score: number }).score;
+    const body = { game: r.game, initials: entry.initials, score: Math.round(score), label: r.label(entry) };
+    fetch(API_SCORES, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: { rank?: number } | null) => { if (data && typeof data.rank === 'number') this.lastGlobalRank = data.rank; this.global = null; })
+      .catch(() => undefined);
+  }
+
+  /** Rows for the global view of the ranking screen. */
+  globalRows(): string[] {
+    return (this.global ?? []).map((e, i) => `${String(i + 1).padStart(2, ' ')} ${e.initials.padEnd(3, ' ')} ${String(e.score).padStart(7, ' ')} ${e.label}`.trimEnd());
   }
 
   /** Label suffix for the built-in toggles. */
@@ -150,6 +220,10 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
       case 'menu': this.updateMenu(inp); return false;
       case 'howto':
       case 'ranking':
+        if (this.state === 'ranking' && this.hasRemote && (inp.justPressed('left') || inp.justPressed('right'))) {
+          this.rankingView = this.rankingView === 'local' ? 'global' : 'local';
+          this.opts.audio.blip();
+        }
         if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
           this.opts.audio.blip();
           this.setState('menu');
@@ -235,6 +309,8 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
         const entry = this.opts.entry(this.initials.join(''));
         this.highScores = this.opts.scores.insert(this.highScores, entry);
         this.opts.scores.save(this.highScores);
+        this.lastGlobalRank = null;
+        this.submitGlobal(entry);
         this.setState('ranking');
       }
     }

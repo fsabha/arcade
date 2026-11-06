@@ -48,11 +48,31 @@ export function drawHowToScreen(ctx: CanvasRenderingContext2D, W: number, H: num
   drawTextCentered(ctx, 'ENTER VOLTA', W / 2, H - 24, UI.dim);
 }
 
-export function drawRankingScreen(ctx: CanvasRenderingContext2D, W: number, H: number, rows: string[], menu: boolean, opts: { y0?: number } = {}): void {
-  drawTextCentered(ctx, 'RANKING', W / 2, 26, UI.gold, 2);
-  if (rows.length === 0) drawTextCentered(ctx, 'NENHUM REGISTRO AINDA', W / 2, 100, UI.dim);
+export interface RankingShellView {
+  hasRemote: boolean;
+  rankingView: 'local' | 'global';
+  global: unknown[] | null;
+  globalError: boolean;
+  lastGlobalRank: number | null;
+  globalRows(): string[];
+}
+
+export function drawRankingScreen(ctx: CanvasRenderingContext2D, W: number, H: number, rows: string[], menu: boolean, opts: { y0?: number; shell?: RankingShellView } = {}): void {
+  const sh = opts.shell;
+  const global = !!sh && sh.hasRemote && sh.rankingView === 'global';
+  drawTextCentered(ctx, global ? 'RANKING GLOBAL' : sh?.hasRemote ? 'RANKING LOCAL' : 'RANKING', W / 2, 26, UI.gold, 2);
   const y0 = opts.y0 ?? 52;
-  rows.forEach((line, i) => drawTextCentered(ctx, line, W / 2, y0 + i * 12, i === 0 ? UI.gold : UI.text));
+  if (global) {
+    const g = sh!;
+    if (g.global === null) drawTextCentered(ctx, g.globalError ? 'SEM CONEXAO COM O RANKING GLOBAL' : 'CARREGANDO...', W / 2, 100, UI.dim);
+    else if (g.global.length === 0) drawTextCentered(ctx, 'NINGUEM REGISTROU AINDA', W / 2, 100, UI.dim);
+    else g.globalRows().forEach((line, i) => drawTextCentered(ctx, line, W / 2, y0 + i * 12, i === 0 ? UI.gold : UI.text));
+    if (g.lastGlobalRank !== null && W >= 260) drawTextCentered(ctx, `VOCE FICOU EM ${g.lastGlobalRank} NO MUNDO`, W / 2, H - 46, UI.gold);
+  } else {
+    if (rows.length === 0) drawTextCentered(ctx, 'NENHUM REGISTRO AINDA', W / 2, 100, UI.dim);
+    rows.forEach((line, i) => drawTextCentered(ctx, line, W / 2, y0 + i * 12, i === 0 ? UI.gold : UI.text));
+  }
+  if (sh?.hasRemote) drawTextCentered(ctx, global ? '< LOCAL' : 'GLOBAL >', W / 2, H - 36, UI.dim);
   drawTextCentered(ctx, menu ? 'ENTER VOLTA' : 'ENTER CONTINUA', W / 2, H - 24, UI.dim);
 }
 

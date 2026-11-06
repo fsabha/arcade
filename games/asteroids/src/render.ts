@@ -154,7 +154,7 @@ export class Renderer {
 
   private drawRanking(g: Game, menu: boolean): void {
     const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ONDA ${String(h.level).padStart(2, ' ')}  ${h.mode.padEnd(5, ' ')}`);
-    drawRankingScreen(this.ctx, W, H, rows, menu);
+    drawRankingScreen(this.ctx, W, H, rows, menu, { shell: g.shell });
   }
 
   private drawPaused(g: Game): void {

@@ -1,18 +1,18 @@
 import './style.css';
 import { drawTextCentered, textWidth, installAnalytics, trackEvent } from '@arcade/shared';
-import { GAMES, GameInfo, Platform, platformOf } from './games';
+import { GAMES, GameInfo } from './games';
 import { drawThumb, TW, TH } from './thumbs';
+
+interface GlobalEntry { initials: string; score: number; label: string }
+type Board = Record<string, GlobalEntry[]>;
+let board: Board | null = null;
+let boardFailed = false;
 
 const grid = document.getElementById('grid') as HTMLDivElement;
 const frame = document.getElementById('frame') as HTMLIFrameElement;
 const playing = document.getElementById('playing') as HTMLSpanElement;
 const backBtn = document.getElementById('back') as HTMLButtonElement;
 const title = document.getElementById('title') as HTMLCanvasElement;
-const toolbar = document.getElementById('toolbar') as HTMLElement;
-
-type Sort = 'default' | 'year' | 'plays';
-let filter: Platform | 'all' = 'all';
-let sort: Sort = 'default';
 const PLAYS_KEY = 'arcade.plays';
 
 function loadPlays(): Record<string, number> {
@@ -61,7 +61,22 @@ function card(g: GameInfo, index: number, plays: number): HTMLButtonElement {
   const blurb = document.createElement('div');
   blurb.className = 'blurb';
   blurb.textContent = g.blurb;
-  text.append(c, meta, blurb);
+  blurb.title = g.blurb;
+  const top = document.createElement('ol');
+  top.className = 'top';
+  const entries = board?.[g.id];
+  if (!board && !boardFailed) {
+    top.innerHTML = '<li class="empty">carregando ranking...</li>';
+  } else if (!entries || entries.length === 0) {
+    top.innerHTML = `<li class="empty">${boardFailed ? 'ranking global indisponivel' : 'seja o primeiro no ranking'}</li>`;
+  } else {
+    entries.slice(0, 5).forEach((e, i) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<span class="pos">${i + 1}</span><span class="ini">${esc(e.initials)}</span><span class="sc">${e.score}</span><span class="lb">${esc(e.label)}</span>`;
+      top.append(li);
+    });
+  }
+  text.append(c, meta, blurb, top);
   const thumb = document.createElement('canvas');
   thumb.className = 'thumb';
   thumb.width = TW;
@@ -81,12 +96,21 @@ function card(g: GameInfo, index: number, plays: number): HTMLButtonElement {
   return el;
 }
 
+function esc(s: string): string {
+  return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c] ?? c);
+}
+
 function visibleGames(): GameInfo[] {
-  const plays = loadPlays();
-  let list = GAMES.filter((g) => filter === 'all' || platformOf(g) === filter);
-  if (sort === 'year') list = [...list].sort((a, b) => a.year - b.year || GAMES.indexOf(a) - GAMES.indexOf(b));
-  if (sort === 'plays') list = [...list].sort((a, b) => (plays[b.id] ?? 0) - (plays[a.id] ?? 0) || GAMES.indexOf(a) - GAMES.indexOf(b));
-  return list;
+  return GAMES;
+}
+
+/** Top 5 of every game from the global leaderboard; the cards re-render when it arrives. */
+function loadBoard(): void {
+  fetch('/api/scores?game=all')
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((data: { games?: Board }) => { board = data.games ?? {}; })
+    .catch(() => { boardFailed = true; })
+    .finally(renderGrid);
 }
 
 function renderGrid(): void {
@@ -111,22 +135,14 @@ function close(): void {
   document.body.classList.remove('in-game');
   history.replaceState(null, '', location.pathname);
   renderGrid(); // play counts may have changed
+  loadBoard(); // and someone may have entered the ranking
 }
 
 installAnalytics();
 pixelTitle(title, 'ARCADE', '#dfe6ee', 5);
 renderGrid();
+loadBoard();
 backBtn.addEventListener('click', close);
-toolbar.addEventListener('click', (e) => {
-  const btn = (e.target as HTMLElement).closest('button');
-  if (!btn) return;
-  if (btn.dataset.filter) filter = btn.dataset.filter as Platform | 'all';
-  if (btn.dataset.sort) sort = btn.dataset.sort as Sort;
-  for (const b of toolbar.querySelectorAll('button')) {
-    b.classList.toggle('on', (b.dataset.filter !== undefined && b.dataset.filter === filter) || (b.dataset.sort !== undefined && b.dataset.sort === sort));
-  }
-  renderGrid();
-});
 const aboutDlg = document.getElementById('about') as HTMLDialogElement;
 (document.getElementById('about-btn') as HTMLButtonElement).addEventListener('click', () => aboutDlg.showModal());
 window.addEventListener('keydown', (e) => {

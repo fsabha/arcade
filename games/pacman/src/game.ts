@@ -99,6 +99,7 @@ export class Game {
       // the death tune already played; the arcade has no separate game over jingle
       audio: { blip: () => audio.blip(), setMuted: (m) => audio.setMuted(m), gameOver: () => undefined },
       onStart: () => this.startGame(),
+      remote: { game: 'pacman', label: (e) => `NIVEL ${e.level}` },
       entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
       onStop: () => audio.loop('off'),

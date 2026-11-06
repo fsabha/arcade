@@ -64,6 +64,7 @@ export class Game {
       onMusic: (on) => this.audio.setMusicEnabled(on),
       onResume: () => this.audio.musicStart(),
       onItem: (item) => { if (item === 'PERCURSO') this.course = this.course === 'beginner' ? 'champion' : 'beginner'; },
+      remote: { game: 'moonpatrol', label: (e) => `LETRA ${e.course} ${e.mode}` },
       entry: (initials) => ({ initials, score: this.score, course: this.coursesDone * LETTERS + this.letter + 1, mode: courseName(this.startedOn), date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, course: 0, mode: courseName(this.startedOn), date: '' }),
       onStop: () => { this.audio.setEngine(false, 0); this.audio.musicStop(); },

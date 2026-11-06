@@ -280,7 +280,7 @@ export class Renderer {
 
   private drawRanking(g: Game, menu: boolean): void {
     const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ${String(h.krooks).padStart(2, ' ')} KROOKS`);
-    drawRankingScreen(this.ctx, W, H, rows, menu);
+    drawRankingScreen(this.ctx, W, H, rows, menu, { shell: g.shell });
   }
 
   private drawPaused(g: Game): void {

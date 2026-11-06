@@ -205,7 +205,7 @@ export class Renderer {
       const mode = h.mode ? `  ${h.mode.replace('COMANDANTE', 'CMDTE')}` : '';
       return `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ONDA ${String(h.wave).padStart(2, ' ')}${mode}`;
     });
-    drawRankingScreen(this.ctx, W, H, rows, menu);
+    drawRankingScreen(this.ctx, W, H, rows, menu, { shell: g.shell });
   }
 
   private drawPaused(g: Game): void {

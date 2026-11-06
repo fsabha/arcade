@@ -74,6 +74,7 @@ export class Game {
       onStart: () => this.startGame(),
       onStop: () => audio.engineStop(),
       onResume: () => audio.engineStart(),
+      remote: { game: 'riverraid', label: (e) => `SECAO ${e.section}` },
       entry: (initials) => ({ initials, score: this.score.score, section: this.sectionNumber, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score.score, section: this.sectionNumber, date: '' }),
     });

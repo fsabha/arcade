@@ -71,6 +71,7 @@ export class Game {
       audio,
       onStart: () => this.startGame(),
       onItem: (item, delta) => { if (item === 'JOGO') this.gameNumber = ((this.gameNumber - 1 + (delta || 1) + 5) % 5) + 1; },
+      remote: { game: 'hero', label: (e) => `NIVEL ${e.level} ${e.mode}` },
       entry: (initials) => ({ initials, score: this.score, level: this.level, mode: this.modeLabel, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.level, mode: this.modeLabel, date: '' }),
       onStop: () => this.audio.laserStop(),

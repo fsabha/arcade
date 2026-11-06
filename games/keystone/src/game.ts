@@ -51,6 +51,7 @@ export class Game {
       settings,
       audio,
       onStart: () => this.startGame(),
+      remote: { game: 'keystone', label: (e) => `${e.krooks} KROOKS` },
       entry: (initials) => ({ initials, score: this.score, krooks: this.krooksCaught, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, krooks: this.krooksCaught, date: '' }),
     });

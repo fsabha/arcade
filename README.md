@@ -41,6 +41,17 @@ npm run build -w games/pacman    # build isolado em games/pacman/dist/
 
 No celular na mesma rede, use o endereço "Network" que o Vite imprime.
 
+## Ranking global
+
+Cada jogo tem um ranking local (localStorage) e um global, compartilhado por todo mundo que joga no site. O global vive em um Redis do Upstash acessado pela função `api/scores.ts` (Vercel Function, sem dependências npm):
+
+- `GET /api/scores?game=<id>` top 10 de um jogo; `GET /api/scores?game=all` top 5 de todos (a home usa este);
+- `POST /api/scores` `{ game, initials, score, label }` registra um resultado (iniciais A-Z, até 3; pontuação inteira; limite de 12 envios por minuto por IP; o servidor guarda os 100 melhores por jogo).
+
+Para ativar na Vercel: no projeto, **Storage → Create Database → Upstash Redis** (plano gratuito), conecte ao projeto e faça um redeploy. A integração cria as variáveis `KV_REST_API_URL` / `KV_REST_API_TOKEN` (ou `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`); a função usa qualquer uma das duas. Sem elas a API responde 503 e o site segue só com o ranking local.
+
+Em desenvolvimento, `npm run dev:api` sobe um mock em `localhost:5199` para o qual o Vite faz proxy de `/api` (`ARCADE_API=https://arcade.fabianosabha.com.br npm run dev` aponta para o ranking real).
+
 ## Como funciona
 
 ```
@@ -59,6 +70,7 @@ arcade/
     analytics.ts        Vercel Web Analytics sem dependência + eventos
     testing.ts          canvas/input/áudio falsos para testes headless
     style.css           layout da página e dos botões de toque
+  api/scores.ts         ranking global (Vercel Function); api/_lib/leaderboard.ts tem as regras e os testes
   public/               manifest PWA, service worker, ícones e imagem Open Graph (gerados por scripts/make-images.mjs)
   .github/workflows/    CI: testes + build a cada push e pull request
   games/<jogo>/         projeto Vite completo: index.html, src/, tests/, README.md
