@@ -1,9 +1,35 @@
 import { SoundBase } from '@arcade/shared';
+import type { Tune } from '@arcade/shared';
+
+// An original chiptune loop in the spirit of the arcade (not a transcription of the copyrighted score).
+const DONKEYKONG_TUNE: Tune = {
+  bpm: 112,
+  lead: 'square',
+  volume: 0.03,
+  melody: [
+    'C4', '-', '-', 'C4', '-', 'Eb4', 'F4', '-', 'F#4', '-', 'F4', '-', 'Eb4', '-', 'C4', '-',
+    '-', '-', '-', '-', 'Bb3', '-', 'C4', '-', '-', '-', '-', '-', '-', '-', '-', '-',
+  ],
+  bass: ['C2', 'C2', 'Eb2', 'F2', 'F#2', 'F2', 'Eb2', 'C2', 'C2', 'C2', 'Bb1', 'C2', 'C2', '-', 'G2', '-'],
+  drum: true,
+};
 
 /** All sounds are synthesized with Web Audio; no asset files. */
 export class SoundFx extends SoundBase {
   constructor() {
     super(0.5);
+  }
+
+  musicStart(): void {
+    this.music.start(DONKEYKONG_TUNE);
+  }
+
+  musicStop(): void {
+    this.music.stop();
+  }
+
+  setMusicEnabled(on: boolean): void {
+    this.music.setEnabled(on);
   }
 
   blip(): void {

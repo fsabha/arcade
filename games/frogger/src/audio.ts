@@ -1,9 +1,37 @@
 import { SoundBase } from '@arcade/shared';
+import type { Tune } from '@arcade/shared';
+
+// An original chiptune loop in the spirit of the arcade (not a transcription of the copyrighted score).
+const FROGGER_TUNE: Tune = {
+  bpm: 144,
+  lead: 'square',
+  volume: 0.035,
+  melody: [
+    'C5', 'D5', 'E5', 'G5', 'E5', 'D5', 'C5', '-', 'A4', 'C5', 'D5', 'E5', 'D5', 'C5', 'A4', '-',
+    'G4', 'A4', 'C5', 'D5', 'C5', 'A4', 'G4', '-', 'E4', 'G4', 'A4', 'C5', 'A4', 'G4', 'E4', '-',
+    'C5', 'D5', 'E5', 'G5', 'A5', 'G5', 'E5', 'D5', 'C5', '=', 'D5', '=', 'E5', '=', '-', '-',
+    'G5', 'E5', 'D5', 'C5', 'D5', 'E5', 'D5', 'C5', 'A4', '=', 'G4', '=', 'C5', '=', '=', '-',
+  ],
+  bass: ['C3', 'C3', 'A2', 'A2', 'G2', 'G2', 'E2', 'E2', 'C3', 'G2', 'A2', 'E2', 'F2', 'G2', 'C3', 'C3'],
+  drum: true,
+};
 
 /** All sounds are synthesized with Web Audio; no asset files. */
 export class SoundFx extends SoundBase {
   constructor() {
     super(0.5);
+  }
+
+  musicStart(): void {
+    this.music.start(FROGGER_TUNE);
+  }
+
+  musicStop(): void {
+    this.music.stop();
+  }
+
+  setMusicEnabled(on: boolean): void {
+    this.music.setEnabled(on);
   }
 
   blip(): void {

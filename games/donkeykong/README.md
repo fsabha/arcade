@@ -20,6 +20,7 @@ npm test -w games/donkeykong
 | Pular | Espaço ou X | PULAR |
 | Pausa | P ou Esc | II |
 | Som / CRT / controles de toque | M / C / T | menu |
+| Música de fundo (loop original, no espírito do arcade) | menu MUSICA | menu |
 
 ## Regras (do arcade)
 

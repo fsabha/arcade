@@ -14,6 +14,7 @@ export interface HighScore {
 export interface Settings {
   crt: boolean;
   sound: boolean;
+  music: boolean;
 }
 
 export const scores = createScoreStore<HighScore>(
@@ -29,8 +30,8 @@ export const scores = createScoreStore<HighScore>(
 
 export const settings = createSettingsStore<Settings>(
   'moonpatrol.settings',
-  { crt: false, sound: true },
-  (p) => ({ crt: !!p.crt, sound: p.sound !== false }),
+  { crt: false, sound: true, music: true },
+  (p) => ({ crt: !!p.crt, sound: p.sound !== false, music: p.music !== false }),
 );
 
 export function qualifies(list: HighScore[], score: number): boolean {

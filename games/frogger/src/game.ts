@@ -13,7 +13,7 @@ export type State = ShellState;
 export type FrogMode = 'idle' | 'hop' | 'dead' | 'home' | 'clear';
 export type Death = 'splat' | 'drown' | 'time' | null;
 
-export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
+export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM', 'MUSICA'] as const;
 export { PAUSE_ITEMS };
 
 export interface Frog {
@@ -65,6 +65,9 @@ export class Game {
       settings,
       audio,
       onStart: () => this.startGame(),
+      onStop: () => this.audio.musicStop(),
+      onMusic: (on) => this.audio.setMusicEnabled(on),
+      onResume: () => this.audio.musicStart(),
       entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
     });
@@ -102,6 +105,8 @@ export class Game {
     this.rng = new Rng((Date.now() & 0xffff) + 1);
     this.startLevel();
     this.shell.setState('playing');
+    this.audio.setMusicEnabled(this.shell.settings.music !== false);
+    this.audio.musicStart();
   }
 
   private startLevel(): void {

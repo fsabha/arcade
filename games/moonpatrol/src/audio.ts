@@ -1,4 +1,18 @@
 import { SoundBase } from '@arcade/shared';
+import type { Tune } from '@arcade/shared';
+
+// An original chiptune loop in the spirit of the arcade (not a transcription of the copyrighted score).
+const MOONPATROL_TUNE: Tune = {
+  bpm: 126,
+  lead: 'triangle',
+  volume: 0.05,
+  melody: [
+    'E2', 'E2', 'G2', 'E2', 'A2', 'E2', 'G2', 'A2', 'E2', 'E2', 'G2', 'E2', 'B2', 'A2', 'G2', 'E2',
+    'D2', 'D2', 'F2', 'D2', 'G2', 'D2', 'F2', 'G2', 'E2', 'E2', 'G2', 'E2', 'A2', 'G2', 'E2', 'D2',
+  ],
+  bass: ['E3', '-', 'G3', '-', 'A3', '-', 'B3', '-', 'D3', '-', 'F3', '-', 'G3', '-', 'E3', '-'],
+  drum: true,
+};
 
 /** All sounds are synthesized with Web Audio; no asset files. */
 export class SoundFx extends SoundBase {
@@ -7,6 +21,18 @@ export class SoundFx extends SoundBase {
 
   constructor() {
     super(0.5);
+  }
+
+  musicStart(): void {
+    this.music.start(MOONPATROL_TUNE);
+  }
+
+  musicStop(): void {
+    this.music.stop();
+  }
+
+  setMusicEnabled(on: boolean): void {
+    this.music.setEnabled(on);
   }
 
   protected onUnlock(): void {

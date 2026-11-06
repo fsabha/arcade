@@ -12,7 +12,7 @@ import { scores, settings, HighScore, Settings } from './storage';
 export type State = ShellState;
 export type Death = 'crater' | 'crash' | 'shot' | null;
 
-export const MENU_ITEMS = ['JOGAR', 'PERCURSO', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
+export const MENU_ITEMS = ['JOGAR', 'PERCURSO', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM', 'MUSICA'] as const;
 export { PAUSE_ITEMS };
 
 export function courseName(course: Course): string {
@@ -61,10 +61,12 @@ export class Game {
       settings,
       audio,
       onStart: () => this.startGame(),
+      onMusic: (on) => this.audio.setMusicEnabled(on),
+      onResume: () => this.audio.musicStart(),
       onItem: (item) => { if (item === 'PERCURSO') this.course = this.course === 'beginner' ? 'champion' : 'beginner'; },
       entry: (initials) => ({ initials, score: this.score, course: this.coursesDone * LETTERS + this.letter + 1, mode: courseName(this.startedOn), date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, course: 0, mode: courseName(this.startedOn), date: '' }),
-      onStop: () => this.audio.setEngine(false, 0),
+      onStop: () => { this.audio.setEngine(false, 0); this.audio.musicStop(); },
     });
   }
 
@@ -108,6 +110,8 @@ export class Game {
     this.rng = new Rng((Date.now() & 0xffff) + 1);
     this.startCourse();
     this.shell.setState('playing');
+    this.audio.setMusicEnabled(this.shell.settings.music !== false);
+    this.audio.musicStart();
   }
 
   private startCourse(): void {

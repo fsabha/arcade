@@ -14,7 +14,7 @@ export type State = ShellState;
 export type Phase = 'intro' | 'play' | 'dead' | 'win';
 export type Mode = 'walk' | 'jump' | 'climb' | 'fall';
 
-export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
+export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM', 'MUSICA'] as const;
 export { PAUSE_ITEMS };
 
 export interface Rect { x: number; y: number; w: number; h: number }
@@ -71,6 +71,9 @@ export class Game {
       settings,
       audio,
       onStart: () => this.startGame(),
+      onStop: () => this.audio.musicStop(),
+      onMusic: (on) => this.audio.setMusicEnabled(on),
+      onResume: () => this.audio.musicStart(),
       entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
       probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
     });
@@ -129,6 +132,8 @@ export class Game {
     this.rng = new Rng((Date.now() & 0xffff) + 1);
     this.startStage();
     this.shell.setState('playing');
+    this.audio.setMusicEnabled(this.shell.settings.music !== false);
+    this.audio.musicStart();
   }
 
   private startStage(): void {

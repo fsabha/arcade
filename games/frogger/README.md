@@ -21,6 +21,7 @@ No celular, além dos botões, deslize o dedo na tela na direção do pulo.
 | Confirmar | Enter ou Espaço | OK |
 | Pausa | P ou Esc | II |
 | Som / CRT / controles de toque | M / C / T | menu |
+| Música de fundo (loop original, no espírito do arcade) | menu MUSICA | menu |
 
 ## Regras (do arcade)
 
