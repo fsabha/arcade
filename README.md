@@ -14,6 +14,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | H.E.R.O. | Activision, Atari 2600, 1984 | `games/hero` |
 | Asteroids | Atari, Atari 2600, 1981 | `games/asteroids` |
 | Keystone Kapers | Activision, Atari 2600, 1983 | `games/keystone` |
+| Missile Command | Atari, Atari 2600, 1981 | `games/missile` |
 
 ## Rodar
 

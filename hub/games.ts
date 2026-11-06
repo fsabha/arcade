@@ -21,4 +21,5 @@ export const GAMES: GameInfo[] = [
   { id: 'hero', title: 'H.E.R.O.', original: 'Activision, Atari 2600', year: 1984, blurb: 'Desça a mina com hélice, laser e dinamite para resgatar o mineiro.', accent: '#f0c040', w: 320, h: 240 },
   { id: 'asteroids', title: 'ASTEROIDS', original: 'Atari, Atari 2600', year: 1981, blurb: 'Gire, acelere e quebre as pedras; 33 variações do cartucho.', accent: '#d8a0ff', w: 320, h: 240 },
   { id: 'keystone', title: 'KEYSTONE KAPERS', original: 'Activision, Atari 2600', year: 1983, blurb: 'Persiga Harry Hooligan pela loja antes que o tempo acabe.', accent: '#f0c060', w: 320, h: 240 },
+  { id: 'missile', title: 'MISSILE COMMAND', original: 'Atari, Atari 2600', year: 1981, blurb: 'Defenda as seis cidades com os ABMs; 17 variações do cartucho.', accent: '#ff7050', w: 320, h: 240 },
 ];
