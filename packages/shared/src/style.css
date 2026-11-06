@@ -38,17 +38,22 @@ canvas#game {
   image-rendering: crisp-edges;
 }
 
+#stage {
+  --scan: 3px;
+}
+
 #crt {
   position: absolute;
   inset: 0;
   pointer-events: none;
   display: none;
+  /* one dark line per logical pixel row, so it stays aligned on retina screens too */
   background: repeating-linear-gradient(
     to bottom,
     rgba(0, 0, 0, 0) 0px,
-    rgba(0, 0, 0, 0) 2px,
-    rgba(0, 0, 0, 0.26) 3px,
-    rgba(0, 0, 0, 0.26) 4px
+    rgba(0, 0, 0, 0) calc(var(--scan) * 0.66),
+    rgba(0, 0, 0, 0.3) calc(var(--scan) * 0.66),
+    rgba(0, 0, 0, 0.3) var(--scan)
   );
   box-shadow: inset 0 0 70px rgba(0, 0, 0, 0.55);
 }
@@ -137,4 +142,22 @@ body.touch #touch {
 #touch button.brake:active,
 #touch button.unused:active {
   background: #a02a2a;
+}
+
+/* Portrait game on a landscape phone: buttons flank the canvas instead of sitting under it. */
+body.side #app {
+  flex-direction: row;
+  gap: 12px;
+}
+
+body.side #touch {
+  display: contents;
+}
+
+body.side #touch .group {
+  flex-direction: column;
+}
+
+body.side #touch .group:first-child {
+  order: -1;
 }

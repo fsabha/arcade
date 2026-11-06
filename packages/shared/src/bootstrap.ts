@@ -55,9 +55,19 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
   window.addEventListener('click', unlock);
 
   function resize(): void {
-    const touchH = document.body.classList.contains('touch') ? touchEl.offsetHeight + 8 : 0;
-    const availW = window.innerWidth - 8;
-    const availH = window.innerHeight - touchH - 8;
+    const touch = document.body.classList.contains('touch');
+    // a portrait game on a landscape phone: the buttons move to the sides of the canvas
+    const side = touch && H > W && window.innerWidth > window.innerHeight * 1.2;
+    document.body.classList.toggle('side', side);
+    let availW = window.innerWidth - 8;
+    let availH = window.innerHeight - 8;
+    if (touch && side) {
+      let used = 0;
+      for (const grp of touchEl.querySelectorAll<HTMLElement>('.group')) used += grp.offsetWidth + 12;
+      availW -= used + 16;
+    } else if (touch) {
+      availH -= touchEl.offsetHeight + 8;
+    }
     let scale = Math.min(availW / W, availH / H);
     if (scale >= 1) scale = Math.floor(scale * 2) / 2; // half-integer steps keep pixels crisp
     scale = Math.max(0.5, scale);
@@ -65,6 +75,8 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
     canvas.style.height = `${Math.floor(H * scale)}px`;
     stage.style.width = canvas.style.width;
     stage.style.height = canvas.style.height;
+    // CRT scanlines follow the logical rows (one line per game pixel row)
+    stage.style.setProperty('--scan', `${Math.max(2, scale)}px`);
   }
   window.addEventListener('resize', resize);
   resize();
@@ -74,6 +86,7 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
   function frame(now: number): void {
     const dt = Math.min(0.05, (now - last) / 1000);
     last = now;
+    input.pollGamepad();
     game.update(dt);
     renderer.draw(game);
     input.endFrame();
