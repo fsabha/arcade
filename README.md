@@ -18,6 +18,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | Frogger | Konami / Sega, arcade, 1981 | `games/frogger` |
 | Chopper Command | Activision, Atari 2600, 1982 | `games/chopper` |
 | Moon Patrol | Irem, arcade, 1982 | `games/moonpatrol` |
+| Donkey Kong | Nintendo, arcade, 1981 | `games/donkeykong` |
 
 ## Rodar
 
