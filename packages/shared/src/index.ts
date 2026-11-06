@@ -7,3 +7,4 @@ export * from './bootstrap';
 export * from './analytics';
 export * from './shell';
 export * from './screens';
+export * from './music';

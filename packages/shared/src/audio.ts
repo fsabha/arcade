@@ -1,3 +1,5 @@
+import { MusicLoop } from './music';
+
 /**
  * Base for the per-game sound classes: lazy AudioContext unlocked by a user gesture,
  * a master gain for muting, plus tone/noise helpers. Every sound is synthesized.
@@ -7,8 +9,17 @@ export class SoundBase {
   protected master: GainNode | null = null;
   protected noiseBuf: AudioBuffer | null = null;
   private _muted = false;
+  /** Background music, if the game gives it a tune (see music.ts). */
+  readonly music: MusicLoop;
 
-  constructor(private volume = 0.6) {}
+  constructor(private volume = 0.6) {
+    // the loop reads the context lazily, after unlock()
+    const self = this as SoundBase;
+    this.music = new MusicLoop({
+      get ctx() { return self.ctx; },
+      play: (freq, dur, type, vol, delay, slideTo) => this.tone(freq, dur, type, vol, slideTo, delay),
+    });
+  }
 
   get muted(): boolean {
     return this._muted;
