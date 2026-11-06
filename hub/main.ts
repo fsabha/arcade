@@ -60,7 +60,7 @@ GAMES.forEach((g, i) => grid.appendChild(card(g, i)));
 backBtn.addEventListener('click', close);
 window.addEventListener('keydown', (e) => {
   if (document.body.classList.contains('in-game')) return; // the game owns the keys
-  const n = Number(e.key);
+  const n = e.key === '0' ? 10 : Number(e.key); // keys 1-9 then 0 for the 10th card
   if (n >= 1 && n <= GAMES.length) open(GAMES[n - 1]);
 });
 const initial = GAMES.find((g) => g.id === location.hash.slice(1));
