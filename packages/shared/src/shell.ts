@@ -92,6 +92,8 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
   /** the global leaderboard top 10 (null = not loaded yet, [] = empty) */
   global: GlobalEntry[] | null = null;
   globalError = false;
+  /** HTTP status of the last failed load (503 = the server has no storage configured yet) */
+  globalStatus = 0;
   /** rank the API gave the last submitted result, if any */
   lastGlobalRank: number | null = null;
   private fetching = false;
@@ -132,8 +134,9 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
     if (!r || this.fetching || !this.hasRemote) return;
     this.fetching = true;
     this.globalError = false;
+    this.globalStatus = 0;
     fetch(`${API_SCORES}?game=${encodeURIComponent(r.game)}`)
-      .then((res) => (res.ok ? res.json() : Promise.reject(new Error(String(res.status)))))
+      .then((res) => { this.globalStatus = res.status; return res.ok ? res.json() : Promise.reject(new Error(String(res.status))); })
       .then((data: { entries?: unknown }) => {
         // never trust the wire: coerce every field
         this.global = (Array.isArray(data.entries) ? data.entries : []).map((e) => {

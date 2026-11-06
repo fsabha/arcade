@@ -52,6 +52,7 @@ export interface RankingShellView {
   hasRemote: boolean;
   global: unknown[] | null;
   globalError: boolean;
+  globalStatus?: number;
   lastGlobalRank: number | null;
   globalRows(): string[];
 }
@@ -63,7 +64,8 @@ export function drawRankingScreen(ctx: CanvasRenderingContext2D, W: number, H: n
   const y0 = opts.y0 ?? 52;
   const list = sh && sh.hasRemote ? sh.globalRows() : rows;
   if (sh && sh.hasRemote && sh.global === null) {
-    drawTextCentered(ctx, sh.globalError ? 'SEM CONEXAO COM O RANKING' : 'CARREGANDO...', W / 2, 100, UI.dim);
+    const msg = !sh.globalError ? 'CARREGANDO...' : sh.globalStatus === 503 ? 'RANKING AINDA NAO ATIVADO' : 'SEM CONEXAO COM O RANKING';
+    drawTextCentered(ctx, msg, W / 2, 100, UI.dim);
   } else if (list.length === 0) {
     drawTextCentered(ctx, 'NINGUEM REGISTROU AINDA', W / 2, 100, UI.dim);
   } else {

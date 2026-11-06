@@ -7,6 +7,7 @@ interface GlobalEntry { initials: string; score: number; label: string }
 type Board = Record<string, GlobalEntry[]>;
 let board: Board | null = null;
 let boardFailed = false;
+let boardStatus = 0;
 
 const grid = document.getElementById('grid') as HTMLDivElement;
 const frame = document.getElementById('frame') as HTMLIFrameElement;
@@ -46,7 +47,7 @@ function card(g: GameInfo): HTMLButtonElement {
   if (!board && !boardFailed) {
     top.innerHTML = '<li class="empty">carregando ranking...</li>';
   } else if (!entries || entries.length === 0) {
-    top.innerHTML = `<li class="empty">${boardFailed ? 'ranking global indisponivel' : 'seja o primeiro no ranking'}</li>`;
+    top.innerHTML = `<li class="empty">${boardFailed ? (boardStatus === 503 ? 'ranking ainda nao ativado' : 'ranking global indisponivel') : 'seja o primeiro no ranking'}</li>`;
   } else {
     entries.slice(0, 5).forEach((e, i) => {
       const li = document.createElement('li');
@@ -78,7 +79,7 @@ function visibleGames(): GameInfo[] {
 /** Top 5 of every game from the global leaderboard; the cards re-render when it arrives. */
 function loadBoard(): void {
   fetch('/api/scores?game=all')
-    .then((r) => (r.ok ? r.json() : Promise.reject(new Error(String(r.status)))))
+    .then((r) => { boardStatus = r.status; return r.ok ? r.json() : Promise.reject(new Error(String(r.status))); })
     .then((data: { games?: Board }) => { board = data.games ?? {}; })
     .catch(() => { boardFailed = true; })
     .finally(renderGrid);
