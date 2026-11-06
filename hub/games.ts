@@ -24,4 +24,5 @@ export const GAMES: GameInfo[] = [
   { id: 'missile', title: 'MISSILE COMMAND', original: 'Atari, Atari 2600', year: 1981, blurb: 'Defenda as seis cidades com os ABMs; 17 variações do cartucho.', accent: '#ff7050', w: 320, h: 240 },
   { id: 'frogger', title: 'FROGGER', original: 'Konami / Sega, arcade', year: 1981, blurb: 'Atravesse a estrada e o rio e leve os cinco sapos para casa.', accent: '#40d040', w: 224, h: 256 },
   { id: 'chopper', title: 'CHOPPER COMMAND', original: 'Activision, Atari 2600', year: 1982, blurb: 'Proteja o comboio de caminhões de helicópteros e jatos no deserto.', accent: '#78b8f0', w: 320, h: 240 },
+  { id: 'moonpatrol', title: 'MOON PATROL', original: 'Irem, arcade', year: 1982, blurb: 'Pule crateras, atire em pedras e OVNIs e complete o percurso de A a Z.', accent: '#e060e0', w: 256, h: 224 },
 ];
