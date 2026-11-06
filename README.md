@@ -10,6 +10,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | Pac-Man | Namco, arcade, 1980 | `games/pacman` |
 | Freeway | Activision, Atari 2600, 1981 | `games/freeway` |
 | Pitfall | Activision, Atari 2600, 1982 | `games/pitfall` |
+| Frostbite | Activision, Atari 2600, 1983 | `games/frostbite` |
 
 ## Rodar
 
