@@ -15,7 +15,7 @@ function fakeCanvas(): HTMLCanvasElement {
 
 const { Game } = await import('../src/game');
 const { Renderer } = await import('../src/render');
-const { PLAYER_MIN_Y, OXYGEN_MAX } = await import('../src/config');
+const { PLAYER_MIN_Y, OXYGEN_MAX, DYING_TIME, CONTINUE_TIME } = await import('../src/config');
 
 class FakeInput {
   held = new Set<string>();
@@ -51,9 +51,47 @@ describe('smoke', () => {
     const livesBefore = game.score.lives;
     input.held.add('up');
     for (let i = 0; i < 400; i++) step();
-    expect(['dying', 'playing']).toContain(game.state);
+    expect(game.state).toBe('playing');
+    expect(['alive', 'dying', 'continue']).toContain(game.phase);
     for (let i = 0; i < 200; i++) step();
     expect(game.score.lives).toBeLessThanOrEqual(livesBefore);
     expect(game.score.lives).toBeGreaterThanOrEqual(livesBefore - 2);
+  });
+
+  it('pauses for a breather after losing a sub and launches the next one on fire', () => {
+    const input = new FakeInput();
+    const game = new Game(input as never, audio as never);
+    const dt = 1 / 60;
+    const step = () => { game.update(dt); input.endFrame(); };
+    input.tap('confirm'); step();
+    expect(game.state).toBe('playing');
+    const lives = game.score.lives;
+    game.die('TESTE');
+    expect(game.phase).toBe('dying');
+    for (let i = 0; i < Math.ceil(DYING_TIME * 60) + 2; i++) step();
+    expect(game.phase).toBe('continue');
+    expect(game.score.lives).toBe(lives - 1);
+    for (let i = 0; i < 60; i++) step();
+    expect(game.phase).toBe('continue'); // waits for the player
+    input.tap('fire'); step();
+    expect(game.phase).toBe('alive');
+    expect(game.player.y).toBe(PLAYER_MIN_Y);
+    expect(game.oxygen).toBe(OXYGEN_MAX);
+    expect(game.torpedo).toBeNull(); // the launch press does not fire
+  });
+
+  it('continues by itself after a few seconds and ends the game on the last life', () => {
+    const input = new FakeInput();
+    const game = new Game(input as never, audio as never);
+    const dt = 1 / 60;
+    const step = () => { game.update(dt); input.endFrame(); };
+    input.tap('confirm'); step();
+    game.die('TESTE');
+    for (let i = 0; i < Math.ceil((DYING_TIME + CONTINUE_TIME) * 60) + 4; i++) step();
+    expect(game.phase).toBe('alive');
+    game.score.lives = 1;
+    game.die('TESTE');
+    for (let i = 0; i < Math.ceil(DYING_TIME * 60) + 2; i++) step();
+    expect(game.state).toBe('gameover');
   });
 });

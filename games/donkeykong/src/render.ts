@@ -1,8 +1,11 @@
 import { W, H, HUD_H, MARIO_H, HAMMER_SWING, POINTS, EXTRA_LIFE_AT, HAMMER_TIME, bonusStart } from './config';
-import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
+import { Game, MENU_ITEMS } from './game';
 import { Stage, Platform, yAt, buildStage } from './stages';
 import { sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, textWidth, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen,
+  drawGameOverScreen, drawInitialsScreen,
+} from '@arcade/shared';
 
 const C = {
   girder: '#e85050', girderDark: '#a02828', girderLight: '#f88080', ladder: '#40c0f0', conveyor: '#f0a040', conveyorDark: '#a06020',
@@ -199,29 +202,19 @@ export class Renderer {
     if (g.phase === 'win') drawTextCentered(ctx, `BONUS ${g.bonus}`, W / 2, 120, C.gold, 2);
   }
 
-  // ---------- screens ----------
+  // ---------- screens (shared look, game-specific words) ----------
 
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'DONKEY KONG', W / 2, 36, '#e85050', 3);
-    drawTextCentered(ctx, 'SALVE PAULINE DO GRANDE MACACO', W / 2, 62, C.dim);
-    MENU_ITEMS.forEach((item, i) => {
-      const y = 96 + i * 14;
-      let label: string = item;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      if (sel && Math.floor(g.time * 4) % 2 === 0) drawText(ctx, '>', W / 2 - textWidth(label) / 2 - 10, y, C.gold);
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text);
+    drawMenuScreen(this.ctx, W, H, {
+      title: 'DONKEY KONG', titleColor: '#e85050', subtitle: 'SALVE PAULINE DO GRANDE MACACO',
+      labels: MENU_ITEMS.map((item) => g.shell.label(item)),
+      selected: g.menuIndex, time: g.time, itemsY: 96, itemGap: 14,
+      footer: ['SETAS ANDAM E SOBEM  ESPACO PULA', 'NINTENDO 1981  EDICAO BROWSER'], footerY: 200,
     });
-    drawTextCentered(ctx, 'SETAS ANDAM E SOBEM  ESPACO PULA', W / 2, 196, C.dim);
-    drawTextCentered(ctx, 'NINTENDO 1981  EDICAO BROWSER', W / 2, 212, C.dim);
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, 26, C.gold, 2);
-    const lines = [
+    drawHowToScreen(this.ctx, W, H, [
       'SUBA ATE PAULINE: 25 50 75 E 100 METROS',
       `PULAR BARRIL OU TORTA: ${POINTS.jump}`,
       `MARTELO (${HAMMER_TIME} S): ${POINTS.hammerBarrel.join(' ')}`,
@@ -235,60 +228,26 @@ export class Renderer {
       'FOGO SOBE ESCADAS E VIRA AZUL',
       'QUANDO VOCE TEM O MARTELO',
       `VIDA EXTRA COM ${EXTRA_LIFE_AT}`,
-    ];
-    lines.forEach((l, i) => drawTextCentered(ctx, l, W / 2, 50 + i * 11, C.text));
-    drawTextCentered(ctx, 'ENTER VOLTA', W / 2, 220, C.dim);
+    ], { gap: 11 });
   }
 
   private drawRanking(g: Game, menu: boolean): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'RANKING', W / 2, 26, C.gold, 2);
-    if (g.highScores.length === 0) drawTextCentered(ctx, 'NENHUM REGISTRO AINDA', W / 2, 100, C.dim);
-    g.highScores.forEach((h, i) => {
-      const y = 56 + i * 12;
-      const line = `${String(i + 1).padStart(2, ' ')} ${h.initials.padEnd(3, ' ')} ${String(h.score).padStart(6, ' ')} NIV ${String(h.level).padStart(2, ' ')}`;
-      drawTextCentered(ctx, line, W / 2, y, i === 0 ? C.gold : C.text);
-    });
-    drawTextCentered(ctx, menu ? 'ENTER VOLTA' : 'ENTER CONTINUA', W / 2, 220, C.dim);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')} ${h.initials.padEnd(3, ' ')} ${String(h.score).padStart(6, ' ')} NIV ${String(h.level).padStart(2, ' ')}`);
+    drawRankingScreen(this.ctx, W, H, rows, menu, { y0: 56 });
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 90, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      drawTextCentered(ctx, item, W / 2, 126 + i * 14, i === g.pauseIndex ? C.gold : C.text);
-    });
+    drawPausedScreen(this.ctx, W, H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.78)';
-    ctx.fillRect(0, 70, W, 110);
-    drawTextCentered(ctx, 'FIM DE JOGO', W / 2, 84, C.red, 2);
-    drawTextCentered(ctx, `PONTOS ${g.score}`, W / 2, 110, C.text);
-    drawTextCentered(ctx, `NIVEL ${g.level}  ${HEIGHT_LABEL[g.kind]}`, W / 2, 122, C.text);
-    if (g.stateTime >= 2) drawTextCentered(ctx, g.qualifiesForRank ? 'ENTER PARA REGISTRAR' : 'ENTER PARA CONTINUAR', W / 2, 160, C.gold);
+    drawGameOverScreen(this.ctx, W, H, {
+      lines: [`PONTOS ${g.score}`, `NIVEL ${g.level}  ${HEIGHT_LABEL[g.kind]}`],
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.78)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'NOVO RECORDE', W / 2, 60, C.gold, 2);
-    drawTextCentered(ctx, `${g.score} PONTOS`, W / 2, 86, C.text);
-    drawTextCentered(ctx, 'SUAS INICIAIS', W / 2, 106, C.dim);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (3 * cw + 2 * 6) / 2;
-    g.initials.forEach((ch, i) => {
-      const x = x0 + i * (cw + 6);
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x, 122, sel ? C.gold : C.text, scale);
-      if (sel && Math.floor(g.time * 4) % 2 === 0) { ctx.fillStyle = C.gold; ctx.fillRect(x, 122 + 5 * scale + 2, 3 * scale, 2); }
-    });
-    drawTextCentered(ctx, 'CIMA BAIXO MUDAM', W / 2, 170, C.dim);
-    drawTextCentered(ctx, 'ENTER CONFIRMA', W / 2, 182, C.dim);
+    drawInitialsScreen(this.ctx, W, H, `${g.score} PONTOS`, g.initials, g.initialsPos, g.time);
   }
 }

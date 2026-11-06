@@ -1,8 +1,11 @@
 import { W, H, TILE, COLS, ROWS, VIEW_H, HUD_Y, HERO_W, HERO_H, LASER_RANGE, POWER_MAX, BLAST_RADIUS, BLAST_SHOW, FUSE_TIME, LAST_LEVEL } from './config';
-import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
+import { Game, MENU_ITEMS } from './game';
 import { World } from './world';
 import { sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import {
+  drawText, textWidth, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen,
+  drawInitialsScreen,
+} from '@arcade/shared';
 
 const C = {
   rock: '#6c4a2c', rockLight: '#8a6038', rockDark: '#4a3018',
@@ -196,30 +199,21 @@ export class Renderer {
     if (g.levelLabel) drawText(ctx, `N${g.levelLabel}`, 200, HUD_Y + 6, C.dim);
   }
 
-  // ---------- screens ----------
+  // ---------- screens (shared look, game-specific words) ----------
 
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'H.E.R.O.', W / 2, 36, '#f0c040', 3);
-    drawTextCentered(ctx, 'HELICOPTER EMERGENCY RESCUE OPERATION', W / 2, 58, C.dim);
-    MENU_ITEMS.forEach((item, i) => {
-      const y = 86 + i * 12;
-      let label: string = item;
-      if (item === 'JOGO') label = `JOGO ${g.gameNumber}: ${g.gameNumber === 5 ? 'NIVEIS ALEATORIOS' : `COMECA NO NIVEL ${[1, 5, 9, 13, 17][g.gameNumber - 1]}`}`;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      if (sel && Math.floor(g.time * 4) % 2 === 0) drawText(ctx, '>', W / 2 - textWidth(label) / 2 - 10, y, C.gold);
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text);
+    drawMenuScreen(this.ctx, W, H, {
+      title: 'H.E.R.O.', titleColor: '#f0c040', subtitle: 'HELICOPTER EMERGENCY RESCUE OPERATION',
+      labels: MENU_ITEMS.map((item) => (item === 'JOGO'
+        ? `JOGO ${g.gameNumber}: ${g.gameNumber === 5 ? 'NIVEIS ALEATORIOS' : `COMECA NO NIVEL ${[1, 5, 9, 13, 17][g.gameNumber - 1]}`}`
+        : g.shell.label(item))),
+      selected: g.menuIndex, time: g.time, itemsY: 86,
+      footer: ['CIMA VOA  ESPACO LASER  BAIXO DINAMITE', 'ACTIVISION 1984  EDICAO BROWSER'], footerY: 190,
     });
-    drawTextCentered(ctx, 'CIMA VOA  ESPACO LASER  BAIXO DINAMITE', W / 2, 190, C.dim);
-    drawTextCentered(ctx, 'ACTIVISION 1984  EDICAO BROWSER', W / 2, 202, C.dim);
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, 26, C.gold, 2);
-    const lines = [
+    drawHowToScreen(this.ctx, W, H, [
       'RESGATE O MINEIRO NO FUNDO DE CADA MINA',
       'CIMA LIGA A HELICE; SOLTE PARA DESCER',
       'ESPACO: LASER (50 POR BICHO, CORTA PAREDE DEVAGAR)',
@@ -230,59 +224,27 @@ export class Renderer {
       'ENERGIA ACABOU = VIDA PERDIDA',
       'MINEIRO: 1000 + 50 POR DINAMITE + BONUS DE ENERGIA',
       'VIDA EXTRA A CADA 20000 PONTOS',
-    ];
-    lines.forEach((l, i) => drawTextCentered(ctx, l, W / 2, 50 + i * 12, C.text));
-    drawTextCentered(ctx, 'ENTER VOLTA', W / 2, 200, C.dim);
+    ]);
   }
 
   private drawRanking(g: Game, menu: boolean): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'RANKING', W / 2, 26, C.gold, 2);
-    if (g.highScores.length === 0) drawTextCentered(ctx, 'NENHUM REGISTRO AINDA', W / 2, 100, C.dim);
-    g.highScores.forEach((h, i) => {
-      const y = 52 + i * 12;
-      const line = `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(7, ' ')}  NIVEL ${String(h.level).padStart(2, ' ')}`;
-      drawTextCentered(ctx, line, W / 2, y, i === 0 ? C.gold : C.text);
-    });
-    drawTextCentered(ctx, menu ? 'ENTER VOLTA' : 'ENTER CONTINUA', W / 2, 200, C.dim);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(7, ' ')}  NIVEL ${String(h.level).padStart(2, ' ')}  ${h.mode.padEnd(6, ' ')}`);
+    drawRankingScreen(this.ctx, W, H, rows, menu);
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 80, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => drawTextCentered(ctx, item, W / 2, 116 + i * 14, i === g.pauseIndex ? C.gold : C.text));
+    drawPausedScreen(this.ctx, W, H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 50, W, 110);
-    drawTextCentered(ctx, 'FIM DE JOGO', W / 2, 64, C.red, 2);
-    drawTextCentered(ctx, `PONTOS ${g.score}`, W / 2, 90, C.text);
-    drawTextCentered(ctx, `MINEIROS RESGATADOS ${g.minersRescued}`, W / 2, 102, C.text);
-    drawTextCentered(ctx, `NIVEL ${g.levelLabel || '?'}`, W / 2, 114, C.dim);
-    if (g.stateTime >= 2) drawTextCentered(ctx, g.qualifiesForRank ? 'ENTER PARA REGISTRAR' : 'ENTER PARA CONTINUAR', W / 2, 140, C.gold);
+    drawGameOverScreen(this.ctx, W, H, {
+      lines: [`PONTOS ${g.score}`, `MINEIROS RESGATADOS ${g.minersRescued}`, `NIVEL ${g.levelLabel || '?'}  ${g.modeLabel}`],
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'NOVO RECORDE', W / 2, 50, C.gold, 2);
-    drawTextCentered(ctx, `${g.score} PONTOS`, W / 2, 76, C.text);
-    drawTextCentered(ctx, 'SUAS INICIAIS', W / 2, 96, C.dim);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (3 * cw + 2 * 6) / 2;
-    g.initials.forEach((ch, i) => {
-      const x = x0 + i * (cw + 6);
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x, 112, sel ? C.gold : C.text, scale);
-      if (sel && Math.floor(g.time * 4) % 2 === 0) { ctx.fillStyle = C.gold; ctx.fillRect(x, 112 + 5 * scale + 2, 3 * scale, 2); }
-    });
-    drawTextCentered(ctx, 'CIMA BAIXO MUDAM  ENTER CONFIRMA', W / 2, 160, C.dim);
+    drawInitialsScreen(this.ctx, W, H, `${g.score} PONTOS`, g.initials, g.initialsPos, g.time);
   }
 }
 

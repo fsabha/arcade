@@ -15,7 +15,7 @@ export interface Settings {
   music: boolean;
 }
 
-const scores = createScoreStore<HighScore>(
+export const scores = createScoreStore<HighScore>(
   'pitfall.highscores',
   (a, b) => b.score - a.score,
   (e) => (typeof e.score === 'number' && typeof e.initials === 'string'
@@ -23,7 +23,7 @@ const scores = createScoreStore<HighScore>(
     : null),
 );
 
-const settings = createSettingsStore<Settings>(
+export const settings = createSettingsStore<Settings>(
   'pitfall.settings',
   { crt: false, sound: true, music: true },
   (p) => ({ crt: !!p.crt, sound: p.sound !== false, music: p.music !== false }),

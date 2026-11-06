@@ -6,10 +6,12 @@ import { Road } from './road';
 import type { Car } from './traffic';
 import { Conditions, conditionsAt, css, fogAmount, Rgb } from './daycycle';
 import { project, screenWidth } from './projection';
-import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
+import { Game, MENU_ITEMS } from './game';
 import { carSprite, playerSprite, sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
-import { Rng } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen,
+  drawInitialsScreen, Rng,
+} from '@arcade/shared';
 
 const C = {
   hud: '#0f1318',
@@ -361,144 +363,52 @@ export class Renderer {
     ctx.fillRect(x + w - 1, y, 1, h);
   }
 
+  // ---------- screens (shared look, game-specific words; the HUD strip below PLAY_H stays visible) ----------
+
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    const blink = Math.floor(g.time * 2) % 2 === 0;
     const bob = Math.round(Math.sin(g.time * 2) * 2);
-
-    drawTextCentered(ctx, 'ENDURANCE', W / 2 + 2, 22 + 2, '#5a3a00', 3);
-    drawTextCentered(ctx, 'ENDURANCE', W / 2, 22, C.gold, 3);
-    drawTextCentered(ctx, 'EDICAO BROWSER', W / 2, 44, C.dim, 1);
-
-    const pl = playerSprite(false);
-    ctx.drawImage(pl, W / 2 - 32, 50 + bob, 64, 36);
-
-    const startY = 92;
-    MENU_ITEMS.forEach((item, i) => {
-      let label: string = item;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      const y = startY + i * 16;
-      if (sel) {
-        ctx.fillStyle = 'rgba(255,225,74,0.12)';
-        ctx.fillRect(80, y - 4, W - 160, 14);
-        if (blink) drawText(ctx, '>', 88, y, C.gold, 1);
-      }
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text, 1);
+    this.ctx.drawImage(playerSprite(false), W / 2 - 32, 50 + bob, 64, 36);
+    drawMenuScreen(this.ctx, W, PLAY_H, {
+      title: 'ENDURANCE', titleColor: C.gold, titleY: 22, subtitle: 'EDICAO BROWSER',
+      labels: MENU_ITEMS.map((item) => g.shell.label(item)),
+      selected: g.menuIndex, time: g.time, itemsY: 92, itemGap: 16,
+      footer: ['HOMENAGEM AO CLASSICO ENDURO DA ATARI 2600', '2026'], footerY: 178,
     });
-
-    drawTextCentered(ctx, 'HOMENAGEM AO CLASSICO ENDURO DA ATARI 2600', W / 2, 178, C.dim, 1);
-    drawTextCentered(ctx, '2026', W / 2, 188, C.dim, 1);
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    this.panel(6, 6, W - 12, PLAY_H - 12);
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, 14, C.gold, 2);
-    const left = [
-      'CORRIDA DE RESISTENCIA:',
-      `ULTRAPASSE ${QUOTA_DAY1} CARROS NO DIA 1`,
+    drawHowToScreen(this.ctx, W, PLAY_H, [
+      `CORRIDA DE RESISTENCIA: ULTRAPASSE ${QUOTA_DAY1} CARROS NO DIA 1`,
       `E ${QUOTA_NEXT} EM CADA DIA SEGUINTE.`,
-      '',
-      'AO BATER A META APARECEM AS',
-      'BANDEIRAS. SE O DIA ACABAR',
-      'ANTES, O JOGO TERMINA.',
-      '',
-      'CARROS QUE TE ULTRAPASSAM',
-      'SOMAM DE VOLTA NO CONTADOR.',
-      '',
-      'BATER EM UM CARRO DERRUBA',
-      'SUA VELOCIDADE. SAIR DA PISTA',
-      'TAMBEM FREIA O CARRO.',
-    ];
-    left.forEach((l, i) => drawText(ctx, l, 14, 34 + i * 8, C.text, 1));
-    const right = [
-      'O DIA MUDA:',
-      '',
-      'AMANHECER E DIA',
-      'ENTARDECER',
-      'NOITE: SO AS LANTERNAS',
-      'NEBLINA: POUCA VISAO',
-      'GELO: CARRO DESLIZA',
-      '',
-      'CURVAS EMPURRAM O',
-      'CARRO PARA FORA.',
-      '',
-      'RANKING POR DIAS',
-      'E KM RODADOS.',
-    ];
-    right.forEach((l, i) => drawText(ctx, l, 196, 34 + i * 8, i === 0 ? C.gold : C.dim, 1));
+      'AO BATER A META APARECEM AS BANDEIRAS.',
+      'SE O DIA ACABAR ANTES, O JOGO TERMINA.',
+      'CARROS QUE TE ULTRAPASSAM SOMAM DE VOLTA NO CONTADOR.',
+      'BATER EM UM CARRO DERRUBA SUA VELOCIDADE.',
+      'SAIR DA PISTA TAMBEM FREIA O CARRO.',
+      'O DIA MUDA: AMANHECER, DIA, ENTARDECER, NOITE,',
+      'NEBLINA (POUCA VISAO) E GELO (O CARRO DESLIZA).',
+      'CURVAS EMPURRAM O CARRO PARA FORA.',
+      'RANKING POR DIAS E KM RODADOS.',
+    ], { y0: 46, gap: 11 });
   }
 
   private drawRanking(g: Game, fromMenu: boolean): void {
-    const ctx = this.ctx;
-    this.panel(6, 6, W - 12, PLAY_H - 12);
-    drawTextCentered(ctx, 'RANKING', W / 2, 14, C.gold, 2);
-    if (g.highScores.length === 0) {
-      drawTextCentered(ctx, 'SEM RECORDES AINDA', W / 2, 100, C.dim, 1);
-    } else {
-      drawText(ctx, 'POS  NOME   DIA      KM', 70, 34, C.dim, 1);
-      g.highScores.forEach((h, i) => {
-        const y = 46 + i * 13;
-        const isNew = !fromMenu && h.initials === g.initials.join('') && h.day === g.day;
-        const col = isNew ? C.gold : C.text;
-        const line = `${String(i + 1).padStart(2, ' ')}.  ${h.initials.padEnd(3, ' ')}    ${String(h.day).padStart(2, '0')}   ${h.km.toFixed(1).padStart(6, ' ')}`;
-        drawText(ctx, line, 70, y, col, 1);
-      });
-    }
-    drawTextCentered(ctx, 'ENTER OU ESPACO: VOLTAR', W / 2, PLAY_H - 18, C.dim, 1);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  DIA ${String(h.day).padStart(2, '0')}  ${h.km.toFixed(1).padStart(6, ' ')} KM`);
+    drawRankingScreen(this.ctx, W, PLAY_H, rows, fromMenu, { y0: 46 });
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(80, 60, W - 160, 84);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 70, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      const sel = i === g.pauseIndex;
-      const y = 96 + i * 14;
-      if (sel) drawText(ctx, '>', W / 2 - textWidth(item) / 2 - 10, y, C.gold, 1);
-      drawTextCentered(ctx, item, W / 2, y, sel ? C.gold : C.text, 1);
-    });
-    drawTextCentered(ctx, 'P OU ESC: CONTINUAR', W / 2, 130, C.dim, 1);
+    drawPausedScreen(this.ctx, W, PLAY_H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(60, 50, W - 120, 104);
-    drawTextCentered(ctx, 'FIM DE JOGO', W / 2, 62, C.red, 2);
-    drawTextCentered(ctx, g.gameOverReason, W / 2, 82, C.dim, 1);
-    drawTextCentered(ctx, `CHEGOU AO DIA ${g.day}`, W / 2, 98, C.gold, 1);
-    drawTextCentered(ctx, `${g.km.toFixed(1)} KM RODADOS`, W / 2, 108, C.text, 1);
-    if (g.stateTime >= 1.5 && Math.floor(g.time * 2) % 2 === 0) {
-      drawTextCentered(ctx, g.qualifiesForRank ? 'NOVO RECORDE! ENTER' : 'ENTER OU ESPACO: MENU', W / 2, 132, C.text, 1);
-    }
+    drawGameOverScreen(this.ctx, W, PLAY_H, {
+      lines: [`CHEGOU AO DIA ${g.day}`, `${g.km.toFixed(1)} KM RODADOS`, g.gameOverReason],
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(50, 30, W - 100, 140);
-    drawTextCentered(ctx, 'NOVO RECORDE!', W / 2, 40, C.gold, 2);
-    drawTextCentered(ctx, `DIA ${g.day}  ${g.km.toFixed(1)} KM`, W / 2, 58, C.text, 1);
-    drawTextCentered(ctx, 'DIGITE SUAS INICIAIS', W / 2, 70, C.dim, 1);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (cw * 3 - scale) / 2;
-    const y = 86;
-    const blink = Math.floor(g.time * 3) % 2 === 0;
-    g.initials.forEach((ch, i) => {
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x0 + i * cw, y, sel ? C.gold : C.text, scale);
-      if (sel && blink) {
-        ctx.fillStyle = C.gold;
-        ctx.fillRect(x0 + i * cw, y + 5 * scale + 2, 3 * scale, 2);
-      }
-    });
-    drawTextCentered(ctx, 'CIMA/BAIXO: LETRA', W / 2, 122, C.dim, 1);
-    drawTextCentered(ctx, 'ESQ/DIR: POSICAO', W / 2, 132, C.dim, 1);
-    drawTextCentered(ctx, 'ENTER OU ESPACO: CONFIRMAR', W / 2, 148, C.text, 1);
+    drawInitialsScreen(this.ctx, W, PLAY_H, `DIA ${g.day}  ${g.km.toFixed(1)} KM`, g.initials, g.initialsPos, g.time);
   }
 }

@@ -2,10 +2,13 @@ import {
   W, H, HUD_H, HORIZON_Y, GROUND_Y, SCANNER_Y, SCANNER_H, WORLD_W, CHOPPER_W, TRUCK_H, TRUCK_BONUS, EXTRA_EVERY, MAX_CHOPPERS,
   POINTS, ENEMIES_PER_WAVE, TRUCKS, deltaX, wrapX,
 } from './config';
-import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
+import { Game, MENU_ITEMS } from './game';
 import { Field, enemyRect } from './field';
 import { sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen,
+  drawInitialsScreen,
+} from '@arcade/shared';
 
 const C = {
   sky: '#78b8f0', mountain: '#b08048', mountainDark: '#80582c', sand: '#e8c878', sandLine: '#c8a050',
@@ -159,38 +162,30 @@ export class Renderer {
     for (let i = 0; i < g.reserve; i++) ctx.drawImage(sprite('life'), 100 + i * 14, 6);
     drawText(ctx, `ONDA ${g.wave}`, 200, 3, C.dim);
     drawText(ctx, `CAMINHOES ${g.field.trucksAlive}  INIMIGOS ${g.field.enemiesAlive}`, 200, 11, C.dim);
-    if (g.phase === 'ready') drawTextCentered(ctx, 'MOVA OU ATIRE PARA COMECAR', W / 2, 60, C.gold);
+    if (g.phase === 'ready') drawTextCentered(ctx, g.afterLoss ? 'APERTE PARA CONTINUAR' : 'MOVA OU ATIRE PARA COMECAR', W / 2, 60, C.gold);
     if (g.phase === 'bonus') {
       drawTextCentered(ctx, 'ONDA LIMPA', W / 2, 56, C.gold, 2);
       drawTextCentered(ctx, `${g.field.trucksAlive} CAMINHOES X ${Math.min(10, g.wave)} X ${TRUCK_BONUS} = ${g.lastBonus}`, W / 2, 76, C.text);
     }
   }
 
-  // ---------- screens ----------
+  // ---------- screens (shared look, game-specific words) ----------
 
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'CHOPPER COMMAND', W / 2, 30, '#78b8f0', 3);
-    drawTextCentered(ctx, 'PROTEJA O COMBOIO DE CAMINHOES NO DESERTO', W / 2, 52, C.dim);
-    MENU_ITEMS.forEach((item, i) => {
-      const y = 74 + i * 12;
-      let label: string = item;
-      if (item === 'JOGO') label = `JOGO: ${g.level === 'cadet' ? 'CADETE (1)' : 'COMANDANTE (3)'}`;
-      if (item === 'DIFICULDADE') label = `DIFICULDADE: ${g.difficulty === 'B' ? 'B (TIRO RAPIDO)' : 'A (TIRO LENTO)'}`;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      if (sel && Math.floor(g.time * 4) % 2 === 0) drawText(ctx, '>', W / 2 - textWidth(label) / 2 - 10, y, C.gold);
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text);
+    drawMenuScreen(this.ctx, W, H, {
+      title: 'CHOPPER COMMAND', titleColor: '#78b8f0', titleY: 30, subtitle: 'PROTEJA O COMBOIO DE CAMINHOES NO DESERTO',
+      labels: MENU_ITEMS.map((item) => {
+        if (item === 'JOGO') return `JOGO: ${g.level === 'cadet' ? 'CADETE (1)' : 'COMANDANTE (3)'}`;
+        if (item === 'DIFICULDADE') return `DIFICULDADE: ${g.difficulty === 'B' ? 'B (TIRO RAPIDO)' : 'A (TIRO LENTO)'}`;
+        return g.shell.label(item);
+      }),
+      selected: g.menuIndex, time: g.time, itemsY: 74,
+      footer: ['SETAS VOAM  ESPACO ATIRA', 'ACTIVISION 1982  EDICAO BROWSER'], footerY: 190,
     });
-    drawTextCentered(ctx, 'SETAS VOAM  ESPACO ATIRA', W / 2, 180, C.dim);
-    drawTextCentered(ctx, 'ACTIVISION 1982  EDICAO BROWSER', W / 2, 202, C.dim);
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, 26, C.gold, 2);
-    const lines = [
+    drawHowToScreen(this.ctx, W, H, [
       `CADA ONDA: ${ENEMIES_PER_WAVE} INIMIGOS E ${TRUCKS} CAMINHOES`,
       `HELICOPTERO ${POINTS.heli}  JATO ${POINTS.jet}`,
       'MISSEIS INIMIGOS SE DIVIDEM EM DOIS',
@@ -202,61 +197,31 @@ export class Renderer {
       'O SCANNER MOSTRA 5 MILHAS, A TELA 1',
       `HELICOPTERO EXTRA A CADA ${EXTRA_EVERY} (MAX ${MAX_CHOPPERS})`,
       'MUNICAO ILIMITADA',
-    ];
-    lines.forEach((l, i) => drawTextCentered(ctx, l, W / 2, 50 + i * 12, C.text));
-    drawTextCentered(ctx, 'ENTER VOLTA', W / 2, 200, C.dim);
+    ], { gap: 12 });
   }
 
   private drawRanking(g: Game, menu: boolean): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'RANKING', W / 2, 26, C.gold, 2);
-    if (g.highScores.length === 0) drawTextCentered(ctx, 'NENHUM REGISTRO AINDA', W / 2, 100, C.dim);
-    g.highScores.forEach((h, i) => {
-      const y = 52 + i * 12;
-      const line = `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ONDA ${String(h.wave).padStart(2, ' ')}`;
-      drawTextCentered(ctx, line, W / 2, y, i === 0 ? C.gold : C.text);
+    const rows = g.highScores.map((h, i) => {
+      const mode = h.mode ? `  ${h.mode.replace('COMANDANTE', 'CMDTE')}` : '';
+      return `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ONDA ${String(h.wave).padStart(2, ' ')}${mode}`;
     });
-    drawTextCentered(ctx, menu ? 'ENTER VOLTA' : 'ENTER CONTINUA', W / 2, 200, C.dim);
+    drawRankingScreen(this.ctx, W, H, rows, menu);
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 80, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      drawTextCentered(ctx, item, W / 2, 116 + i * 14, i === g.pauseIndex ? C.gold : C.text);
-    });
+    drawPausedScreen(this.ctx, W, H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 60, W, 110);
-    drawTextCentered(ctx, 'FIM DE JOGO', W / 2, 74, C.red, 2);
-    drawTextCentered(ctx, `PONTOS ${g.score}`, W / 2, 100, C.text);
-    drawTextCentered(ctx, `ONDA ${g.wave}  ${g.level === 'cadet' ? 'CADETE' : 'COMANDANTE'}`, W / 2, 112, C.text);
-    if (g.score >= 10000 && g.level === 'cadet') drawTextCentered(ctx, 'VOCE ENTROU PARA OS COMMANDOS', W / 2, 124, C.gold);
-    if (g.stateTime >= 2) drawTextCentered(ctx, g.qualifiesForRank ? 'ENTER PARA REGISTRAR' : 'ENTER PARA CONTINUAR', W / 2, 150, C.gold);
+    drawGameOverScreen(this.ctx, W, H, {
+      lines: [`PONTOS ${g.score}`, `ONDA ${g.wave}  ${g.modeName}`],
+      highlight: g.score >= 10000 && g.level === 'cadet' ? 'VOCE ENTROU PARA OS COMMANDOS' : undefined,
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'NOVO RECORDE', W / 2, 50, C.gold, 2);
-    drawTextCentered(ctx, `${g.score} PONTOS`, W / 2, 76, C.text);
-    drawTextCentered(ctx, 'SUAS INICIAIS', W / 2, 96, C.dim);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (3 * cw + 2 * 6) / 2;
-    g.initials.forEach((ch, i) => {
-      const x = x0 + i * (cw + 6);
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x, 112, sel ? C.gold : C.text, scale);
-      if (sel && Math.floor(g.time * 4) % 2 === 0) { ctx.fillStyle = C.gold; ctx.fillRect(x, 112 + 5 * scale + 2, 3 * scale, 2); }
-    });
-    drawTextCentered(ctx, 'CIMA BAIXO MUDAM  ENTER CONFIRMA', W / 2, 160, C.dim);
+    drawInitialsScreen(this.ctx, W, H, `${g.score} PONTOS`, g.initials, g.initialsPos, g.time);
   }
 }
 

@@ -19,7 +19,7 @@ export function compareScores(a: { day: number; km: number }, b: { day: number; 
   return b.day - a.day || b.km - a.km;
 }
 
-const scores = createScoreStore<HighScore>(
+export const scores = createScoreStore<HighScore>(
   'endurance.highscores',
   compareScores,
   (e) => (typeof e.day === 'number' && typeof e.initials === 'string'
@@ -27,7 +27,7 @@ const scores = createScoreStore<HighScore>(
     : null),
 );
 
-const settings = createSettingsStore<Settings>(
+export const settings = createSettingsStore<Settings>(
   'endurance.settings',
   { crt: false, sound: true },
   (p) => ({ crt: !!p.crt, sound: p.sound !== false }),

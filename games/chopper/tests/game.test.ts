@@ -83,6 +83,22 @@ describe('chopper command rules', () => {
     step(Math.ceil(cfg.DEATH_TIME * 60) + 2);
     expect(game.reserve).toBe(1);
     expect(game.phase).toBe('ready');
+    expect(f.missiles.length).toBe(0);
+  });
+
+  it('after losing a chopper the ready phase waits for a fresh press, not a held direction', () => {
+    const { game, input, step } = playing();
+    game.field.enemies = [{ kind: 'heli', x: cfg.wrapX(game.chopper.x + 800), y: 40, dir: -1 as const, speed: 0, targetY: 40, fireT: 1e9, alive: true, phase: 0 }];
+    input.held.add('right');
+    game.die();
+    step(Math.ceil(cfg.DEATH_TIME * 60) + 2);
+    expect(game.phase).toBe('ready');
+    expect(game.afterLoss).toBe(true);
+    step(10); // still holding right from before the crash: nothing happens
+    expect(game.phase).toBe('ready');
+    input.tap('fire'); step();
+    expect(game.phase).toBe('wave');
+    expect(game.afterLoss).toBe(false);
   });
 
   it('crashing into the convoy kills the chopper and a truck', () => {

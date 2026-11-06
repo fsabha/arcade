@@ -5,14 +5,14 @@ import {
 import { River, SpawnDef, SpawnKind, difficulty } from './river';
 import { aabb, hitsBank, bounceInChannel, Box } from './collision';
 import { ScoreKeeper, fuelDrainRate } from './scoring';
-import type { Input } from '@arcade/shared';
+import { Shell, PAUSE_ITEMS } from '@arcade/shared';
+import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import {
-  loadHighScores, saveHighScores, qualifies, insertHighScore,
-  loadSettings, saveSettings, HighScore, Settings,
-} from './storage';
+import { scores, settings, HighScore, Settings } from './storage';
 
-export type State = 'menu' | 'howto' | 'ranking' | 'playing' | 'paused' | 'dying' | 'gameover' | 'initials';
+export type State = ShellState;
+/** Inside `playing`: flying, or the crash animation before the respawn / game over. */
+export type Phase = 'flying' | 'dying';
 
 export interface Enemy {
   id: number;
@@ -36,11 +36,12 @@ export interface Explosion {
 }
 
 export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
-export const PAUSE_ITEMS = ['CONTINUAR', 'SAIR PARA O MENU'] as const;
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+export { PAUSE_ITEMS };
 
 export class Game {
-  state: State = 'menu';
+  shell: Shell<HighScore, Settings>;
+  phase: Phase = 'flying';
+  phaseTime = 0;
   river = new River(1);
   camY = 0;
   player: Box = { x: W / 2 - PLAYER_W / 2, y: PLAYER_Y_OFFSET, w: PLAYER_W, h: PLAYER_H };
@@ -59,23 +60,35 @@ export class Game {
   deathReason = '';
 
   time = 0;
-  stateTime = 0;
   private fireCd = 0;
   private lowFuelTimer = 0;
   private refuelTimer = 0;
 
-  menuIndex = 0;
-  pauseIndex = 0;
-  initials = ['A', 'A', 'A'];
-  initialsPos = 0;
-  qualifiesForRank = false;
-
-  settings: Settings = loadSettings();
-  highScores: HighScore[] = loadHighScores();
-
   constructor(private input: Input, private audio: SoundFx) {
-    this.audio.setMuted(!this.settings.sound);
+    this.shell = new Shell<HighScore, Settings>({
+      items: MENU_ITEMS,
+      scores,
+      settings,
+      // no game over jingle: the crash explosion already played
+      audio: { blip: () => audio.blip(), gameOver: () => undefined, setMuted: (m) => audio.setMuted(m) },
+      onStart: () => this.startGame(),
+      onStop: () => audio.engineStop(),
+      onResume: () => audio.engineStart(),
+      entry: (initials) => ({ initials, score: this.score.score, section: this.sectionNumber, date: new Date().toISOString() }),
+      probe: () => ({ initials: '', score: this.score.score, section: this.sectionNumber, date: '' }),
+    });
   }
+
+  // the shell owns the screens around the game; these keep the renderer and tests simple
+  get state(): State { return this.shell.state; }
+  get stateTime(): number { return this.shell.stateTime; }
+  get menuIndex(): number { return this.shell.menuIndex; }
+  get pauseIndex(): number { return this.shell.pauseIndex; }
+  get initials(): string[] { return this.shell.initials; }
+  get initialsPos(): number { return this.shell.initialsPos; }
+  get qualifiesForRank(): boolean { return this.shell.qualifiesForRank; }
+  get settings(): Settings { return this.shell.settings; }
+  get highScores(): HighScore[] { return this.shell.highScores; }
 
   get sectionNumber(): number {
     return this.section + 1;
@@ -108,13 +121,10 @@ export class Game {
     this.refueling = false;
     this.ensureRiver();
     this.rebuildPending();
-    this.setState('playing');
+    this.phase = 'flying';
+    this.phaseTime = 0;
+    this.shell.setState('playing');
     this.audio.engineStart();
-  }
-
-  private setState(s: State): void {
-    this.state = s;
-    this.stateTime = 0;
   }
 
   private ensureRiver(): void {
@@ -132,89 +142,20 @@ export class Game {
     this.pendingIdx = 0;
   }
 
-  toggleCrt(): void {
-    this.settings = { ...this.settings, crt: !this.settings.crt };
-    saveSettings(this.settings);
-  }
-
-  toggleSound(): void {
-    this.settings = { ...this.settings, sound: !this.settings.sound };
-    saveSettings(this.settings);
-    this.audio.setMuted(!this.settings.sound);
-  }
-
-  private goMenu(): void {
-    this.audio.engineStop();
-    this.setState('menu');
-  }
-
   // ---------- update ----------
 
   update(dt: number): void {
     this.time += dt;
-    this.stateTime += dt;
-    const inp = this.input;
-    if (inp.justPressed('mute')) this.toggleSound();
-    if (inp.justPressed('crt')) this.toggleCrt();
-
-    switch (this.state) {
-      case 'menu': this.updateMenu(); break;
-      case 'howto':
-      case 'ranking':
-        if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
-          this.audio.blip();
-          this.setState('menu');
-        }
-        break;
-      case 'playing': this.updatePlaying(dt); break;
-      case 'paused': this.updatePaused(); break;
-      case 'dying': this.updateDying(dt); break;
-      case 'gameover': this.updateGameOver(); break;
-      case 'initials': this.updateInitials(); break;
-    }
-  }
-
-  private updateMenu(): void {
-    const inp = this.input;
-    const n = MENU_ITEMS.length;
-    if (inp.justPressed('up')) { this.menuIndex = (this.menuIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.menuIndex = (this.menuIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      switch (this.menuIndex) {
-        case 0: this.startGame(); break;
-        case 1: this.setState('howto'); break;
-        case 2: this.highScores = loadHighScores(); this.setState('ranking'); break;
-        case 3: this.toggleCrt(); break;
-        case 4: this.toggleSound(); break;
-      }
-    }
-  }
-
-  private updatePaused(): void {
-    const inp = this.input;
-    const n = PAUSE_ITEMS.length;
-    if (inp.justPressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('pause')) { this.resume(); return; }
-    if (inp.justPressed('back')) { this.goMenu(); return; }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      if (this.pauseIndex === 0) this.resume();
-      else this.goMenu();
-    }
-  }
-
-  private resume(): void {
-    this.setState('playing');
-    this.audio.engineStart();
+    if (!this.shell.update(dt, this.input)) return;
+    this.updatePlaying(dt);
   }
 
   private updatePlaying(dt: number): void {
+    this.phaseTime += dt;
+    if (this.phase === 'dying') { this.updateDying(dt); return; }
     const inp = this.input;
     if (inp.justPressed('pause')) {
-      this.pauseIndex = 0;
-      this.audio.engineStop();
-      this.setState('paused');
+      this.shell.pause();
       return;
     }
 
@@ -370,60 +311,15 @@ export class Game {
     this.audio.explode(true);
     this.audio.engineStop();
     this.speedMode = 'normal';
-    this.setState('dying');
+    this.phase = 'dying';
+    this.phaseTime = 0;
   }
 
   private updateDying(dt: number): void {
     this.updateExplosions(dt);
-    if (this.stateTime < DYING_TIME) return;
+    if (this.phaseTime < DYING_TIME) return;
     this.score.lives--;
-    if (this.score.lives <= 0) {
-      this.highScores = loadHighScores();
-      this.qualifiesForRank = qualifies(this.highScores, this.score.score);
-      this.setState('gameover');
-    } else {
-      this.respawn();
-    }
-  }
-
-  private updateGameOver(): void {
-    const inp = this.input;
-    if (this.stateTime < 1.5) return;
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (this.qualifiesForRank) {
-        this.initials = ['A', 'A', 'A'];
-        this.initialsPos = 0;
-        this.setState('initials');
-      } else {
-        this.setState('menu');
-      }
-    }
-  }
-
-  private updateInitials(): void {
-    const inp = this.input;
-    const i = this.initialsPos;
-    const cur = LETTERS.indexOf(this.initials[i]);
-    if (inp.justPressed('up')) { this.initials[i] = LETTERS[(cur + 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.initials[i] = LETTERS[(cur + LETTERS.length - 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('left') || inp.justPressed('back')) { this.initialsPos = Math.max(0, i - 1); this.audio.blip(); }
-    if (inp.justPressed('right')) { this.initialsPos = Math.min(2, i + 1); this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (i < 2) {
-        this.initialsPos = i + 1;
-      } else {
-        const entry: HighScore = {
-          initials: this.initials.join(''),
-          score: this.score.score,
-          section: this.sectionNumber,
-          date: new Date().toISOString(),
-        };
-        this.highScores = insertHighScore(this.highScores, entry);
-        saveHighScores(this.highScores);
-        this.setState('ranking');
-      }
-    }
+    if (this.score.lives <= 0) this.shell.endGame();
+    else this.respawn();
   }
 }

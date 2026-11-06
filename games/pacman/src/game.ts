@@ -7,16 +7,14 @@ import { Maze, tileCenter } from './maze';
 import { Actor } from './actors';
 import { GhostName, chaseTarget, scatterTarget, chooseDir, randomDir, Tile } from './ghostai';
 import { speeds, elroy, modeSchedule, fruitFor, houseLimits, houseTimeout, intermissionAfter, FruitKind } from './levels';
-import { Rng } from '@arcade/shared';
-import type { Input } from '@arcade/shared';
+import { Rng, Shell, PAUSE_ITEMS } from '@arcade/shared';
+import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import {
-  loadHighScores, saveHighScores, qualifies, insertHighScore, loadSettings, saveSettings, HighScore, Settings,
-} from './storage';
+import { scores, settings, HighScore, Settings } from './storage';
 
-export type State =
-  | 'menu' | 'howto' | 'ranking' | 'ready' | 'playing' | 'ghosteat' | 'dying' | 'levelclear'
-  | 'intermission' | 'gameover' | 'initials' | 'paused';
+export type State = ShellState;
+/** What the round is doing while the shell is in 'playing'; 'over' once the last life is gone. */
+export type Phase = 'ready' | 'playing' | 'ghosteat' | 'dying' | 'levelclear' | 'intermission' | 'over';
 
 export type GhostState = 'house' | 'leaving' | 'normal' | 'frightened' | 'eyes' | 'entering';
 export type Mode = 'scatter' | 'chase';
@@ -47,15 +45,16 @@ export interface Fruit {
 }
 
 export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
-export const PAUSE_ITEMS = ['CONTINUAR', 'SAIR PARA O MENU'] as const;
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+export { PAUSE_ITEMS };
 const CORNER = 4; // px before/after a tile centre where Pac-Man may pre-turn
 const GLOBAL_LIMITS = { pinky: 7, inky: 17, clyde: 32 } as const;
 const EYES_SPEED = 1.5;
 const FLASH_PERIOD = 0.28;
 
 export class Game {
-  state: State = 'menu';
+  shell: Shell<HighScore, Settings>;
+  phase: Phase = 'ready';
+  phaseTime = 0;
   maze = new Maze();
   pac = new Actor(tileCenter(PAC_START.x), tileCenter(PAC_START.y), 'left');
   pacDesired: Dir = 'left';
@@ -89,24 +88,36 @@ export class Game {
   firstReady = true;
 
   time = 0;
-  stateTime = 0;
   deathReason = '';
   private rng = new Rng(1);
 
-  menuIndex = 0;
-  pauseIndex = 0;
-  initials = ['A', 'A', 'A'];
-  initialsPos = 0;
-  qualifiesForRank = false;
-
-  settings: Settings = loadSettings();
-  highScores: HighScore[] = loadHighScores();
-
   constructor(private input: Input, private audio: SoundFx) {
-    this.audio.setMuted(!this.settings.sound);
-    this.highScore = this.highScores[0]?.score ?? 0;
+    this.shell = new Shell<HighScore, Settings>({
+      items: MENU_ITEMS,
+      scores,
+      settings,
+      // the death tune already played; the arcade has no separate game over jingle
+      audio: { blip: () => audio.blip(), setMuted: (m) => audio.setMuted(m), gameOver: () => undefined },
+      onStart: () => this.startGame(),
+      entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
+      probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
+      onStop: () => audio.loop('off'),
+      gameOverDelay: 2.5,
+    });
+    this.highScore = this.shell.highScores[0]?.score ?? 0;
     this.placeActors();
   }
+
+  // the shell owns the screens around the game; these keep the renderer and tests simple
+  get state(): State { return this.shell.state; }
+  get stateTime(): number { return this.shell.stateTime; }
+  get menuIndex(): number { return this.shell.menuIndex; }
+  get pauseIndex(): number { return this.shell.pauseIndex; }
+  get initials(): string[] { return this.shell.initials; }
+  get initialsPos(): number { return this.shell.initialsPos; }
+  get qualifiesForRank(): boolean { return this.shell.qualifiesForRank; }
+  get settings(): Settings { return this.shell.settings; }
+  get highScores(): HighScore[] { return this.shell.highScores; }
 
   get blinky(): Ghost {
     return this.ghosts[0];
@@ -123,6 +134,7 @@ export class Game {
     this.fruitsCollected = [];
     this.firstReady = true;
     this.startLevel();
+    this.shell.setState('playing');
   }
 
   private startLevel(): void {
@@ -144,7 +156,7 @@ export class Game {
     this.frightFlashing = false;
     this.houseTimer = 0;
     this.pacPause = 0;
-    this.setState('ready');
+    this.setPhase('ready');
     this.audio.loop('off');
     if (this.firstReady) this.audio.intro();
   }
@@ -164,105 +176,47 @@ export class Game {
     this.ghosts.forEach((g, k) => (g.dotCounter = counters[k] ?? 0));
   }
 
-  private setState(s: State): void {
-    this.state = s;
-    this.stateTime = 0;
-  }
-
-  toggleCrt(): void {
-    this.settings = { ...this.settings, crt: !this.settings.crt };
-    saveSettings(this.settings);
-  }
-
-  toggleSound(): void {
-    this.settings = { ...this.settings, sound: !this.settings.sound };
-    saveSettings(this.settings);
-    this.audio.setMuted(!this.settings.sound);
-  }
-
-  private goMenu(): void {
-    this.audio.loop('off');
-    this.setState('menu');
+  private setPhase(p: Phase): void {
+    this.phase = p;
+    this.phaseTime = 0;
   }
 
   // ---------- update ----------
 
   update(dt: number): void {
     this.time += dt;
-    this.stateTime += dt;
+    if (!this.shell.update(dt, this.input)) return;
+    this.phaseTime += dt;
     const inp = this.input;
-    if (inp.justPressed('mute')) this.toggleSound();
-    if (inp.justPressed('crt')) this.toggleCrt();
-
-    switch (this.state) {
-      case 'menu': this.updateMenu(); break;
-      case 'howto':
-      case 'ranking':
-        if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
-          this.audio.blip();
-          this.setState('menu');
-        }
-        break;
+    switch (this.phase) {
       case 'ready':
         this.readDirInput();
-        if (this.stateTime >= (this.firstReady ? READY_TIME + 2.2 : READY_TIME_SHORT)) {
+        if (this.phaseTime >= (this.firstReady ? READY_TIME + 2.2 : READY_TIME_SHORT)) {
           this.firstReady = false;
-          this.setState('playing');
+          this.setPhase('playing');
         }
         break;
       case 'playing': this.updatePlaying(dt); break;
       case 'ghosteat':
-        if (this.stateTime >= GHOST_EAT_PAUSE) {
+        if (this.phaseTime >= GHOST_EAT_PAUSE) {
           this.eatenGhost = null;
-          this.setState('playing');
+          this.setPhase('playing');
         }
         break;
       case 'dying': this.updateDying(); break;
       case 'levelclear': this.updateLevelClear(); break;
       case 'intermission':
-        if (this.stateTime >= this.intermissionLength() || inp.justPressed('confirm') || inp.justPressed('fire')) {
+        if (this.phaseTime >= this.intermissionLength() || inp.justPressed('confirm') || inp.justPressed('fire')) {
           this.intermission = 0;
           this.beginReady();
         }
         break;
-      case 'paused': this.updatePaused(); break;
-      case 'gameover': this.updateGameOver(); break;
-      case 'initials': this.updateInitials(); break;
+      case 'over': break;
     }
   }
 
   intermissionLength(): number {
     return this.intermission === 1 ? 9 : this.intermission === 2 ? 8 : 7;
-  }
-
-  private updateMenu(): void {
-    const inp = this.input;
-    const n = MENU_ITEMS.length;
-    if (inp.justPressed('up')) { this.menuIndex = (this.menuIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.menuIndex = (this.menuIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      switch (this.menuIndex) {
-        case 0: this.startGame(); break;
-        case 1: this.setState('howto'); break;
-        case 2: this.highScores = loadHighScores(); this.setState('ranking'); break;
-        case 3: this.toggleCrt(); break;
-        case 4: this.toggleSound(); break;
-      }
-    }
-  }
-
-  private updatePaused(): void {
-    const inp = this.input;
-    const n = PAUSE_ITEMS.length;
-    if (inp.justPressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('pause')) { this.setState('playing'); return; }
-    if (inp.justPressed('back')) { this.goMenu(); return; }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      if (this.pauseIndex === 0) this.setState('playing');
-      else this.goMenu();
-    }
   }
 
   private readDirInput(): void {
@@ -278,9 +232,7 @@ export class Game {
   private updatePlaying(dt: number): void {
     const inp = this.input;
     if (inp.justPressed('pause')) {
-      this.pauseIndex = 0;
-      this.audio.loop('off');
-      this.setState('paused');
+      this.shell.pause();
       return;
     }
     this.readDirInput();
@@ -309,7 +261,7 @@ export class Game {
     // Pac-Man
     this.movePac(dt, sp);
     this.eatAtPacTile(sp);
-    if (this.state !== 'playing') return;
+    if (this.phase !== 'playing') return;
 
     // Ghost house release
     this.houseTimer += dt;
@@ -322,7 +274,7 @@ export class Game {
     // Ghosts
     for (const g of this.ghosts) this.moveGhost(g, dt, sp);
     this.checkGhostContacts();
-    if (this.state !== 'playing') return;
+    if (this.phase !== 'playing') return;
 
     // Fruit
     if (this.fruit) {
@@ -401,7 +353,7 @@ export class Game {
     }
     if (this.maze.dotsLeft <= 0) {
       this.audio.loop('off');
-      this.setState('levelclear');
+      this.setPhase('levelclear');
     }
   }
 
@@ -534,7 +486,7 @@ export class Game {
         this.eatenGhost = g;
         this.eatenPoints = pts;
         this.audio.eatGhost();
-        this.setState('ghosteat');
+        this.setPhase('ghosteat');
         return;
       }
     }
@@ -553,16 +505,15 @@ export class Game {
   private die(): void {
     this.audio.loop('off');
     this.audio.death();
-    this.setState('dying');
+    this.setPhase('dying');
   }
 
   private updateDying(): void {
-    if (this.stateTime < DEATH_TIME) return;
+    if (this.phaseTime < DEATH_TIME) return;
     this.lives--;
     if (this.lives <= 0) {
-      this.highScores = loadHighScores();
-      this.qualifiesForRank = qualifies(this.highScores, this.score);
-      this.setState('gameover');
+      this.setPhase('over');
+      this.shell.endGame();
       return;
     }
     const counters = this.ghosts.map((g) => g.dotCounter);
@@ -575,7 +526,7 @@ export class Game {
   }
 
   private updateLevelClear(): void {
-    if (this.stateTime < LEVEL_CLEAR_TIME) return;
+    if (this.phaseTime < LEVEL_CLEAR_TIME) return;
     const inter = intermissionAfter(this.level);
     this.level++;
     this.maze.reset();
@@ -587,46 +538,9 @@ export class Game {
     if (inter) {
       this.intermission = inter;
       this.audio.intermission();
-      this.setState('intermission');
+      this.setPhase('intermission');
     } else {
       this.beginReady();
-    }
-  }
-
-  private updateGameOver(): void {
-    const inp = this.input;
-    if (this.stateTime < 2.5) return;
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (this.qualifiesForRank) {
-        this.initials = ['A', 'A', 'A'];
-        this.initialsPos = 0;
-        this.setState('initials');
-      } else {
-        this.setState('menu');
-      }
-    }
-  }
-
-  private updateInitials(): void {
-    const inp = this.input;
-    const i = this.initialsPos;
-    const cur = LETTERS.indexOf(this.initials[i]);
-    if (inp.justPressed('up')) { this.initials[i] = LETTERS[(cur + 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.initials[i] = LETTERS[(cur + LETTERS.length - 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('left') || inp.justPressed('back')) { this.initialsPos = Math.max(0, i - 1); this.audio.blip(); }
-    if (inp.justPressed('right')) { this.initialsPos = Math.min(2, i + 1); this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (i < 2) {
-        this.initialsPos = i + 1;
-      } else {
-        const entry: HighScore = { initials: this.initials.join(''), score: this.score, level: this.level, date: new Date().toISOString() };
-        this.highScores = insertHighScore(this.highScores, entry);
-        saveHighScores(this.highScores);
-        this.highScore = this.highScores[0]?.score ?? this.highScore;
-        this.setState('ranking');
-      }
     }
   }
 }

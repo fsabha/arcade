@@ -14,7 +14,7 @@ export interface Settings {
   sound: boolean;
 }
 
-const scores = createScoreStore<HighScore>(
+export const scores = createScoreStore<HighScore>(
   'riverraid.highscores',
   (a, b) => b.score - a.score,
   (e) => (typeof e.score === 'number' && typeof e.initials === 'string'
@@ -22,7 +22,7 @@ const scores = createScoreStore<HighScore>(
     : null),
 );
 
-const settings = createSettingsStore<Settings>(
+export const settings = createSettingsStore<Settings>(
   'riverraid.settings',
   { crt: false, sound: true },
   (p) => ({ crt: !!p.crt, sound: p.sound !== false }),

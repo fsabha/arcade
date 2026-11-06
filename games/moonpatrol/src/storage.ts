@@ -6,6 +6,8 @@ export interface HighScore {
   initials: string;
   score: number;
   course: number;
+  /** course chosen at the start: 'INICIANTE' or 'CAMPEAO' ('' for entries from before it was recorded) */
+  mode: string;
   date: string;
 }
 
@@ -14,15 +16,18 @@ export interface Settings {
   sound: boolean;
 }
 
-const scores = createScoreStore<HighScore>(
+export const scores = createScoreStore<HighScore>(
   'moonpatrol.highscores',
   (a, b) => b.score - a.score,
   (e) => (typeof e.score === 'number' && typeof e.initials === 'string'
-    ? { initials: initialsString(e.initials), score: e.score, course: typeof e.course === 'number' ? e.course : 0, date: String(e.date ?? '') }
+    ? {
+      initials: initialsString(e.initials), score: e.score, course: typeof e.course === 'number' ? e.course : 0,
+      mode: typeof e.mode === 'string' ? e.mode : '', date: String(e.date ?? ''),
+    }
     : null),
 );
 
-const settings = createSettingsStore<Settings>(
+export const settings = createSettingsStore<Settings>(
   'moonpatrol.settings',
   { crt: false, sound: true },
   (p) => ({ crt: !!p.crt, sound: p.sound !== false }),
@@ -30,7 +35,7 @@ const settings = createSettingsStore<Settings>(
 
 export function qualifies(list: HighScore[], score: number): boolean {
   if (score <= 0) return false;
-  return scores.beatsTable(list, { initials: '', score, course: 0, date: '' });
+  return scores.beatsTable(list, { initials: '', score, course: 0, mode: '', date: '' });
 }
 
 export const insertHighScore = scores.insert;

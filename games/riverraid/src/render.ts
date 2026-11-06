@@ -1,8 +1,11 @@
 import { W, H, PLAY_H, HUD_H, FUEL_MAX, FUEL_LOW, MAX_LIVES_DISPLAY, POINTS } from './config';
 import { River } from './river';
-import { Game, MENU_ITEMS, PAUSE_ITEMS, Enemy, Explosion } from './game';
+import { Game, MENU_ITEMS, Enemy, Explosion } from './game';
 import { sprite } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen,
+  drawInitialsScreen,
+} from '@arcade/shared';
 
 const C = {
   water: '#1f47d6',
@@ -40,7 +43,7 @@ export class Renderer {
       this.drawRiver(this.demoRiver, g.time * 35);
       this.dim(0.62);
       if (g.state === 'menu') this.drawMenu(g);
-      else if (g.state === 'howto') this.drawHowTo(g);
+      else if (g.state === 'howto') this.drawHowTo();
       else this.drawRanking(g, true);
       this.drawHudFrame();
       this.drawHudHint(g);
@@ -147,7 +150,7 @@ export class Renderer {
       ctx.fillRect(Math.round(b.x), this.screenY(b.y, b.h, g.camY), b.w, b.h);
     }
 
-    if (g.state === 'playing' || g.state === 'paused') {
+    if ((g.state === 'playing' && g.phase === 'flying') || g.state === 'paused') {
       const p = g.player;
       const sy = this.screenY(p.y, p.h, g.camY);
       ctx.drawImage(sprite('player'), Math.round(p.x), sy);
@@ -212,7 +215,7 @@ export class Renderer {
     drawText(ctx, String(g.score.score).padStart(6, '0'), 8, y0 + 11, C.gold, 2);
 
     drawText(ctx, 'VIDAS', 100, y0 + 4, C.dim, 1);
-    const lives = Math.max(0, g.score.lives - (g.state === 'playing' || g.state === 'paused' || g.state === 'dying' ? 1 : 0));
+    const lives = Math.max(0, g.score.lives - (g.state === 'playing' || g.state === 'paused' ? 1 : 0));
     const life = sprite('life');
     if (lives <= MAX_LIVES_DISPLAY) {
       for (let i = 0; i < lives; i++) ctx.drawImage(life, 100 + i * 9, y0 + 12);
@@ -247,8 +250,9 @@ export class Renderer {
     ctx.fillRect(gx, gy, 1, gh);
     ctx.fillRect(gx + gw - 1, gy, 1, gh);
 
-    if (g.refueling && g.state === 'playing' && blink) drawTextCentered(ctx, 'ABASTECENDO', W / 2, y0 + 26, C.green, 1);
-    if (g.speedMode !== 'normal' && g.state === 'playing') {
+    const flying = g.state === 'playing' && g.phase === 'flying';
+    if (g.refueling && flying && blink) drawTextCentered(ctx, 'ABASTECENDO', W / 2, y0 + 26, C.green, 1);
+    if (g.speedMode !== 'normal' && flying) {
       drawTextCentered(ctx, g.speedMode === 'fast' ? '>> RAPIDO' : '<< LENTO', 150, y0 + 26, C.dim, 1);
     }
   }
@@ -260,157 +264,57 @@ export class Renderer {
     this.ctx.fillRect(0, 0, W, PLAY_H);
   }
 
-  private panel(x: number, y: number, w: number, h: number): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(6,10,20,0.88)';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = C.hudLine;
-    ctx.fillRect(x, y, w, 1);
-    ctx.fillRect(x, y + h - 1, w, 1);
-    ctx.fillRect(x, y, 1, h);
-    ctx.fillRect(x + w - 1, y, 1, h);
-  }
+  // ---------- screens (shared look, game-specific words; the HUD strip below PLAY_H stays visible) ----------
 
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    const blink = Math.floor(g.time * 2) % 2 === 0;
     const bob = Math.round(Math.sin(g.time * 2) * 2);
-
-    drawTextCentered(ctx, 'RIVER RAID', W / 2 + 2, 34 + 2, '#5a3a00', 3);
-    drawTextCentered(ctx, 'RIVER RAID', W / 2, 34, C.gold, 3);
-    drawTextCentered(ctx, 'EDICAO BROWSER', W / 2, 56, C.dim, 1);
-
-    const pl = sprite('player');
-    ctx.drawImage(pl, W / 2 - 16, 74 + bob, 32, 32);
-
-    const startY = 122;
-    MENU_ITEMS.forEach((item, i) => {
-      let label: string = item;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      const y = startY + i * 16;
-      if (sel) {
-        ctx.fillStyle = 'rgba(255,225,74,0.12)';
-        ctx.fillRect(40, y - 4, W - 80, 14);
-        if (blink) drawText(ctx, '>', 48, y, C.gold, 1);
-      }
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text, 1);
+    this.ctx.drawImage(sprite('player'), W / 2 - 16, 74 + bob, 32, 32);
+    drawMenuScreen(this.ctx, W, PLAY_H, {
+      title: 'RIVER RAID', titleColor: C.gold, titleY: 34, subtitle: 'EDICAO BROWSER',
+      labels: MENU_ITEMS.map((item) => g.shell.label(item)),
+      selected: g.menuIndex, time: g.time, itemsY: 122, itemGap: 16,
+      footer: ['HOMENAGEM AO CLASSICO DA ATARI 2600', '2026'], footerY: 232,
     });
-
-    drawTextCentered(ctx, 'HOMENAGEM AO CLASSICO DA ATARI 2600', W / 2, 232, C.dim, 1);
-    drawTextCentered(ctx, '2026', W / 2, 242, C.dim, 1);
   }
 
-  private drawHowTo(_g: Game): void {
-    const ctx = this.ctx;
-    this.panel(6, 8, W - 12, PLAY_H - 16);
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, 16, C.gold, 2);
-    const lines = [
+  private drawHowTo(): void {
+    drawHowToScreen(this.ctx, W, PLAY_H, [
       'VOE PELO RIO SEM BATER NAS',
       'MARGENS, ILHAS OU INIMIGOS.',
-      '',
       'ATIRE EM NAVIOS, HELICOPTEROS',
       'E JATOS PARA MARCAR PONTOS.',
-      '',
-      'PASSE SOBRE OS DEPOSITOS DE',
-      'FUEL PARA ABASTECER. SEM',
-      'COMBUSTIVEL O AVIAO CAI.',
-      '',
-      'DESTRUA A PONTE NO FIM DE',
-      'CADA SECAO PARA AVANCAR.',
-      '',
+      'PASSE SOBRE OS DEPOSITOS DE FUEL',
+      'PARA ABASTECER. SEM COMBUSTIVEL',
+      'O AVIAO CAI.',
+      'DESTRUA A PONTE NO FIM DE CADA',
+      'SECAO PARA AVANCAR.',
       'CIMA ACELERA, BAIXO FREIA.',
       '3 VIDAS. VIDA EXTRA A CADA',
       '10000 PONTOS.',
-    ];
-    lines.forEach((l, i) => drawText(ctx, l, 16, 36 + i * 8, C.text, 1));
-
-    const py = 36 + lines.length * 8 + 6;
-    drawTextCentered(ctx, 'PONTOS', W / 2, py, C.dim, 1);
-    const pts = [
-      ['ship', `NAVIO ${POINTS.ship}`],
-      ['heli0', `HELI ${POINTS.heli}`],
-      ['fuel', `FUEL ${POINTS.fuel}`],
-      ['jet', `JATO ${POINTS.jet}`],
-    ] as const;
-    pts.forEach(([sp, label], i) => {
-      const x = 14 + i * 56;
-      const s = sprite(sp);
-      const scale = sp === 'fuel' ? 0.5 : sp === 'ship' ? 0.6 : 1;
-      ctx.drawImage(s, x + 8 - (s.width * scale) / 2, py + 10, s.width * scale, s.height * scale);
-      drawText(ctx, label, x + 18, py + 13, C.text, 1);
-    });
-    drawTextCentered(ctx, `PONTE ${POINTS.bridge}`, W / 2, py + 30, C.gold, 1);
+      '',
+      `NAVIO ${POINTS.ship}  HELI ${POINTS.heli}  FUEL ${POINTS.fuel}`,
+      `JATO ${POINTS.jet}  PONTE ${POINTS.bridge}`,
+    ]);
   }
 
   private drawRanking(g: Game, fromMenu: boolean): void {
-    const ctx = this.ctx;
-    this.panel(6, 8, W - 12, PLAY_H - 16);
-    drawTextCentered(ctx, 'RANKING', W / 2, 16, C.gold, 2);
-    if (g.highScores.length === 0) {
-      drawTextCentered(ctx, 'SEM RECORDES AINDA', W / 2, 120, C.dim, 1);
-    } else {
-      drawText(ctx, 'POS  NOME  PONTOS  SECAO', 22, 36, C.dim, 1);
-      g.highScores.forEach((h, i) => {
-        const y = 50 + i * 14;
-        const isNew = !fromMenu && g.state === 'ranking' && h.initials === g.initials.join('') && h.score === g.score.score;
-        const col = isNew ? C.gold : i === 0 ? C.text : C.text;
-        drawText(ctx, `${String(i + 1).padStart(2, ' ')}.  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}   ${String(h.section).padStart(2, '0')}`, 22, y, col, 1);
-      });
-    }
-    drawTextCentered(ctx, 'ENTER OU FOGO: VOLTAR', W / 2, PLAY_H - 22, C.dim, 1);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}  SECAO ${String(h.section).padStart(2, '0')}`);
+    drawRankingScreen(this.ctx, W, PLAY_H, rows, fromMenu);
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(40, 90, W - 80, 84);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 100, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      const sel = i === g.pauseIndex;
-      const y = 126 + i * 14;
-      if (sel) drawText(ctx, '>', W / 2 - textWidth(item) / 2 - 10, y, C.gold, 1);
-      drawTextCentered(ctx, item, W / 2, y, sel ? C.gold : C.text, 1);
-    });
-    drawTextCentered(ctx, 'P OU ESC: CONTINUAR', W / 2, 160, C.dim, 1);
+    drawPausedScreen(this.ctx, W, PLAY_H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(30, 80, W - 60, 104);
-    drawTextCentered(ctx, 'GAME OVER', W / 2, 92, C.red, 2);
-    drawTextCentered(ctx, g.deathReason, W / 2, 112, C.dim, 1);
-    drawTextCentered(ctx, `PONTOS ${String(g.score.score).padStart(6, '0')}`, W / 2, 128, C.gold, 1);
-    drawTextCentered(ctx, `SECAO ${g.sectionNumber}`, W / 2, 138, C.text, 1);
-    if (g.stateTime >= 1.5 && Math.floor(g.time * 2) % 2 === 0) {
-      drawTextCentered(ctx, g.qualifiesForRank ? 'NOVO RECORDE! ENTER' : 'ENTER OU FOGO: MENU', W / 2, 162, C.text, 1);
-    }
+    drawGameOverScreen(this.ctx, W, PLAY_H, {
+      title: 'GAME OVER',
+      lines: [`PONTOS ${String(g.score.score).padStart(6, '0')}`, `SECAO ${g.sectionNumber}`, g.deathReason],
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(20, 70, W - 40, 130);
-    drawTextCentered(ctx, 'NOVO RECORDE!', W / 2, 80, C.gold, 2);
-    drawTextCentered(ctx, `PONTOS ${String(g.score.score).padStart(6, '0')}`, W / 2, 98, C.text, 1);
-    drawTextCentered(ctx, 'DIGITE SUAS INICIAIS', W / 2, 110, C.dim, 1);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (cw * 3 - scale) / 2;
-    const y = 124;
-    const blink = Math.floor(g.time * 3) % 2 === 0;
-    g.initials.forEach((ch, i) => {
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x0 + i * cw, y, sel ? C.gold : C.text, scale);
-      if (sel && blink) {
-        ctx.fillStyle = C.gold;
-        ctx.fillRect(x0 + i * cw, y + 5 * scale + 2, 3 * scale, 2);
-      }
-    });
-    drawTextCentered(ctx, 'CIMA/BAIXO: LETRA', W / 2, 160, C.dim, 1);
-    drawTextCentered(ctx, 'ESQ/DIR: POSICAO', W / 2, 170, C.dim, 1);
-    drawTextCentered(ctx, 'ENTER OU FOGO: CONFIRMAR', W / 2, 184, C.text, 1);
+    drawInitialsScreen(this.ctx, W, PLAY_H, `PONTOS ${String(g.score.score).padStart(6, '0')}`, g.initials, g.initialsPos, g.time);
   }
 }

@@ -43,4 +43,5 @@ export const START_LIVES = 3;
 export const EXTRA_LIFE_EVERY = 10000;
 export const MAX_LIVES_DISPLAY = 6;
 export const DYING_TIME = 1.6;
+export const CONTINUE_TIME = 6; // seconds the "press to continue" breather waits before launching the next sub by itself
 export const BANNER_TIME = 2.2;

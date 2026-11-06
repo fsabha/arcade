@@ -4,27 +4,30 @@ import {
   COURSE_BONUS, POINTS, START_LIVES, EXTRA_LIVES_AT, DEATH_TIME, UFO_W, BOMB_SPEED, TANK_SHOT_SPEED, HUD_H, Course, letterOf,
 } from './config';
 import { buildCourse, GroundObject, UfoWave, UfoKind } from './course';
-import { Rng } from '@arcade/shared';
-import type { Input } from '@arcade/shared';
+import { Rng, Shell, PAUSE_ITEMS } from '@arcade/shared';
+import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import {
-  loadHighScores, saveHighScores, qualifies, insertHighScore, loadSettings, saveSettings, HighScore, Settings,
-} from './storage';
+import { scores, settings, HighScore, Settings } from './storage';
 
-export type State = 'menu' | 'howto' | 'ranking' | 'playing' | 'paused' | 'gameover' | 'initials';
+export type State = ShellState;
 export type Death = 'crater' | 'crash' | 'shot' | null;
 
 export const MENU_ITEMS = ['JOGAR', 'PERCURSO', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
-export const PAUSE_ITEMS = ['CONTINUAR', 'SAIR PARA O MENU'] as const;
-const LETTERS_IN = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+export { PAUSE_ITEMS };
+
+export function courseName(course: Course): string {
+  return course === 'beginner' ? 'INICIANTE' : 'CAMPEAO';
+}
 
 export interface Shot { x: number; y: number; vx: number; vy: number; t: number; alive: boolean }
 export interface Ufo { kind: UfoKind; x: number; y: number; t: number; bombT: number; alive: boolean; dir: 1 | -1 }
 export interface Bomb { x: number; y: number; alive: boolean }
 
 export class Game {
-  state: State = 'menu';
+  shell: Shell<HighScore, Settings>;
   course: Course = 'beginner';
+  /** the course chosen at the menu (the game moves on to champion by itself) */
+  startedOn: Course = 'beginner';
   score = 0;
   lives = START_LIVES;
   /** world distance of the screen's left edge */
@@ -50,19 +53,31 @@ export class Game {
   private spawnedWaves = new Set<number>();
 
   time = 0;
-  stateTime = 0;
-  menuIndex = 0;
-  pauseIndex = 0;
-  initials = ['A', 'A', 'A'];
-  initialsPos = 0;
-  qualifiesForRank = false;
-
-  settings: Settings = loadSettings();
-  highScores: HighScore[] = loadHighScores();
 
   constructor(private input: Input, private audio: SoundFx) {
-    this.audio.setMuted(!this.settings.sound);
+    this.shell = new Shell<HighScore, Settings>({
+      items: MENU_ITEMS,
+      scores,
+      settings,
+      audio,
+      onStart: () => this.startGame(),
+      onItem: (item) => { if (item === 'PERCURSO') this.course = this.course === 'beginner' ? 'champion' : 'beginner'; },
+      entry: (initials) => ({ initials, score: this.score, course: this.coursesDone * LETTERS + this.letter + 1, mode: courseName(this.startedOn), date: new Date().toISOString() }),
+      probe: () => ({ initials: '', score: this.score, course: 0, mode: courseName(this.startedOn), date: '' }),
+      onStop: () => this.audio.setEngine(false, 0),
+    });
   }
+
+  // the shell owns the screens around the game; these keep the renderer and tests simple
+  get state(): State { return this.shell.state; }
+  get stateTime(): number { return this.shell.stateTime; }
+  get menuIndex(): number { return this.shell.menuIndex; }
+  get pauseIndex(): number { return this.shell.pauseIndex; }
+  get initials(): string[] { return this.shell.initials; }
+  get initialsPos(): number { return this.shell.initialsPos; }
+  get qualifiesForRank(): boolean { return this.shell.qualifiesForRank; }
+  get settings(): Settings { return this.shell.settings; }
+  get highScores(): HighScore[] { return this.shell.highScores; }
 
   get letter(): number {
     return letterOf(this.buggyWorldX);
@@ -89,9 +104,10 @@ export class Game {
     this.lives = START_LIVES;
     this.extraGiven = 0;
     this.coursesDone = 0;
+    this.startedOn = this.course;
     this.rng = new Rng((Date.now() & 0xffff) + 1);
     this.startCourse();
-    this.setState('playing');
+    this.shell.setState('playing');
   }
 
   private startCourse(): void {
@@ -121,93 +137,22 @@ export class Game {
     for (const l of [...this.spawnedWaves]) if (l * LETTER_LEN >= distance) this.spawnedWaves.delete(l);
   }
 
-  private setState(s: State): void {
-    this.state = s;
-    this.stateTime = 0;
-    if (s !== 'playing') this.audio.setEngine(false, 0);
-  }
-
-  toggleCrt(): void {
-    this.settings = { ...this.settings, crt: !this.settings.crt };
-    saveSettings(this.settings);
-  }
-
-  toggleSound(): void {
-    this.settings = { ...this.settings, sound: !this.settings.sound };
-    saveSettings(this.settings);
-    this.audio.setMuted(!this.settings.sound);
-  }
-
   private endGame(): void {
-    this.highScores = loadHighScores();
-    this.qualifiesForRank = qualifies(this.highScores, this.score);
-    this.audio.gameOver();
-    this.setState('gameover');
+    this.shell.endGame();
   }
 
   // ---------- update ----------
 
   update(dt: number): void {
     this.time += dt;
-    this.stateTime += dt;
-    const inp = this.input;
-    if (inp.justPressed('mute')) this.toggleSound();
-    if (inp.justPressed('crt')) this.toggleCrt();
-    switch (this.state) {
-      case 'menu': this.updateMenu(); break;
-      case 'howto':
-      case 'ranking':
-        if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
-          this.audio.blip();
-          this.setState('menu');
-        }
-        break;
-      case 'playing': this.updatePlaying(dt); break;
-      case 'paused': this.updatePaused(); break;
-      case 'gameover': this.updateGameOver(); break;
-      case 'initials': this.updateInitials(); break;
-    }
-  }
-
-  private updateMenu(): void {
-    const inp = this.input;
-    const n = MENU_ITEMS.length;
-    if (inp.justPressed('up')) { this.menuIndex = (this.menuIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.menuIndex = (this.menuIndex + 1) % n; this.audio.blip(); }
-    const item = MENU_ITEMS[this.menuIndex];
-    const side = inp.justPressed('left') || inp.justPressed('right');
-    if (side && item === 'PERCURSO') { this.course = this.course === 'beginner' ? 'champion' : 'beginner'; this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      switch (item) {
-        case 'JOGAR': this.startGame(); break;
-        case 'PERCURSO': this.course = this.course === 'beginner' ? 'champion' : 'beginner'; break;
-        case 'COMO JOGAR': this.setState('howto'); break;
-        case 'RANKING': this.highScores = loadHighScores(); this.setState('ranking'); break;
-        case 'CRT': this.toggleCrt(); break;
-        case 'SOM': this.toggleSound(); break;
-      }
-    }
-  }
-
-  private updatePaused(): void {
-    const inp = this.input;
-    const n = PAUSE_ITEMS.length;
-    if (inp.justPressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('pause')) { this.setState('playing'); return; }
-    if (inp.justPressed('back')) { this.setState('menu'); return; }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      if (this.pauseIndex === 0) this.setState('playing');
-      else this.setState('menu');
-    }
+    if (!this.shell.update(dt, this.input)) return;
+    this.updatePlaying(dt);
   }
 
   private updatePlaying(dt: number): void {
     const inp = this.input;
     if (inp.justPressed('pause')) {
-      this.pauseIndex = 0;
-      this.setState('paused');
+      this.shell.pause();
       return;
     }
     const b = this.buggy;
@@ -426,41 +371,5 @@ export class Game {
     // back to the start of the current five-letter section
     const sectionStart = this.checkpointIndex === 0 ? 0 : CHECKPOINTS[this.checkpointIndex - 1] * LETTER_LEN;
     this.restartAt(sectionStart);
-  }
-
-  private updateGameOver(): void {
-    const inp = this.input;
-    if (this.stateTime < 2) return;
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (this.qualifiesForRank) {
-        this.initials = ['A', 'A', 'A'];
-        this.initialsPos = 0;
-        this.setState('initials');
-      } else {
-        this.setState('menu');
-      }
-    }
-  }
-
-  private updateInitials(): void {
-    const inp = this.input;
-    const i = this.initialsPos;
-    const cur = LETTERS_IN.indexOf(this.initials[i]);
-    if (inp.justPressed('up')) { this.initials[i] = LETTERS_IN[(cur + 1) % LETTERS_IN.length]; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.initials[i] = LETTERS_IN[(cur + LETTERS_IN.length - 1) % LETTERS_IN.length]; this.audio.blip(); }
-    if (inp.justPressed('left') || inp.justPressed('back')) { this.initialsPos = Math.max(0, i - 1); this.audio.blip(); }
-    if (inp.justPressed('right')) { this.initialsPos = Math.min(2, i + 1); this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (i < 2) {
-        this.initialsPos = i + 1;
-      } else {
-        const entry: HighScore = { initials: this.initials.join(''), score: this.score, course: this.coursesDone * LETTERS + this.letter + 1, date: new Date().toISOString() };
-        this.highScores = insertHighScore(this.highScores, entry);
-        saveHighScores(this.highScores);
-        this.setState('ranking');
-      }
-    }
   }
 }

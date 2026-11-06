@@ -6,6 +6,8 @@ export interface HighScore {
   initials: string;
   score: number;
   wave: number;
+  /** game variation, e.g. 'J17 B' (empty for entries saved before it existed) */
+  mode: string;
   date: string;
 }
 
@@ -14,15 +16,15 @@ export interface Settings {
   sound: boolean;
 }
 
-const scores = createScoreStore<HighScore>(
+export const scores = createScoreStore<HighScore>(
   'missile.highscores',
   (a, b) => b.score - a.score,
   (e) => (typeof e.score === 'number' && typeof e.initials === 'string'
-    ? { initials: initialsString(e.initials), score: e.score, wave: typeof e.wave === 'number' ? e.wave : 0, date: String(e.date ?? '') }
+    ? { initials: initialsString(e.initials), score: e.score, wave: typeof e.wave === 'number' ? e.wave : 0, mode: typeof e.mode === 'string' ? e.mode : '', date: String(e.date ?? '') }
     : null),
 );
 
-const settings = createSettingsStore<Settings>(
+export const settings = createSettingsStore<Settings>(
   'missile.settings',
   { crt: false, sound: true },
   (p) => ({ crt: !!p.crt, sound: p.sound !== false }),
@@ -30,7 +32,7 @@ const settings = createSettingsStore<Settings>(
 
 export function qualifies(list: HighScore[], score: number): boolean {
   if (score <= 0) return false;
-  return scores.beatsTable(list, { initials: '', score, wave: 0, date: '' });
+  return scores.beatsTable(list, { initials: '', score, wave: 0, mode: '', date: '' });
 }
 
 export const insertHighScore = scores.insert;

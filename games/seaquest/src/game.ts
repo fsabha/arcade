@@ -1,18 +1,18 @@
 import {
   W, PLAYER_W, PLAYER_H, PLAYER_VX, PLAYER_VY, PLAYER_MIN_Y, PLAYER_MAX_Y, DIVE_Y, TORPEDO_V, TORPEDO_W, TORPEDO_H,
-  OXYGEN_MAX, OXYGEN_TIME, OXYGEN_REFILL_TIME, OXYGEN_LOW, MAX_DIVERS, DYING_TIME, BANNER_TIME,
+  OXYGEN_MAX, OXYGEN_TIME, OXYGEN_REFILL_TIME, OXYGEN_LOW, MAX_DIVERS, DYING_TIME, BANNER_TIME, CONTINUE_TIME,
 } from './config';
 import { Sea, Enemy } from './sea';
 import { aabb, shrink, Box } from './collision';
 import { ScoreKeeper, enemyValue, rescueBonus } from './scoring';
-import type { Input } from '@arcade/shared';
+import { Shell, PAUSE_ITEMS } from '@arcade/shared';
+import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import {
-  loadHighScores, saveHighScores, qualifies, insertHighScore,
-  loadSettings, saveSettings, HighScore, Settings,
-} from './storage';
+import { scores, settings, HighScore, Settings } from './storage';
 
-export type State = 'menu' | 'howto' | 'ranking' | 'playing' | 'paused' | 'dying' | 'gameover' | 'initials';
+export type State = ShellState;
+/** Inside `playing`: the sub is alive, exploding, or waiting for the player before the next life. */
+export type Phase = 'alive' | 'dying' | 'continue';
 
 export interface Explosion {
   x: number;
@@ -23,11 +23,12 @@ export interface Explosion {
 }
 
 export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
-export const PAUSE_ITEMS = ['CONTINUAR', 'SAIR PARA O MENU'] as const;
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+export { PAUSE_ITEMS };
 
 export class Game {
-  state: State = 'menu';
+  shell: Shell<HighScore, Settings>;
+  phase: Phase = 'alive';
+  phaseTime = 0;
   sea = new Sea(1);
   player: Box = { x: W / 2 - PLAYER_W / 2, y: PLAYER_MIN_Y, w: PLAYER_W, h: PLAYER_H };
   facing: 1 | -1 = 1;
@@ -47,22 +48,33 @@ export class Game {
   bannerT = 0;
   bannerText = '';
   time = 0;
-  stateTime = 0;
   private lowTimer = 0;
   private refillTimer = 0;
 
-  menuIndex = 0;
-  pauseIndex = 0;
-  initials = ['A', 'A', 'A'];
-  initialsPos = 0;
-  qualifiesForRank = false;
-
-  settings: Settings = loadSettings();
-  highScores: HighScore[] = loadHighScores();
-
   constructor(private input: Input, private audio: SoundFx) {
-    this.audio.setMuted(!this.settings.sound);
+    this.shell = new Shell<HighScore, Settings>({
+      items: MENU_ITEMS,
+      scores,
+      settings,
+      audio,
+      onStart: () => this.startGame(),
+      onStop: () => audio.humStop(),
+      onResume: () => audio.humStart(),
+      entry: (initials) => ({ initials, score: this.score.score, level: this.level, date: new Date().toISOString() }),
+      probe: () => ({ initials: '', score: this.score.score, level: this.level, date: '' }),
+    });
   }
+
+  // the shell owns the screens around the game; these keep the renderer and tests simple
+  get state(): State { return this.shell.state; }
+  get stateTime(): number { return this.shell.stateTime; }
+  get menuIndex(): number { return this.shell.menuIndex; }
+  get pauseIndex(): number { return this.shell.pauseIndex; }
+  get initials(): string[] { return this.shell.initials; }
+  get initialsPos(): number { return this.shell.initialsPos; }
+  get qualifiesForRank(): boolean { return this.shell.qualifiesForRank; }
+  get settings(): Settings { return this.shell.settings; }
+  get highScores(): HighScore[] { return this.shell.highScores; }
 
   // ---------- state transitions ----------
 
@@ -87,13 +99,10 @@ export class Game {
     this.atSurface = true;
     this.refilling = false;
     this.lowTimer = 0;
-    this.setState('playing');
+    this.phase = 'alive';
+    this.phaseTime = 0;
+    this.shell.setState('playing');
     this.audio.humStart();
-  }
-
-  private setState(s: State): void {
-    this.state = s;
-    this.stateTime = 0;
   }
 
   private showBanner(text: string): void {
@@ -101,89 +110,21 @@ export class Game {
     this.bannerT = BANNER_TIME;
   }
 
-  toggleCrt(): void {
-    this.settings = { ...this.settings, crt: !this.settings.crt };
-    saveSettings(this.settings);
-  }
-
-  toggleSound(): void {
-    this.settings = { ...this.settings, sound: !this.settings.sound };
-    saveSettings(this.settings);
-    this.audio.setMuted(!this.settings.sound);
-  }
-
-  private goMenu(): void {
-    this.audio.humStop();
-    this.setState('menu');
-  }
-
   // ---------- update ----------
 
   update(dt: number): void {
     this.time += dt;
-    this.stateTime += dt;
-    const inp = this.input;
-    if (inp.justPressed('mute')) this.toggleSound();
-    if (inp.justPressed('crt')) this.toggleCrt();
-
-    switch (this.state) {
-      case 'menu': this.updateMenu(); break;
-      case 'howto':
-      case 'ranking':
-        if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
-          this.audio.blip();
-          this.setState('menu');
-        }
-        break;
-      case 'playing': this.updatePlaying(dt); break;
-      case 'paused': this.updatePaused(); break;
-      case 'dying': this.updateDying(dt); break;
-      case 'gameover': this.updateGameOver(); break;
-      case 'initials': this.updateInitials(); break;
-    }
-  }
-
-  private updateMenu(): void {
-    const inp = this.input;
-    const n = MENU_ITEMS.length;
-    if (inp.justPressed('up')) { this.menuIndex = (this.menuIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.menuIndex = (this.menuIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      switch (this.menuIndex) {
-        case 0: this.startGame(); break;
-        case 1: this.setState('howto'); break;
-        case 2: this.highScores = loadHighScores(); this.setState('ranking'); break;
-        case 3: this.toggleCrt(); break;
-        case 4: this.toggleSound(); break;
-      }
-    }
-  }
-
-  private updatePaused(): void {
-    const inp = this.input;
-    const n = PAUSE_ITEMS.length;
-    if (inp.justPressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('pause')) { this.resume(); return; }
-    if (inp.justPressed('back')) { this.goMenu(); return; }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      if (this.pauseIndex === 0) this.resume();
-      else this.goMenu();
-    }
-  }
-
-  private resume(): void {
-    this.setState('playing');
-    this.audio.humStart();
+    if (!this.shell.update(dt, this.input)) return;
+    this.updatePlaying(dt);
   }
 
   private updatePlaying(dt: number): void {
+    this.phaseTime += dt;
+    if (this.phase === 'dying') { this.updateDying(dt); return; }
+    if (this.phase === 'continue') { this.updateContinue(dt); return; }
     const inp = this.input;
     if (inp.justPressed('pause')) {
-      this.pauseIndex = 0;
-      this.audio.humStop();
-      this.setState('paused');
+      this.shell.pause();
       return;
     }
     const p = this.player;
@@ -315,68 +256,37 @@ export class Game {
     this.explosions = this.explosions.filter((ex) => ex.t < ex.dur);
   }
 
-  private die(reason: string): void {
+  die(reason: string): void {
+    if (this.phase !== 'alive') return;
     this.deathReason = reason;
     this.explosions.push({ x: this.player.x + this.player.w / 2, y: this.player.y + this.player.h / 2, t: 0, dur: 1.0, big: true });
     this.audio.explode(true);
     this.audio.humStop();
     this.torpedo = null;
-    this.setState('dying');
+    this.phase = 'dying';
+    this.phaseTime = 0;
   }
 
   private updateDying(dt: number): void {
     this.updateExplosions(dt);
     this.sea.update(dt, this.level, -1000);
-    if (this.stateTime < DYING_TIME) return;
+    if (this.phaseTime < DYING_TIME) return;
     this.score.lives--;
     if (this.score.lives <= 0) {
-      this.audio.gameOver();
-      this.highScores = loadHighScores();
-      this.qualifiesForRank = qualifies(this.highScores, this.score.score);
-      this.setState('gameover');
+      this.shell.endGame();
     } else {
+      // a breather: the next sub only launches when the player is ready
+      this.phase = 'continue';
+      this.phaseTime = 0;
+    }
+  }
+
+  private updateContinue(dt: number): void {
+    this.updateExplosions(dt);
+    const inp = this.input;
+    if (inp.justPressed('fire') || inp.justPressed('confirm') || this.phaseTime >= CONTINUE_TIME) {
+      this.audio.blip();
       this.respawn();
-    }
-  }
-
-  private updateGameOver(): void {
-    const inp = this.input;
-    if (this.stateTime < 1.5) return;
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (this.qualifiesForRank) {
-        this.initials = ['A', 'A', 'A'];
-        this.initialsPos = 0;
-        this.setState('initials');
-      } else {
-        this.setState('menu');
-      }
-    }
-  }
-
-  private updateInitials(): void {
-    const inp = this.input;
-    const i = this.initialsPos;
-    const cur = LETTERS.indexOf(this.initials[i]);
-    if (inp.justPressed('up')) { this.initials[i] = LETTERS[(cur + 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.initials[i] = LETTERS[(cur + LETTERS.length - 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('left') || inp.justPressed('back')) { this.initialsPos = Math.max(0, i - 1); this.audio.blip(); }
-    if (inp.justPressed('right')) { this.initialsPos = Math.min(2, i + 1); this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (i < 2) {
-        this.initialsPos = i + 1;
-      } else {
-        const entry: HighScore = {
-          initials: this.initials.join(''),
-          score: this.score.score,
-          level: this.level,
-          date: new Date().toISOString(),
-        };
-        this.highScores = insertHighScore(this.highScores, entry);
-        saveHighScores(this.highScores);
-        this.setState('ranking');
-      }
     }
   }
 }

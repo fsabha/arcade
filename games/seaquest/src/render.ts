@@ -1,11 +1,13 @@
 import {
   W, H, HUD_TOP, SURFACE_Y, FLOOR_Y, HUD_BOTTOM, OXYGEN_MAX, OXYGEN_LOW, MAX_DIVERS, MAX_LIVES_DISPLAY,
 } from './config';
-import { Game, MENU_ITEMS, PAUSE_ITEMS, Explosion } from './game';
+import { Game, MENU_ITEMS, Explosion } from './game';
 import { Sea } from './sea';
 import { sprite, sharkColor } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
-import { Rng } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen,
+  drawInitialsScreen, Rng,
+} from '@arcade/shared';
 
 const C = {
   sky: '#84c4f4',
@@ -68,11 +70,16 @@ export class Renderer {
     this.drawPlayer(g);
     for (const ex of g.explosions) this.drawExplosion(ex);
     this.drawHud(g);
-    if (g.bannerT > 0 && g.state === 'playing') this.drawBanner(g);
+    if (g.bannerT > 0 && this.alive(g)) this.drawBanner(g);
 
-    if (g.state === 'paused') this.drawPaused(g);
+    if (g.state === 'playing' && g.phase === 'continue') this.drawContinue(g);
+    else if (g.state === 'paused') this.drawPaused(g);
     else if (g.state === 'gameover') this.drawGameOver(g);
     else if (g.state === 'initials') this.drawInitials(g);
+  }
+
+  private alive(g: Game): boolean {
+    return g.state === 'playing' && g.phase === 'alive';
   }
 
   // ---------- world ----------
@@ -150,7 +157,7 @@ export class Renderer {
   }
 
   private drawPlayer(g: Game): void {
-    if (g.state !== 'playing' && g.state !== 'paused') return;
+    if (!this.alive(g) && g.state !== 'paused') return;
     const ctx = this.ctx;
     const p = g.player;
     const frame = g.moving ? Math.floor(g.time * 12) % 2 : 0;
@@ -256,7 +263,7 @@ export class Renderer {
     if (g.divers >= MAX_DIVERS && blink) drawText(ctx, 'SUBA!', 132, y0 + 20, C.green, 1);
 
     if (g.refilling && blink) drawText(ctx, 'ABASTECENDO', 210, y0 + 6, C.green, 1);
-    else if (g.atSurface && g.state === 'playing') drawText(ctx, 'SUPERFICIE', 210, y0 + 6, C.dim, 1);
+    else if (g.atSurface && this.alive(g)) drawText(ctx, 'SUPERFICIE', 210, y0 + 6, C.dim, 1);
     drawText(ctx, `${g.sea.enemies.length} INIMIGOS`, 210, y0 + 20, C.dim, 1);
   }
 
@@ -286,136 +293,58 @@ export class Renderer {
     ctx.fillRect(x + w - 1, y, 1, h);
   }
 
+  /** Between lives: the next sub waits for the player (or a few seconds). */
+  private drawContinue(g: Game): void {
+    this.dim(0.5);
+    drawTextCentered(this.ctx, 'APERTE PARA CONTINUAR', W / 2, H / 2 - 4, C.gold, 1);
+    drawTextCentered(this.ctx, `${Math.max(0, g.score.lives)} ${g.score.lives === 1 ? 'VIDA' : 'VIDAS'}`, W / 2, H / 2 + 10, C.dim, 1);
+  }
+
+  // ---------- screens (shared look, game-specific words; the HUD strips stay visible) ----------
+
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    const blink = Math.floor(g.time * 2) % 2 === 0;
     const bob = Math.round(Math.sin(g.time * 2) * 2);
-
-    drawTextCentered(ctx, 'SEAQUEST', W / 2 + 2, 34 + 2, '#5a3a00', 3);
-    drawTextCentered(ctx, 'SEAQUEST', W / 2, 34, C.gold, 3);
-    drawTextCentered(ctx, 'EDICAO BROWSER', W / 2, 56, C.dim, 1);
-    ctx.drawImage(sprite('sub0'), W / 2 - 24, 66 + bob, 48, 27);
-
-    const startY = 104;
-    MENU_ITEMS.forEach((item, i) => {
-      let label: string = item;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      const y = startY + i * 16;
-      if (sel) {
-        ctx.fillStyle = 'rgba(255,225,74,0.12)';
-        ctx.fillRect(80, y - 4, W - 160, 14);
-        if (blink) drawText(ctx, '>', 88, y, C.gold, 1);
-      }
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text, 1);
+    this.ctx.drawImage(sprite('sub0'), W / 2 - 24, 66 + bob, 48, 27);
+    drawMenuScreen(this.ctx, W, HUD_BOTTOM, {
+      title: 'SEAQUEST', titleColor: C.gold, titleY: 34, subtitle: 'EDICAO BROWSER',
+      labels: MENU_ITEMS.map((item) => g.shell.label(item)),
+      selected: g.menuIndex, time: g.time, itemsY: 104, itemGap: 16,
+      footer: ['HOMENAGEM AO CLASSICO DA ATARI 2600', '2026'], footerY: 186,
     });
-
-    drawTextCentered(ctx, 'HOMENAGEM AO CLASSICO DA ATARI 2600', W / 2, 188, C.dim, 1);
-    drawTextCentered(ctx, '2026', W / 2, 198, C.dim, 1);
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    this.panel(6, HUD_TOP + 2, W - 12, HUD_BOTTOM - HUD_TOP - 4);
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, HUD_TOP + 10, C.gold, 2);
-    const left = [
-      'RESGATE MERGULHADORES: PASSE',
-      'POR CIMA DELES. MAXIMO DE 6.',
-      '',
-      'ATIRE EM TUBAROES E SUBMARINOS',
-      'INIMIGOS. NAO ATIRE NOS',
-      'MERGULHADORES!',
-      '',
-      'O OXIGENIO ACABA. SUBA A',
-      'SUPERFICIE PARA ENCHER.',
-      'SUBIR SEM MERGULHADOR',
-      'CUSTA UMA VIDA.',
-    ];
-    left.forEach((l, i) => drawText(ctx, l, 14, HUD_TOP + 30 + i * 8, C.text, 1));
-    const right = [
-      'COM 6 MERGULHADORES:',
-      'BONUS E PROXIMO NIVEL.',
+    drawHowToScreen(this.ctx, W, HUD_BOTTOM, [
+      'RESGATE MERGULHADORES: PASSE POR CIMA DELES. MAXIMO DE 6.',
+      'ATIRE EM TUBAROES E SUBMARINOS INIMIGOS.',
+      'NAO ATIRE NOS MERGULHADORES!',
+      'O OXIGENIO ACABA. SUBA A SUPERFICIE PARA ENCHER.',
+      'SUBIR SEM MERGULHADOR CUSTA UMA VIDA.',
+      'COM 6 MERGULHADORES: BONUS E PROXIMO NIVEL.',
       'COM 1 A 5: UM DESEMBARCA.',
-      '',
-      'CUIDADO COM O SUBMARINO',
-      'DE PATRULHA NA SUPERFICIE.',
-      '',
-      'INIMIGO: 20 PTS NO NIVEL 1,',
-      '+10 POR NIVEL (MAX 90).',
-      '',
-      '3 VIDAS. VIDA EXTRA A',
-      'CADA 10000 PONTOS.',
-    ];
-    right.forEach((l, i) => drawText(ctx, l, 176, HUD_TOP + 30 + i * 8, i < 3 ? C.gold : C.dim, 1));
+      'CUIDADO COM O SUBMARINO DE PATRULHA NA SUPERFICIE.',
+      'INIMIGO: 20 PTS NO NIVEL 1, +10 POR NIVEL (MAX 90).',
+      '3 VIDAS. VIDA EXTRA A CADA 10000 PONTOS.',
+    ]);
   }
 
   private drawRanking(g: Game, fromMenu: boolean): void {
-    const ctx = this.ctx;
-    this.panel(6, HUD_TOP + 2, W - 12, HUD_BOTTOM - HUD_TOP - 4);
-    drawTextCentered(ctx, 'RANKING', W / 2, HUD_TOP + 10, C.gold, 2);
-    if (g.highScores.length === 0) {
-      drawTextCentered(ctx, 'SEM RECORDES AINDA', W / 2, 120, C.dim, 1);
-    } else {
-      drawText(ctx, 'POS  NOME  PONTOS  NIVEL', 86, HUD_TOP + 30, C.dim, 1);
-      g.highScores.forEach((h, i) => {
-        const y = HUD_TOP + 42 + i * 12;
-        const isNew = !fromMenu && h.initials === g.initials.join('') && h.score === g.score.score;
-        drawText(ctx, `${String(i + 1).padStart(2, ' ')}.  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}    ${String(h.level).padStart(2, '0')}`, 86, y, isNew ? C.gold : C.text, 1);
-      });
-    }
-    drawTextCentered(ctx, 'ENTER OU FOGO: VOLTAR', W / 2, HUD_BOTTOM - 14, C.dim, 1);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}  NIVEL ${String(h.level).padStart(2, '0')}`);
+    drawRankingScreen(this.ctx, W, HUD_BOTTOM, rows, fromMenu);
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(80, 70, W - 160, 84);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 80, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      const sel = i === g.pauseIndex;
-      const y = 106 + i * 14;
-      if (sel) drawText(ctx, '>', W / 2 - textWidth(item) / 2 - 10, y, C.gold, 1);
-      drawTextCentered(ctx, item, W / 2, y, sel ? C.gold : C.text, 1);
-    });
-    drawTextCentered(ctx, 'P OU ESC: CONTINUAR', W / 2, 140, C.dim, 1);
+    drawPausedScreen(this.ctx, W, H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(60, 60, W - 120, 104);
-    drawTextCentered(ctx, 'FIM DE JOGO', W / 2, 72, C.red, 2);
-    drawTextCentered(ctx, g.deathReason, W / 2, 92, C.dim, 1);
-    drawTextCentered(ctx, `PONTOS ${String(g.score.score).padStart(6, '0')}`, W / 2, 108, C.gold, 1);
-    drawTextCentered(ctx, `NIVEL ${g.level}`, W / 2, 118, C.text, 1);
-    if (g.stateTime >= 1.5 && Math.floor(g.time * 2) % 2 === 0) {
-      drawTextCentered(ctx, g.qualifiesForRank ? 'NOVO RECORDE! ENTER' : 'ENTER OU FOGO: MENU', W / 2, 142, C.text, 1);
-    }
+    drawGameOverScreen(this.ctx, W, H, {
+      lines: [`PONTOS ${String(g.score.score).padStart(6, '0')}`, `NIVEL ${g.level}`, g.deathReason],
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    this.dim(0.6);
-    this.panel(50, 40, W - 100, 140);
-    drawTextCentered(ctx, 'NOVO RECORDE!', W / 2, 50, C.gold, 2);
-    drawTextCentered(ctx, `PONTOS ${String(g.score.score).padStart(6, '0')}`, W / 2, 68, C.text, 1);
-    drawTextCentered(ctx, 'DIGITE SUAS INICIAIS', W / 2, 80, C.dim, 1);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (cw * 3 - scale) / 2;
-    const y = 96;
-    const blink = Math.floor(g.time * 3) % 2 === 0;
-    g.initials.forEach((ch, i) => {
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x0 + i * cw, y, sel ? C.gold : C.text, scale);
-      if (sel && blink) {
-        ctx.fillStyle = C.gold;
-        ctx.fillRect(x0 + i * cw, y + 5 * scale + 2, 3 * scale, 2);
-      }
-    });
-    drawTextCentered(ctx, 'CIMA/BAIXO: LETRA', W / 2, 132, C.dim, 1);
-    drawTextCentered(ctx, 'ESQ/DIR: POSICAO', W / 2, 142, C.dim, 1);
-    drawTextCentered(ctx, 'ENTER OU FOGO: CONFIRMAR', W / 2, 158, C.text, 1);
+    drawInitialsScreen(this.ctx, W, H, `PONTOS ${String(g.score.score).padStart(6, '0')}`, g.initials, g.initialsPos, g.time);
   }
 }

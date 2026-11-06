@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { qualifies, insertHighScore, MAX_HIGH_SCORES, HighScore } from '../src/storage';
 
-const hs = (score: number, initials = 'AAA'): HighScore => ({ initials, score, level: 1, date: `d${score}` });
+const hs = (score: number, initials = 'AAA'): HighScore => ({ initials, score, level: 1, mode: 'JOGO 1 B', date: `d${score}` });
 
 describe('high scores', () => {
   it('qualifies when the table is not full or beats the last entry', () => {

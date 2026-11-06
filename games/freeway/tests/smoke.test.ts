@@ -46,7 +46,7 @@ describe('smoke', () => {
     input.held.add('up');
     const frames = Math.ceil((MATCH_TIME + 1) * 60);
     for (let i = 0; i < frames && game.state === 'playing'; i++) step();
-    expect(game.state).toBe('timeup');
+    expect(game.state).toBe('gameover');
     expect(game.timeLeft).toBe(0);
     expect(game.traffic.frozen).toBe(true);
     expect(game.crossings + game.hits).toBeGreaterThan(0);

@@ -2,10 +2,13 @@ import {
   W, H, HUD_H, GROUND_Y, BASE_X, CITY_X, CITY_W, CITY_H, PX, ABMS_LOADED, POINTS, BONUS_CITY_EVERY, ABMS_PER_WAVE,
   MAX_ABMS_FLYING, CRUISE_FROM_WAVE, WAVE_START_TIME,
 } from './config';
-import { Game, MENU_ITEMS, PAUSE_ITEMS } from './game';
+import { Game, MENU_ITEMS } from './game';
 import { Field, explosionRadius } from './field';
 import { describeGame } from './games';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, textWidth, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen,
+  drawGameOverScreen, drawInitialsScreen,
+} from '@arcade/shared';
 
 // the cartridge recolours the sky every wave
 const SKIES = ['#101828', '#201030', '#102018', '#301810', '#181030', '#102830'];
@@ -183,32 +186,23 @@ export class Renderer {
     }
   }
 
-  // ---------- screens ----------
+  // ---------- screens (shared look, game-specific words) ----------
 
   private drawMenu(g: Game): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'MISSILE COMMAND', W / 2, 30, '#ff7050', 3);
-    drawTextCentered(ctx, 'DEFENDA AS SEIS CIDADES DE ZARDON', W / 2, 52, C.dim);
-    MENU_ITEMS.forEach((item, i) => {
-      const y = 74 + i * 12;
-      let label: string = item;
-      if (item === 'JOGO') label = `JOGO ${g.gameNumber}: ${describeGame(g.spec)}`;
-      if (item === 'DIFICULDADE') label = `DIFICULDADE: ${g.difficulty === 'A' ? 'A (ABM LENTO)' : 'B (NORMAL)'}`;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      if (sel && Math.floor(g.time * 4) % 2 === 0) drawText(ctx, '>', W / 2 - textWidth(label) / 2 - 10, y, C.gold);
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.gold : C.text);
+    const labels = MENU_ITEMS.map((item) => {
+      if (item === 'JOGO') return `JOGO ${g.gameNumber}: ${describeGame(g.spec)}`;
+      if (item === 'DIFICULDADE') return `DIFICULDADE: ${g.difficulty === 'A' ? 'A (ABM LENTO)' : 'B (NORMAL)'}`;
+      return g.shell.label(item);
     });
-    drawTextCentered(ctx, 'SETAS MOVEM A MIRA  ESPACO DISPARA', W / 2, 178, C.dim);
-    drawTextCentered(ctx, 'TOQUE OU CLIQUE NO CEU TAMBEM DISPARA', W / 2, 190, C.dim);
-    drawTextCentered(ctx, 'ATARI 1981  EDICAO BROWSER', W / 2, 202, C.dim);
+    drawMenuScreen(this.ctx, W, H, {
+      title: 'MISSILE COMMAND', titleColor: '#ff7050', titleY: 30, subtitle: 'DEFENDA AS SEIS CIDADES DE ZARDON',
+      labels, selected: g.menuIndex, time: g.time, itemsY: 74,
+      footer: ['SETAS MOVEM A MIRA  ESPACO DISPARA', 'TOQUE OU CLIQUE NO CEU TAMBEM DISPARA', 'ATARI 1981  EDICAO BROWSER'], footerY: 178,
+    });
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, 26, C.gold, 2);
-    const lines = [
+    drawHowToScreen(this.ctx, W, H, [
       'MISSEIS INIMIGOS CAEM SOBRE AS CIDADES E A BASE',
       'MOVA A MIRA E DISPARE: O ABM EXPLODE NA MIRA',
       `ATE ${MAX_ABMS_FLYING} ABMS NO AR  ${ABMS_PER_WAVE} POR ONDA (${ABMS_LOADED} NA BASE)`,
@@ -219,60 +213,28 @@ export class Renderer {
       `CRUZEIROS A PARTIR DA ONDA ${CRUISE_FROM_WAVE}: ESPERTOS DESVIAM`,
       'BASE ATINGIDA PERDE OS ABMS CARREGADOS',
       'FIM DE JOGO QUANDO AS SEIS CIDADES CAEM',
-    ];
-    lines.forEach((l, i) => drawTextCentered(ctx, l, W / 2, 50 + i * 12, C.text));
-    drawTextCentered(ctx, 'ENTER VOLTA', W / 2, 200, C.dim);
+    ]);
   }
 
   private drawRanking(g: Game, menu: boolean): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'RANKING', W / 2, 26, C.gold, 2);
-    if (g.highScores.length === 0) drawTextCentered(ctx, 'NENHUM REGISTRO AINDA', W / 2, 100, C.dim);
-    g.highScores.forEach((h, i) => {
-      const y = 52 + i * 12;
-      const line = `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ONDA ${String(h.wave).padStart(2, ' ')}`;
-      drawTextCentered(ctx, line, W / 2, y, i === 0 ? C.gold : C.text);
-    });
-    drawTextCentered(ctx, menu ? 'ENTER VOLTA' : 'ENTER CONTINUA', W / 2, 200, C.dim);
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, ' ')}  ONDA ${String(h.wave).padStart(2, ' ')}  ${h.mode.padEnd(5, ' ')}`);
+    drawRankingScreen(this.ctx, W, H, rows, menu);
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 80, C.gold, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      drawTextCentered(ctx, item, W / 2, 116 + i * 14, i === g.pauseIndex ? C.gold : C.text);
-    });
+    drawPausedScreen(this.ctx, W, H, g.pauseIndex);
   }
 
   private drawGameOver(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 60, W, 110);
     // the cartridge ends on a big flashing THE END
-    drawTextCentered(ctx, 'FIM', W / 2, 70, FLICKER[Math.floor(g.time * 8) % FLICKER.length], 4);
-    drawTextCentered(ctx, `PONTOS ${g.score}`, W / 2, 104, C.text);
-    drawTextCentered(ctx, `ONDA ${g.wave}  JOGO ${g.gameNumber}`, W / 2, 116, C.text);
-    if (g.stateTime >= 2) drawTextCentered(ctx, g.qualifiesForRank ? 'ENTER PARA REGISTRAR' : 'ENTER PARA CONTINUAR', W / 2, 150, C.gold);
+    drawGameOverScreen(this.ctx, W, H, {
+      title: 'FIM', titleColor: FLICKER[Math.floor(g.time * 8) % FLICKER.length],
+      lines: [`PONTOS ${g.score}`, `ONDA ${g.wave}  JOGO ${g.gameNumber}  DIFICULDADE ${g.difficulty}`],
+      qualifies: g.qualifiesForRank, stateTime: g.stateTime,
+    });
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 0, W, H);
-    drawTextCentered(ctx, 'NOVO RECORDE', W / 2, 50, C.gold, 2);
-    drawTextCentered(ctx, `${g.score} PONTOS`, W / 2, 76, C.text);
-    drawTextCentered(ctx, 'SUAS INICIAIS', W / 2, 96, C.dim);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (3 * cw + 2 * 6) / 2;
-    g.initials.forEach((ch, i) => {
-      const x = x0 + i * (cw + 6);
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x, 112, sel ? C.gold : C.text, scale);
-      if (sel && Math.floor(g.time * 4) % 2 === 0) { ctx.fillStyle = C.gold; ctx.fillRect(x, 112 + 5 * scale + 2, 3 * scale, 2); }
-    });
-    drawTextCentered(ctx, 'CIMA BAIXO MUDAM  ENTER CONFIRMA', W / 2, 160, C.dim);
+    drawInitialsScreen(this.ctx, W, H, `${g.score} PONTOS`, g.initials, g.initialsPos, g.time);
   }
 }

@@ -1,8 +1,11 @@
 import { W, H, TILE, COLS, ROWS, MAZE_Y, FRUIT_POS, POINTS } from './config';
 import { Maze, MAP, tileCenter } from './maze';
-import { Game, Ghost, MENU_ITEMS, PAUSE_ITEMS } from './game';
+import { Game, Ghost, MENU_ITEMS } from './game';
 import { fruitSprite, ghostSprite, drawPac, pacSprite, GHOST_COLORS } from './sprites';
-import { drawText, drawTextCentered, textWidth } from '@arcade/shared';
+import {
+  drawText, drawTextCentered, textWidth, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen,
+  drawInitialsScreen,
+} from '@arcade/shared';
 import { GHOSTS, GhostName } from './ghostai';
 
 const C = {
@@ -125,32 +128,32 @@ export class Renderer {
       else this.drawRanking(g, true);
       return;
     }
-    if (g.state === 'intermission') {
+    if (g.phase === 'intermission') {
       this.drawHeader(g);
       this.drawIntermission(g);
       return;
     }
 
     this.drawHeader(g);
-    const flash = g.state === 'levelclear' && g.stateTime > 0.6 && Math.floor((g.stateTime - 0.6) / 0.25) % 2 === 1;
+    const flash = g.phase === 'levelclear' && g.phaseTime > 0.6 && Math.floor((g.phaseTime - 0.6) / 0.25) % 2 === 1;
     ctx.drawImage(flash ? this.wallsWhite : this.wallsBlue, 0, MAZE_Y);
     this.drawDots(g);
     this.drawFooter(g);
 
-    if (g.state === 'ready') {
-      if (g.firstReady && g.stateTime < 2.2) drawTextCentered(ctx, 'PLAYER ONE', W / 2, MAZE_Y + 11 * TILE + 1, C.cyan, 1);
+    if (g.phase === 'ready') {
+      if (g.firstReady && g.phaseTime < 2.2) drawTextCentered(ctx, 'PLAYER ONE', W / 2, MAZE_Y + 11 * TILE + 1, C.cyan, 1);
       drawTextCentered(ctx, 'READY!', W / 2, MAZE_Y + 17 * TILE + 1, C.yellow, 1);
     }
 
     if (g.fruit) ctx.drawImage(fruitSprite(g.fruit.kind), tileCenter(FRUIT_POS.x) - 6, MAZE_Y + tileCenter(FRUIT_POS.y) - 6);
     if (g.fruitScoreT > 0) drawTextCentered(ctx, String(g.fruitScore), tileCenter(FRUIT_POS.x), MAZE_Y + tileCenter(FRUIT_POS.y) - 2, C.pink, 1);
 
-    if (g.state !== 'levelclear' || g.stateTime < 0.6) {
+    if (g.phase !== 'levelclear' || g.phaseTime < 0.6) {
       for (const gh of g.ghosts) this.drawGhost(g, gh);
     }
     this.drawPacman(g);
 
-    if (g.state === 'ghosteat' && g.eatenGhost) {
+    if (g.phase === 'ghosteat' && g.eatenGhost) {
       drawTextCentered(ctx, String(g.eatenPoints), g.eatenGhost.x, MAZE_Y + g.eatenGhost.y - 2, C.cyan, 1);
     }
     if (g.state === 'gameover') drawTextCentered(ctx, 'GAME  OVER', W / 2, MAZE_Y + 17 * TILE + 1, C.red, 1);
@@ -175,7 +178,7 @@ export class Renderer {
   private drawDots(g: Game): void {
     const ctx = this.ctx;
     ctx.fillStyle = C.dot;
-    const pelletOn = Math.floor(g.time * 5) % 2 === 0 || g.state !== 'playing';
+    const pelletOn = Math.floor(g.time * 5) % 2 === 0 || g.state !== 'playing' || g.phase !== 'playing';
     for (let r = 0; r < ROWS; r++) {
       for (let c = 0; c < COLS; c++) {
         const v = g.maze.dotAt(c, r);
@@ -199,8 +202,8 @@ export class Renderer {
   }
 
   private drawGhost(g: Game, gh: Ghost): void {
-    if (g.state === 'dying' && g.stateTime > 0.5) return;
-    if (g.state === 'ghosteat' && gh === g.eatenGhost) return;
+    if (g.phase === 'dying' && g.phaseTime > 0.5) return;
+    if (g.phase === 'ghosteat' && gh === g.eatenGhost) return;
     const frame = (Math.floor(g.time * 8) % 2) as 0 | 1;
     let look: 'normal' | 'fright' | 'flash' | 'eyes' = 'normal';
     if (gh.state === 'eyes' || gh.state === 'entering') look = 'eyes';
@@ -211,11 +214,11 @@ export class Renderer {
 
   private drawPacman(g: Game): void {
     const ctx = this.ctx;
-    if (g.state === 'ghosteat' || g.state === 'gameover') return;
+    if (g.phase === 'ghosteat' || g.state === 'gameover') return;
     const p = g.pac;
     const cx = Math.round(p.x), cy = Math.round(MAZE_Y + p.y);
-    if (g.state === 'dying') {
-      const t = g.stateTime;
+    if (g.phase === 'dying') {
+      const t = g.phaseTime;
       if (t < 0.5) { drawPac(ctx, cx, cy, p.dir, 0.5); return; }
       const k = Math.min(1, (t - 0.5) / 1.2);
       if (k < 1) {
@@ -233,7 +236,7 @@ export class Renderer {
       }
       return;
     }
-    if (g.state === 'levelclear' || g.state === 'ready') { drawPac(ctx, cx, cy, p.dir, 0); return; }
+    if (g.phase === 'levelclear' || g.phase === 'ready') { drawPac(ctx, cx, cy, p.dir, 0); return; }
     const phase = g.pacMoving ? g.pacAnim : 0;
     const open = phase < 0.25 ? phase * 4 : phase < 0.5 ? (0.5 - phase) * 4 : phase < 0.75 ? (phase - 0.5) * 4 : (1 - phase) * 4;
     drawPac(ctx, cx, cy, p.dir, Math.max(0.05, open));
@@ -261,24 +264,17 @@ export class Renderer {
       drawText(ctx, `${POINTS.pellet} PTS`, 84, MAZE_Y + 19 * TILE + 1, C.text, 1);
     }
 
-    const blink = Math.floor(g.time * 2) % 2 === 0;
-    const startY = MAZE_Y + 22 * TILE;
-    MENU_ITEMS.forEach((item, i) => {
-      let label: string = item;
-      if (item === 'CRT') label = `CRT: ${g.settings.crt ? 'LIGADO' : 'DESLIGADO'}`;
-      if (item === 'SOM') label = `SOM: ${g.settings.sound ? 'LIGADO' : 'DESLIGADO'}`;
-      const sel = i === g.menuIndex;
-      const y = startY + i * 10;
-      if (sel && blink) drawText(ctx, '>', W / 2 - textWidth(label) / 2 - 10, y, C.yellow, 1);
-      drawTextCentered(ctx, label, W / 2, y, sel ? C.yellow : C.text, 1);
+    // the item list and footer share the arcade-wide look; the title line is the attract screen above
+    drawMenuScreen(ctx, W, H, {
+      title: '', titleColor: C.yellow,
+      labels: MENU_ITEMS.map((item) => g.shell.label(item)),
+      selected: g.menuIndex, time: g.time, itemsY: MAZE_Y + 22 * TILE, itemGap: 10,
+      footer: ['HOMENAGEM AO ARCADE DE 1980'], footerY: H - 14,
     });
-    drawTextCentered(ctx, 'HOMENAGEM AO ARCADE DE 1980', W / 2, H - 14, C.dim, 1);
   }
 
   private drawHowTo(): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'COMO JOGAR', W / 2, MAZE_Y + 8, C.yellow, 2);
-    const lines = [
+    drawHowToScreen(this.ctx, W, H, [
       'COMA TODAS AS PASTILHAS DO',
       'LABIRINTO PARA PASSAR DE FASE.',
       '',
@@ -299,80 +295,27 @@ export class Renderer {
       'RAPIDO E O TEMPO AZUL MENOR.',
       '',
       'SETAS OU WASD MOVEM. P PAUSA.',
-    ];
-    lines.forEach((l, i) => drawText(ctx, l, 12, MAZE_Y + 32 + i * 9, C.text, 1));
-    drawTextCentered(ctx, 'ENTER OU OK: VOLTAR', W / 2, H - 14, C.dim, 1);
+    ], { y0: MAZE_Y + 32, gap: 9 });
   }
 
-  private drawRanking(g: Game, fromMenu: boolean): void {
-    const ctx = this.ctx;
-    drawTextCentered(ctx, 'RANKING', W / 2, MAZE_Y + 8, C.yellow, 2);
-    if (g.highScores.length === 0) {
-      drawTextCentered(ctx, 'SEM RECORDES AINDA', W / 2, MAZE_Y + 100, C.dim, 1);
-    } else {
-      drawText(ctx, 'POS  NOME  PONTOS  FASE', 20, MAZE_Y + 36, C.dim, 1);
-      g.highScores.forEach((h, i) => {
-        const y = MAZE_Y + 50 + i * 14;
-        const isNew = !fromMenu && h.initials === g.initials.join('') && h.score === g.score;
-        drawText(ctx, `${String(i + 1).padStart(2, ' ')}.  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}   ${String(h.level).padStart(2, '0')}`, 20, y, isNew ? C.yellow : C.text, 1);
-      });
-    }
-    drawTextCentered(ctx, 'ENTER OU OK: VOLTAR', W / 2, H - 14, C.dim, 1);
-  }
-
-  private panel(x: number, y: number, w: number, h: number): void {
-    const ctx = this.ctx;
-    ctx.fillStyle = 'rgba(0,0,0,0.92)';
-    ctx.fillRect(x, y, w, h);
-    ctx.fillStyle = C.wall;
-    ctx.fillRect(x, y, w, 1);
-    ctx.fillRect(x, y + h - 1, w, 1);
-    ctx.fillRect(x, y, 1, h);
-    ctx.fillRect(x + w - 1, y, 1, h);
+  private drawRanking(g: Game, menu: boolean): void {
+    const rows = g.highScores.map((h, i) => `${String(i + 1).padStart(2, ' ')}.  ${h.initials.padEnd(3, ' ')}  ${String(h.score).padStart(6, '0')}  FASE ${String(h.level).padStart(2, '0')}`);
+    drawRankingScreen(this.ctx, W, H, rows, menu, { y0: MAZE_Y + 50 });
   }
 
   private drawPaused(g: Game): void {
-    const ctx = this.ctx;
-    this.panel(32, 100, W - 64, 76);
-    drawTextCentered(ctx, 'PAUSA', W / 2, 108, C.yellow, 2);
-    PAUSE_ITEMS.forEach((item, i) => {
-      const sel = i === g.pauseIndex;
-      const y = 132 + i * 12;
-      if (sel) drawText(ctx, '>', W / 2 - textWidth(item) / 2 - 10, y, C.yellow, 1);
-      drawTextCentered(ctx, item, W / 2, y, sel ? C.yellow : C.text, 1);
-    });
-    drawTextCentered(ctx, 'P OU ESC: CONTINUAR', W / 2, 162, C.dim, 1);
+    drawPausedScreen(this.ctx, W, H, g.pauseIndex);
   }
 
   private drawInitials(g: Game): void {
-    const ctx = this.ctx;
-    this.panel(20, 80, W - 40, 130);
-    drawTextCentered(ctx, 'NOVO RECORDE!', W / 2, 90, C.yellow, 2);
-    drawTextCentered(ctx, `PONTOS ${g.score}`, W / 2, 108, C.text, 1);
-    drawTextCentered(ctx, 'DIGITE SUAS INICIAIS', W / 2, 120, C.dim, 1);
-    const scale = 3;
-    const cw = 4 * scale;
-    const x0 = W / 2 - (cw * 3 - scale) / 2;
-    const y = 134;
-    const blink = Math.floor(g.time * 3) % 2 === 0;
-    g.initials.forEach((ch, i) => {
-      const sel = i === g.initialsPos;
-      drawText(ctx, ch, x0 + i * cw, y, sel ? C.yellow : C.text, scale);
-      if (sel && blink) {
-        ctx.fillStyle = C.yellow;
-        ctx.fillRect(x0 + i * cw, y + 5 * scale + 2, 3 * scale, 2);
-      }
-    });
-    drawTextCentered(ctx, 'CIMA/BAIXO: LETRA', W / 2, 170, C.dim, 1);
-    drawTextCentered(ctx, 'ESQ/DIR: POSICAO', W / 2, 180, C.dim, 1);
-    drawTextCentered(ctx, 'ENTER OU OK: CONFIRMAR', W / 2, 194, C.text, 1);
+    drawInitialsScreen(this.ctx, W, H, `PONTOS ${g.score}`, g.initials, g.initialsPos, g.time);
   }
 
   // ---------- intermissions (coffee breaks) ----------
 
   private drawIntermission(g: Game): void {
     const ctx = this.ctx;
-    const t = g.stateTime;
+    const t = g.phaseTime;
     const y = MAZE_Y + 17 * TILE;
     const frame = (Math.floor(g.time * 8) % 2) as 0 | 1;
     const mouth = Math.abs(Math.sin(g.time * 12));

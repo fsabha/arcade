@@ -33,7 +33,8 @@ describe('smoke', () => {
     for (let i = 0; i < 60; i++) step();
     input.tap('confirm');
     step();
-    expect(game.state).toBe('ready');
+    expect(game.state).toBe('playing');
+    expect(game.phase).toBe('ready');
     for (let i = 0; i < 60 * 5; i++) step();
     expect(game.state).toBe('playing');
 
@@ -49,7 +50,7 @@ describe('smoke', () => {
     // keep going to the power pellet at (1,23) then down
     for (let i = 0; i < 60 * 3; i++) step();
     const sawFright = game.frightTimer > 0 || game.ghosts.some((g) => g.state === 'frightened');
-    expect(['playing', 'ghosteat', 'dying', 'ready']).toContain(game.state);
+    expect(['playing', 'ghosteat', 'dying', 'ready']).toContain(game.phase);
     expect(typeof sawFright).toBe('boolean');
     input.held.delete('left');
     input.held.add('down');

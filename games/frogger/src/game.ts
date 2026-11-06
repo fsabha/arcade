@@ -4,20 +4,17 @@ import {
   HOME_CROC_SHOW, HOME_CROC_HIDE,
 } from './config';
 import { Traffic, isRiver, isRoad, submersion, Mover } from './lanes';
-import { Rng } from '@arcade/shared';
-import type { Input } from '@arcade/shared';
+import { Rng, Shell, PAUSE_ITEMS } from '@arcade/shared';
+import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import {
-  loadHighScores, saveHighScores, qualifies, insertHighScore, loadSettings, saveSettings, HighScore, Settings,
-} from './storage';
+import { scores, settings, HighScore, Settings } from './storage';
 
-export type State = 'menu' | 'howto' | 'ranking' | 'playing' | 'paused' | 'gameover' | 'initials';
+export type State = ShellState;
 export type FrogMode = 'idle' | 'hop' | 'dead' | 'home' | 'clear';
 export type Death = 'splat' | 'drown' | 'time' | null;
 
 export const MENU_ITEMS = ['JOGAR', 'COMO JOGAR', 'RANKING', 'CRT', 'SOM'] as const;
-export const PAUSE_ITEMS = ['CONTINUAR', 'SAIR PARA O MENU'] as const;
-const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ ';
+export { PAUSE_ITEMS };
 
 export interface Frog {
   x: number; // left edge of the 16 px cell
@@ -41,7 +38,7 @@ export interface Lady {
 }
 
 export class Game {
-  state: State = 'menu';
+  shell: Shell<HighScore, Settings>;
   level = 1;
   traffic = new Traffic(1, 1);
   frog: Frog = this.newFrog();
@@ -60,19 +57,29 @@ export class Game {
   private warnAcc = 0;
 
   time = 0;
-  stateTime = 0;
-  menuIndex = 0;
-  pauseIndex = 0;
-  initials = ['A', 'A', 'A'];
-  initialsPos = 0;
-  qualifiesForRank = false;
-
-  settings: Settings = loadSettings();
-  highScores: HighScore[] = loadHighScores();
 
   constructor(private input: Input, private audio: SoundFx) {
-    this.audio.setMuted(!this.settings.sound);
+    this.shell = new Shell<HighScore, Settings>({
+      items: MENU_ITEMS,
+      scores,
+      settings,
+      audio,
+      onStart: () => this.startGame(),
+      entry: (initials) => ({ initials, score: this.score, level: this.level, date: new Date().toISOString() }),
+      probe: () => ({ initials: '', score: this.score, level: this.level, date: '' }),
+    });
   }
+
+  // the shell owns the screens around the game; these keep the renderer and tests simple
+  get state(): State { return this.shell.state; }
+  get stateTime(): number { return this.shell.stateTime; }
+  get menuIndex(): number { return this.shell.menuIndex; }
+  get pauseIndex(): number { return this.shell.pauseIndex; }
+  get initials(): string[] { return this.shell.initials; }
+  get initialsPos(): number { return this.shell.initialsPos; }
+  get qualifiesForRank(): boolean { return this.shell.qualifiesForRank; }
+  get settings(): Settings { return this.shell.settings; }
+  get highScores(): HighScore[] { return this.shell.highScores; }
 
   private newFrog(): Frog {
     const x = FROG_START_COL * TILE + TILE / 2;
@@ -94,7 +101,7 @@ export class Game {
     this.extraLifeGiven = false;
     this.rng = new Rng((Date.now() & 0xffff) + 1);
     this.startLevel();
-    this.setState('playing');
+    this.shell.setState('playing');
   }
 
   private startLevel(): void {
@@ -121,88 +128,22 @@ export class Game {
     this.lady = { active: true, platform: p, offset: Math.floor(this.rng.range(0, p.w / TILE)) * TILE, taken: false };
   }
 
-  private setState(s: State): void {
-    this.state = s;
-    this.stateTime = 0;
-  }
-
-  toggleCrt(): void {
-    this.settings = { ...this.settings, crt: !this.settings.crt };
-    saveSettings(this.settings);
-  }
-
-  toggleSound(): void {
-    this.settings = { ...this.settings, sound: !this.settings.sound };
-    saveSettings(this.settings);
-    this.audio.setMuted(!this.settings.sound);
-  }
-
   private endGame(): void {
-    this.highScores = loadHighScores();
-    this.qualifiesForRank = qualifies(this.highScores, this.score);
-    this.audio.gameOver();
-    this.setState('gameover');
+    this.shell.endGame();
   }
 
   // ---------- update ----------
 
   update(dt: number): void {
     this.time += dt;
-    this.stateTime += dt;
-    const inp = this.input;
-    if (inp.justPressed('mute')) this.toggleSound();
-    if (inp.justPressed('crt')) this.toggleCrt();
-    switch (this.state) {
-      case 'menu': this.updateMenu(); break;
-      case 'howto':
-      case 'ranking':
-        if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
-          this.audio.blip();
-          this.setState('menu');
-        }
-        break;
-      case 'playing': this.updatePlaying(dt); break;
-      case 'paused': this.updatePaused(); break;
-      case 'gameover': this.updateGameOver(); break;
-      case 'initials': this.updateInitials(); break;
-    }
-  }
-
-  private updateMenu(): void {
-    const inp = this.input;
-    const n = MENU_ITEMS.length;
-    if (inp.justPressed('up')) { this.menuIndex = (this.menuIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.menuIndex = (this.menuIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      switch (MENU_ITEMS[this.menuIndex]) {
-        case 'JOGAR': this.startGame(); break;
-        case 'COMO JOGAR': this.setState('howto'); break;
-        case 'RANKING': this.highScores = loadHighScores(); this.setState('ranking'); break;
-        case 'CRT': this.toggleCrt(); break;
-        case 'SOM': this.toggleSound(); break;
-      }
-    }
-  }
-
-  private updatePaused(): void {
-    const inp = this.input;
-    const n = PAUSE_ITEMS.length;
-    if (inp.justPressed('up')) { this.pauseIndex = (this.pauseIndex + n - 1) % n; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.pauseIndex = (this.pauseIndex + 1) % n; this.audio.blip(); }
-    if (inp.justPressed('pause')) { this.setState('playing'); return; }
-    if (inp.justPressed('back')) { this.setState('menu'); return; }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      if (this.pauseIndex === 0) this.setState('playing');
-      else this.setState('menu');
-    }
+    if (!this.shell.update(dt, this.input)) return;
+    this.updatePlaying(dt);
   }
 
   private updatePlaying(dt: number): void {
     const inp = this.input;
     if (inp.justPressed('pause')) {
-      this.pauseIndex = 0;
-      this.setState('paused');
+      this.shell.pause();
       return;
     }
     const f = this.frog;
@@ -389,42 +330,6 @@ export class Game {
     this.lives--;
     if (this.lives <= 0) { this.endGame(); return; }
     this.resetFrog();
-  }
-
-  private updateGameOver(): void {
-    const inp = this.input;
-    if (this.stateTime < 2) return;
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (this.qualifiesForRank) {
-        this.initials = ['A', 'A', 'A'];
-        this.initialsPos = 0;
-        this.setState('initials');
-      } else {
-        this.setState('menu');
-      }
-    }
-  }
-
-  private updateInitials(): void {
-    const inp = this.input;
-    const i = this.initialsPos;
-    const cur = LETTERS.indexOf(this.initials[i]);
-    if (inp.justPressed('up')) { this.initials[i] = LETTERS[(cur + 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('down')) { this.initials[i] = LETTERS[(cur + LETTERS.length - 1) % LETTERS.length]; this.audio.blip(); }
-    if (inp.justPressed('left') || inp.justPressed('back')) { this.initialsPos = Math.max(0, i - 1); this.audio.blip(); }
-    if (inp.justPressed('right')) { this.initialsPos = Math.min(2, i + 1); this.audio.blip(); }
-    if (inp.justPressed('confirm') || inp.justPressed('fire')) {
-      this.audio.blip();
-      if (i < 2) {
-        this.initialsPos = i + 1;
-      } else {
-        const entry: HighScore = { initials: this.initials.join(''), score: this.score, level: this.level, date: new Date().toISOString() };
-        this.highScores = insertHighScore(this.highScores, entry);
-        saveHighScores(this.highScores);
-        this.setState('ranking');
-      }
-    }
   }
 }
 
