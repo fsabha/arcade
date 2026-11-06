@@ -23,12 +23,31 @@ export interface Res {
   end(body?: string): void;
 }
 
+/** Finds the Upstash REST credentials whatever prefix the Vercel integration chose (KV_, UPSTASH_REDIS_, STORAGE_...). */
+export function findCredentials(env: Record<string, string | undefined>): { url: string; token: string } | null {
+  const direct = [
+    ['KV_REST_API_URL', 'KV_REST_API_TOKEN'],
+    ['UPSTASH_REDIS_REST_URL', 'UPSTASH_REDIS_REST_TOKEN'],
+  ];
+  for (const [u, t] of direct) if (env[u] && env[t]) return { url: env[u]!, token: env[t]! };
+  for (const name of Object.keys(env)) {
+    const m = /^(.*)REST_(API_)?URL$/.exec(name);
+    if (!m || !env[name] || !/^https?:\/\//.test(env[name]!)) continue;
+    const token = env[`${m[1]}REST_${m[2] ?? ''}TOKEN`];
+    if (token) return { url: env[name]!, token };
+  }
+  return null;
+}
+
 function redis(): Redis | null {
-  const env = process.env;
-  const url = env.KV_REST_API_URL ?? env.UPSTASH_REDIS_REST_URL;
-  const token = env.KV_REST_API_TOKEN ?? env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) return null;
-  return upstash(url, token);
+  const c = findCredentials(process.env);
+  return c ? upstash(c.url, c.token) : null;
+}
+
+/** Names (never values) of the storage-looking env vars, to debug the integration. */
+function health(): unknown {
+  const names = Object.keys(process.env).filter((k) => /REDIS|KV_|UPSTASH|STORAGE/i.test(k)).sort();
+  return { configured: !!findCredentials(process.env), vars: names };
 }
 
 function send(res: Res, status: number, body: unknown, cache = 'no-store'): void {
@@ -56,6 +75,8 @@ export function makeHandler(getDb: () => Redis | null) {
   return async function handler(req: Req, res: Res): Promise<void> {
   const method = (req.method ?? 'GET').toUpperCase();
   if (method === 'OPTIONS') { send(res, 204, null); return; }
+  const wanted = first(req.query?.game) ?? new URL(req.url ?? '/', 'http://x').searchParams.get('game');
+  if (method === 'GET' && wanted === 'health') { send(res, 200, health()); return; }
   const db = getDb();
   if (!db) { send(res, 503, { error: 'ranking global nao configurado' }); return; }
   try {

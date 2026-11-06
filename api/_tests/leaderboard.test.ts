@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { validate, submit, top, topAll, parseRange, Redis, Command, KEEP, RATE_LIMIT } from '../_lib/leaderboard.js';
-import { makeHandler, Req, Res } from '../scores.js';
+import { makeHandler, findCredentials, Req, Res } from '../scores.js';
 
 /** Just enough Redis to run the leaderboard: sorted sets, INCR/EXPIRE. */
 function fakeRedis(): Redis & { sets: Map<string, Map<string, number>>; counters: Map<string, number> } {
@@ -82,5 +82,14 @@ describe('http handler', () => {
     const all = await call(r, { method: 'GET', query: { game: 'all' } });
     expect((all.body as { games: Record<string, unknown[]> }).games.frogger).toHaveLength(2);
     expect((await call(r, { method: 'DELETE' })).status).toBe(405);
+  });
+});
+
+describe('findCredentials', () => {
+  it('accepts the known names and any REST_URL/REST_TOKEN pair with a prefix', () => {
+    expect(findCredentials({ KV_REST_API_URL: 'https://a', KV_REST_API_TOKEN: 't' })).toEqual({ url: 'https://a', token: 't' });
+    expect(findCredentials({ UPSTASH_REDIS_REST_URL: 'https://b', UPSTASH_REDIS_REST_TOKEN: 'u' })).toEqual({ url: 'https://b', token: 'u' });
+    expect(findCredentials({ STORAGE_REST_API_URL: 'https://c', STORAGE_REST_API_TOKEN: 'v', STORAGE_URL: 'rediss://x' })).toEqual({ url: 'https://c', token: 'v' });
+    expect(findCredentials({ REDIS_URL: 'rediss://only-tcp' })).toBeNull();
   });
 });
