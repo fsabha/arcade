@@ -16,6 +16,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | Keystone Kapers | Activision, Atari 2600, 1983 | `games/keystone` |
 | Missile Command | Atari, Atari 2600, 1981 | `games/missile` |
 | Frogger | Konami / Sega, arcade, 1981 | `games/frogger` |
+| Chopper Command | Activision, Atari 2600, 1982 | `games/chopper` |
 
 ## Rodar
 
