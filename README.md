@@ -1,6 +1,6 @@
 # Arcade
 
-Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lugar. Vite + TypeScript + Canvas 2D, sem dependências em runtime, controles por teclado, toque e gamepad, som e músicas sintetizados, ranking local, efeito CRT. Instalável como app (PWA) e funciona offline depois da primeira visita. No ar em https://arcade.fabianosabha.com.br.
+Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lugar. Vite + TypeScript + Canvas 2D, sem dependências em runtime, controles por teclado, toque e gamepad, som e músicas sintetizados, ranking global, efeito CRT. Instalável como app (PWA) e funciona offline depois da primeira visita. No ar em https://arcade.fabianosabha.com.br.
 
 | Jogo | Original | Pasta |
 |---|---|---|
@@ -43,12 +43,12 @@ No celular na mesma rede, use o endereço "Network" que o Vite imprime.
 
 ## Ranking global
 
-Cada jogo tem um ranking local (localStorage) e um global, compartilhado por todo mundo que joga no site. O global vive em um Redis do Upstash acessado pela função `api/scores.ts` (Vercel Function, sem dependências npm):
+O ranking de cada jogo é global, compartilhado por todo mundo que joga no site (não há mais tabela local). Vive em um Redis do Upstash acessado pela função `api/scores.ts` (Vercel Function, sem dependências npm); o botão RANKING GLOBAL na home mostra o top 5 de cada jogo:
 
 - `GET /api/scores?game=<id>` top 10 de um jogo; `GET /api/scores?game=all` top 5 de todos (a home usa este);
 - `POST /api/scores` `{ game, initials, score, label }` registra um resultado (iniciais A-Z, até 3; pontuação inteira; limite de 12 envios por minuto por IP; o servidor guarda os 100 melhores por jogo).
 
-Para ativar na Vercel: no projeto, **Storage → Create Database → Upstash Redis** (plano gratuito), conecte ao projeto e faça um redeploy. A integração cria as variáveis `KV_REST_API_URL` / `KV_REST_API_TOKEN` (ou `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`); a função usa qualquer uma das duas. Sem elas a API responde 503 e o site segue só com o ranking local.
+Para ativar na Vercel: no projeto, **Storage → Create Database → Upstash Redis** (plano gratuito), conecte ao projeto e faça um redeploy. A integração cria as variáveis `KV_REST_API_URL` / `KV_REST_API_TOKEN` (ou `UPSTASH_REDIS_REST_URL` / `UPSTASH_REDIS_REST_TOKEN`); a função usa qualquer uma das duas. Sem elas a API responde 503 e as telas de ranking avisam que estão sem conexão.
 
 Em desenvolvimento, `npm run dev:api` sobe um mock em `localhost:5199` para o qual o Vite faz proxy de `/api` (`ARCADE_API=https://arcade.fabianosabha.com.br npm run dev` aponta para o ranking real).
 

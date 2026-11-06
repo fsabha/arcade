@@ -56,11 +56,12 @@ export interface RemoteOptions<E> {
 export const API_SCORES = '/api/scores';
 
 export interface ShellOptions<E extends ScoreEntry, S extends ShellSettings> {
-  /** Global leaderboard: results are sent here and the ranking screen can show it. */
+  /** The ranking: results are sent to the global leaderboard and the ranking screen shows it. */
   remote?: RemoteOptions<E>;
   /** Title menu entries, in order. 'JOGAR' starts; SHELL_ITEMS are built in; the rest go to onItem. */
   items: readonly string[];
-  scores: ScoreStoreLike<E>;
+  /** @deprecated the ranking is global now; local tables are no longer written */
+  scores?: ScoreStoreLike<E>;
   settings: SettingsStoreLike<S>;
   audio: ShellAudio;
   onStart(): void;
@@ -88,19 +89,27 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
   initialsPos = 0;
   qualifiesForRank = false;
   settings: S;
-  highScores: E[];
-  /** global leaderboard, fetched when the ranking screen opens (null = not loaded, [] = empty) */
+  /** the global leaderboard top 10 (null = not loaded yet, [] = empty) */
   global: GlobalEntry[] | null = null;
   globalError = false;
-  rankingView: 'local' | 'global' = 'local';
   /** rank the API gave the last submitted result, if any */
   lastGlobalRank: number | null = null;
   private fetching = false;
 
   constructor(private opts: ShellOptions<E, S>) {
     this.settings = opts.settings.load();
-    this.highScores = opts.scores.load();
     opts.audio.setMuted(!this.settings.sound);
+    this.loadGlobal();
+  }
+
+  /** @deprecated kept for old renderers: the ranking lives on the server now */
+  get highScores(): E[] {
+    return [];
+  }
+
+  /** Best score on the leaderboard, for HUDs that show a record. */
+  get bestScore(): number {
+    return this.global?.[0]?.score ?? 0;
   }
 
   get items(): readonly string[] {
@@ -117,7 +126,7 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
     return !!this.opts.remote && typeof fetch === 'function' && typeof location !== 'undefined';
   }
 
-  /** Fetches the global top 10 once per visit to the ranking screen. */
+  /** Fetches the top 10 (on start, when the ranking opens and after a submission). */
   loadGlobal(): void {
     const r = this.opts.remote;
     if (!r || this.fetching || !this.hasRemote) return;
@@ -131,7 +140,6 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
           const r = (e ?? {}) as Record<string, unknown>;
           return { initials: String(r.initials ?? '').slice(0, 3), score: Number(r.score) || 0, label: String(r.label ?? '').slice(0, 24), date: String(r.date ?? '') };
         });
-        if (this.global.length > 0) this.rankingView = 'global';
       })
       .catch(() => { this.globalError = true; })
       .finally(() => { this.fetching = false; });
@@ -145,11 +153,20 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
     const body = { game: r.game, initials: entry.initials, score: Math.round(score), label: r.label(entry) };
     fetch(API_SCORES, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((res) => (res.ok ? res.json() : null))
-      .then((data: { rank?: number } | null) => { if (data && typeof data.rank === 'number') this.lastGlobalRank = data.rank; this.global = null; })
+      .then((data: { rank?: number } | null) => { if (data && typeof data.rank === 'number') this.lastGlobalRank = data.rank; this.loadGlobal(); })
       .catch(() => undefined);
   }
 
-  /** Rows for the global view of the ranking screen. */
+  /** Does this result enter the top 10? Without a loaded table every positive result is offered the initials screen. */
+  private entersTable(probe: E): boolean {
+    if (!this.hasScore(probe)) return false;
+    if (!this.global || this.global.length < 10) return true;
+    const r = this.opts.remote;
+    const score = r?.score ? r.score(probe) : (probe as unknown as { score: number }).score;
+    return score > this.global[this.global.length - 1].score;
+  }
+
+  /** Rows of the ranking screen. */
   globalRows(): string[] {
     return (this.global ?? []).map((e, i) => `${String(i + 1).padStart(2, ' ')} ${e.initials.padEnd(3, ' ')} ${String(e.score).padStart(7, ' ')} ${e.label}`.trimEnd());
   }
@@ -184,9 +201,8 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
 
   /** Game over: decide whether the result enters the ranking and show the screen. */
   endGame(): void {
-    this.highScores = this.opts.scores.load();
     const probe = this.opts.probe();
-    this.qualifiesForRank = this.hasScore(probe) && this.opts.scores.beatsTable(this.highScores, probe);
+    this.qualifiesForRank = this.entersTable(probe);
     this.opts.audio.gameOver();
     this.opts.onStop?.();
     this.setState('gameover');
@@ -220,10 +236,6 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
       case 'menu': this.updateMenu(inp); return false;
       case 'howto':
       case 'ranking':
-        if (this.state === 'ranking' && this.hasRemote && (inp.justPressed('left') || inp.justPressed('right'))) {
-          this.rankingView = this.rankingView === 'local' ? 'global' : 'local';
-          this.opts.audio.blip();
-        }
         if (inp.justPressed('confirm') || inp.justPressed('fire') || inp.justPressed('back') || inp.justPressed('pause')) {
           this.opts.audio.blip();
           this.setState('menu');
@@ -251,7 +263,7 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
       switch (item) {
         case 'JOGAR': this.setState('playing'); this.opts.onStart(); break;
         case 'COMO JOGAR': this.setState('howto'); break;
-        case 'RANKING': this.highScores = this.opts.scores.load(); this.setState('ranking'); break;
+        case 'RANKING': this.setState('ranking'); break;
         case 'CRT': this.toggleCrt(); break;
         case 'SOM': this.toggleSound(); break;
         case 'MUSICA': this.toggleMusic(); break;
@@ -307,8 +319,6 @@ export class Shell<E extends ScoreEntry, S extends ShellSettings> {
         this.initialsPos = i + 1;
       } else {
         const entry = this.opts.entry(this.initials.join(''));
-        this.highScores = this.opts.scores.insert(this.highScores, entry);
-        this.opts.scores.save(this.highScores);
         this.lastGlobalRank = null;
         this.submitGlobal(entry);
         this.setState('ranking');

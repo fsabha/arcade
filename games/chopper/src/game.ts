@@ -6,7 +6,7 @@ import { Field } from './field';
 import { Shell, PAUSE_ITEMS } from '@arcade/shared';
 import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import { scores, settings, HighScore, Settings } from './storage';
+import { settings, HighScore, Settings } from './storage';
 
 export type State = ShellState;
 export type Phase = 'ready' | 'wave' | 'bonus' | 'dead';
@@ -39,7 +39,6 @@ export class Game {
   constructor(private input: Input, private audio: SoundFx) {
     this.shell = new Shell<HighScore, Settings>({
       items: MENU_ITEMS,
-      scores,
       settings,
       audio,
       onStart: () => this.startGame(),

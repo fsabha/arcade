@@ -180,7 +180,7 @@ export class Renderer {
     ctx.fillRect(0, 0, W, HUD_H);
     drawText(ctx, '1UP', 10, 2, C.red);
     drawText(ctx, String(g.score).padStart(6, '0'), 4, 9, C.text, 2);
-    const hi = Math.max(g.score, g.highScores[0]?.score ?? 0);
+    const hi = Math.max(g.score, g.shell.bestScore);
     drawTextCentered(ctx, 'RECORDE', W / 2, 2, C.red);
     drawTextCentered(ctx, String(hi).padStart(6, '0'), W / 2, 9, C.text, 2);
     // bonus box and level, arcade style, top right

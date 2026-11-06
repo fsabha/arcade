@@ -8,7 +8,7 @@ import { ScoreKeeper, fuelDrainRate } from './scoring';
 import { Shell, PAUSE_ITEMS } from '@arcade/shared';
 import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import { scores, settings, HighScore, Settings } from './storage';
+import { settings, HighScore, Settings } from './storage';
 
 export type State = ShellState;
 /** Inside `playing`: flying, or the crash animation before the respawn / game over. */
@@ -67,7 +67,6 @@ export class Game {
   constructor(private input: Input, private audio: SoundFx) {
     this.shell = new Shell<HighScore, Settings>({
       items: MENU_ITEMS,
-      scores,
       settings,
       // no game over jingle: the crash explosion already played
       audio: { blip: () => audio.blip(), gameOver: () => undefined, setMuted: (m) => audio.setMuted(m) },

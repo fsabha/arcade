@@ -171,7 +171,7 @@ export class Renderer {
     ctx.fillRect(0, 0, W, HUD_H);
     drawText(ctx, '1UP', 6, 2, C.dim);
     drawText(ctx, String(g.score).padStart(6, '0'), 6, 9, C.text, 2);
-    const hi = Math.max(g.score, g.highScores[0]?.score ?? 0);
+    const hi = Math.max(g.score, g.shell.bestScore);
     drawText(ctx, 'RECORDE', W - 6 - textWidth('RECORDE'), 2, C.dim);
     drawText(ctx, String(hi).padStart(6, '0'), W - 6 - textWidth('000000', 2), 9, C.text, 2);
 

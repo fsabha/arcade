@@ -143,6 +143,13 @@ pixelTitle(title, 'ARCADE', '#dfe6ee', 5);
 renderGrid();
 loadBoard();
 backBtn.addEventListener('click', close);
+const modeBtn = document.getElementById('mode-btn') as HTMLButtonElement;
+modeBtn.addEventListener('click', () => {
+  const on = document.body.classList.toggle('ranking');
+  modeBtn.setAttribute('aria-pressed', String(on));
+  modeBtn.textContent = on ? 'JOGOS' : 'RANKING GLOBAL';
+  if (on) loadBoard();
+});
 const aboutDlg = document.getElementById('about') as HTMLDialogElement;
 (document.getElementById('about-btn') as HTMLButtonElement).addEventListener('click', () => aboutDlg.showModal());
 window.addEventListener('keydown', (e) => {

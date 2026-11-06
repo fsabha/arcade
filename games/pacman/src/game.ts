@@ -10,7 +10,7 @@ import { speeds, elroy, modeSchedule, fruitFor, houseLimits, houseTimeout, inter
 import { Rng, Shell, PAUSE_ITEMS } from '@arcade/shared';
 import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import { scores, settings, HighScore, Settings } from './storage';
+import { settings, HighScore, Settings } from './storage';
 
 export type State = ShellState;
 /** What the round is doing while the shell is in 'playing'; 'over' once the last life is gone. */
@@ -94,7 +94,6 @@ export class Game {
   constructor(private input: Input, private audio: SoundFx) {
     this.shell = new Shell<HighScore, Settings>({
       items: MENU_ITEMS,
-      scores,
       settings,
       // the death tune already played; the arcade has no separate game over jingle
       audio: { blip: () => audio.blip(), setMuted: (m) => audio.setMuted(m), gameOver: () => undefined },
@@ -105,7 +104,7 @@ export class Game {
       onStop: () => audio.loop('off'),
       gameOverDelay: 2.5,
     });
-    this.highScore = this.shell.highScores[0]?.score ?? 0;
+    this.highScore = this.shell.bestScore;
     this.placeActors();
   }
 

@@ -77,6 +77,7 @@ describe('asteroids rules', () => {
   });
   it('hyperspace moves the ship somewhere else (game 1); flip turns it around (game 17)', () => {
     const h = playing(1);
+    h.game.field.asteroids = []; // nowhere to re-enter into a rock
     h.input.tap('down'); h.step(1);
     expect(h.game.ship.mode).toBe('hyper');
     h.step(Math.ceil(cfg.HYPERSPACE_TIME * 60) + 2);

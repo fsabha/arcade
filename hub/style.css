@@ -43,6 +43,39 @@ header p {
   letter-spacing: 1px;
 }
 
+#toolbar {
+  flex: none;
+  margin-bottom: 10px;
+}
+
+#toolbar button {
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--fg);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+#toolbar button:hover, #toolbar button[aria-pressed="true"] {
+  border-color: #3ddc84;
+}
+
+#toolbar button[aria-pressed="true"] {
+  color: #3ddc84;
+}
+
+body.ranking .card .meta, body.ranking .card .blurb, body.ranking .card .thumb {
+  display: none;
+}
+
+body:not(.ranking) .card .top {
+  display: none;
+}
+
 .card .row {
   display: flex;
   align-items: center;

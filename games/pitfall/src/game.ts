@@ -9,7 +9,7 @@ import { Room, decodeRoom, nextRoom, prevRoom, groundAt } from './world';
 import { Shell, PAUSE_ITEMS } from '@arcade/shared';
 import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import { scores, settings, HighScore, Settings } from './storage';
+import { settings, HighScore, Settings } from './storage';
 
 export type State = ShellState;
 export type Mode = 'ground' | 'jump' | 'fall' | 'sink' | 'climb' | 'swing' | 'drop' | 'kneel' | 'dying';
@@ -71,7 +71,6 @@ export class Game {
   constructor(private input: Input, private audio: SoundFx) {
     this.shell = new Shell<HighScore, Settings>({
       items: MENU_ITEMS,
-      scores,
       settings,
       audio: {
         blip: () => audio.blip(),

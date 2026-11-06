@@ -8,7 +8,7 @@ import { ScoreKeeper, enemyValue, rescueBonus } from './scoring';
 import { Shell, PAUSE_ITEMS } from '@arcade/shared';
 import type { Input, ShellState } from '@arcade/shared';
 import type { SoundFx } from './audio';
-import { scores, settings, HighScore, Settings } from './storage';
+import { settings, HighScore, Settings } from './storage';
 
 export type State = ShellState;
 /** Inside `playing`: the sub is alive, exploding, or waiting for the player before the next life. */
@@ -54,7 +54,6 @@ export class Game {
   constructor(private input: Input, private audio: SoundFx) {
     this.shell = new Shell<HighScore, Settings>({
       items: MENU_ITEMS,
-      scores,
       settings,
       audio,
       onStart: () => this.startGame(),
