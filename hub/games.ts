@@ -10,6 +10,12 @@ export interface GameInfo {
   h: number;
 }
 
+export type Platform = 'atari' | 'arcade';
+
+export function platformOf(g: GameInfo): Platform {
+  return /2600/.test(g.original) ? 'atari' : 'arcade';
+}
+
 export const GAMES: GameInfo[] = [
   { id: 'riverraid', title: 'RIVER RAID', original: 'Activision, Atari 2600', year: 1982, blurb: 'Voe pelo rio, abasteça e destrua pontes.', accent: '#3ddc84', w: 240, h: 320 },
   { id: 'endurance', title: 'ENDURANCE', original: 'Enduro - Activision, Atari 2600', year: 1983, blurb: 'Ultrapasse a cota de carros a cada dia.', accent: '#ff8c3a', w: 320, h: 240 },

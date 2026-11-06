@@ -15,3 +15,11 @@ export function installAnalytics(): void {
   s.dataset.arcadeAnalytics = '1';
   document.head.appendChild(s);
 }
+
+/** Custom event for Vercel Web Analytics (queued until the script loads; no-op locally). */
+export function trackEvent(name: string, data?: Record<string, string | number>): void {
+  if (typeof window === 'undefined') return;
+  const w = window as unknown as { va?: (...args: unknown[]) => void; vaq?: unknown[][] };
+  if (!w.va) w.va = (...args: unknown[]) => { (w.vaq = w.vaq ?? []).push(args); };
+  try { w.va('event', { name, data }); } catch { /* ignore */ }
+}

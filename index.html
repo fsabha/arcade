@@ -27,6 +27,18 @@
       <canvas id="title" width="1" height="1"></canvas>
       <p>CLÁSSICOS DO ATARI E DO FLIPERAMA NO NAVEGADOR</p>
     </header>
+    <nav id="toolbar" aria-label="Filtros">
+      <span class="group" role="group" aria-label="Plataforma">
+        <button type="button" data-filter="all" class="on">TODOS</button>
+        <button type="button" data-filter="atari">ATARI 2600</button>
+        <button type="button" data-filter="arcade">FLIPERAMA</button>
+      </span>
+      <span class="group" role="group" aria-label="Ordem">
+        <button type="button" data-sort="default" class="on">ORDEM PADRÃO</button>
+        <button type="button" data-sort="year">POR ANO</button>
+        <button type="button" data-sort="plays">MAIS JOGADOS</button>
+      </span>
+    </nav>
     <div id="grid"></div>
     <footer>
       <span>Clique em um jogo ou tecle o número dele. No jogo: setas, Espaço, P pausa, M som, C CRT, T toque.</span>

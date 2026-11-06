@@ -37,10 +37,66 @@ header {
 }
 
 header p {
-  margin: 0 0 12px;
+  margin: 0 0 8px;
   color: var(--dim);
   font-size: 12px;
   letter-spacing: 1px;
+}
+
+#toolbar {
+  flex: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 18px;
+  margin-bottom: 10px;
+}
+
+#toolbar .group {
+  display: flex;
+  gap: 4px;
+}
+
+#toolbar button {
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 1px;
+  color: var(--dim);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 3px 8px;
+  cursor: pointer;
+}
+
+#toolbar button.on {
+  color: var(--fg);
+  border-color: #3ddc84;
+}
+
+.card .row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.card .text {
+  min-width: 0;
+  flex: 1;
+}
+
+.card .thumb {
+  flex: none;
+  width: 64px;
+  height: 40px;
+  image-rendering: pixelated;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  background: #000;
+}
+
+.card .plays {
+  color: #3ddc84;
 }
 
 #grid {
