@@ -25,17 +25,20 @@ function card(g: GameInfo, index: number): HTMLButtonElement {
   el.style.setProperty('--accent', g.accent);
   const c = document.createElement('canvas');
   c.className = 'card-title';
-  pixelTitle(c, g.title, g.accent, 3);
+  pixelTitle(c, g.title, g.accent, 2);
   const meta = document.createElement('div');
   meta.className = 'meta';
   meta.textContent = `${g.original}, ${g.year}`;
   const blurb = document.createElement('div');
   blurb.className = 'blurb';
   blurb.textContent = g.blurb;
-  const key = document.createElement('div');
-  key.className = 'key';
-  key.textContent = String(index + 1);
-  el.append(key, c, meta, blurb);
+  el.append(c, meta, blurb);
+  if (index < 10) {
+    const key = document.createElement('div');
+    key.className = 'key';
+    key.textContent = String((index + 1) % 10); // 1-9, then 0 for the 10th
+    el.append(key);
+  }
   el.addEventListener('click', () => open(g));
   return el;
 }
@@ -58,6 +61,8 @@ installAnalytics();
 pixelTitle(title, 'ARCADE', '#dfe6ee', 5);
 GAMES.forEach((g, i) => grid.appendChild(card(g, i)));
 backBtn.addEventListener('click', close);
+const aboutDlg = document.getElementById('about') as HTMLDialogElement;
+(document.getElementById('about-btn') as HTMLButtonElement).addEventListener('click', () => aboutDlg.showModal());
 window.addEventListener('keydown', (e) => {
   if (document.body.classList.contains('in-game')) return; // the game owns the keys
   const n = e.key === '0' ? 10 : Number(e.key); // keys 1-9 then 0 for the 10th card

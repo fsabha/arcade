@@ -12,7 +12,11 @@
       <p>CLÁSSICOS DO ATARI E DO FLIPERAMA NO NAVEGADOR</p>
     </header>
     <div id="grid"></div>
-    <section id="about">
+    <footer>
+      <span>Clique em um jogo ou tecle o número dele. No jogo: setas, Espaço, P pausa, M som, C CRT, T toque.</span>
+      <span>Projeto pessoal de Fabiano Sabha · <a href="mailto:fsabha@gmail.com">fsabha@gmail.com</a> · <button type="button" id="about-btn">SOBRE</button></span>
+    </footer>
+    <dialog id="about">
       <p>
         Cada jogo aqui é uma recriação feita com o cuidado de ficar o mais fiel possível ao original: mesmas regras,
         mesma velocidade, mesmos mapas e tabelas, até os detalhes que só quem jogou na época lembra.
@@ -22,12 +26,9 @@
         lembranças de como algo funcionava no cartucho ou pedidos de novos títulos são bem-vindos em
         <a href="mailto:fsabha@gmail.com">fsabha@gmail.com</a>.
       </p>
-      <p>A coleção vai crescer: pretendo incluir novos jogos com o tempo.</p>
-    </section>
-    <footer>
-      Clique em um jogo ou tecle o número dele. Dentro do jogo: setas, Espaço, P pausa, M som, C CRT, T controles de toque.<br />
-      Ranking e configurações ficam salvos no navegador.
-    </footer>
+      <p>A coleção vai crescer: pretendo incluir novos jogos com o tempo. Ranking e configurações ficam salvos no navegador.</p>
+      <form method="dialog"><button type="submit">FECHAR</button></form>
+    </dialog>
     <div id="player">
       <div id="bar">
         <button type="button" id="back">&larr; MENU</button>
