@@ -11,6 +11,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | Freeway | Activision, Atari 2600, 1981 | `games/freeway` |
 | Pitfall | Activision, Atari 2600, 1982 | `games/pitfall` |
 | Frostbite | Activision, Atari 2600, 1983 | `games/frostbite` |
+| H.E.R.O. | Activision, Atari 2600, 1984 | `games/hero` |
 
 ## Rodar
 

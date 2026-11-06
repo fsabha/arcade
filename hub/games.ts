@@ -18,4 +18,5 @@ export const GAMES: GameInfo[] = [
   { id: 'freeway', title: 'FREEWAY', original: 'Activision, Atari 2600', year: 1981, blurb: 'Atravesse a rodovia com a galinha.', accent: '#f4d03f', w: 320, h: 240 },
   { id: 'pitfall', title: 'PITFALL', original: 'Activision, Atari 2600', year: 1982, blurb: 'Ache os 32 tesouros em 20 minutos.', accent: '#48b038', w: 320, h: 200 },
   { id: 'frostbite', title: 'FROSTBITE', original: 'Activision, Atari 2600', year: 1983, blurb: 'Pule nos blocos de gelo e monte o iglu antes de congelar.', accent: '#9cc8f0', w: 320, h: 240 },
+  { id: 'hero', title: 'H.E.R.O.', original: 'Activision, Atari 2600', year: 1984, blurb: 'Desça a mina com hélice, laser e dinamite para resgatar o mineiro.', accent: '#f0c040', w: 320, h: 240 },
 ];
