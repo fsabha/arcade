@@ -20,6 +20,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | Moon Patrol | Irem, arcade, 1982 | `games/moonpatrol` |
 | Donkey Kong | Nintendo, arcade, 1981 | `games/donkeykong` |
 | Golden Axe | Sega, Mega Drive, 1989 | `games/goldenaxe` |
+| Virtua Racing | Sega, Mega Drive, 1994 | `games/virtuaracing` |
 
 ## Rodar
 

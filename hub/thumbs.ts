@@ -129,6 +129,14 @@ const THUMBS: Record<string, Draw> = {
     rect(ctx, ex, 22, 5, 10, '#30a040'); rect(ctx, ex + 1, 18, 3, 4, '#f0c090'); rect(ctx, ex - 6, 21, 6, 2, '#d0d8e0');
     rect(ctx, 54, 10, 6, 6, '#58a8ff');
   },
+  virtuaracing(ctx, t) {
+    rect(ctx, 0, 0, TW, 18, '#2058c0'); rect(ctx, 0, 18, TW, 22, '#3c9a3c');
+    for (let i = 0; i < 6; i++) rect(ctx, i * 11, 12, 8, 6, '#2c6a3c');
+    // the road narrows to the horizon
+    for (let y = 18; y < TH; y++) { const k = (y - 18) / (TH - 18); const w = 6 + k * 50; rect(ctx, TW / 2 - w / 2, y, w, 1, ((y + Math.floor(t * 20)) & 4) ? '#6a6a70' : '#606066'); rect(ctx, TW / 2 - w / 2 - 2, y, 2, 1, ((y + Math.floor(t * 20)) & 2) ? '#e03030' : '#f0f0f0'); rect(ctx, TW / 2 + w / 2, y, 2, 1, ((y + Math.floor(t * 20)) & 2) ? '#e03030' : '#f0f0f0'); }
+    rect(ctx, TW / 2 - 7 + Math.sin(t * 1.5) * 4, 31, 14, 5, '#f0f0f0'); rect(ctx, TW / 2 - 8 + Math.sin(t * 1.5) * 4, 34, 3, 3, '#181818'); rect(ctx, TW / 2 + 5 + Math.sin(t * 1.5) * 4, 34, 3, 3, '#181818');
+    rect(ctx, TW / 2 - 3 + Math.sin(t) * 6, 22, 6, 3, '#e02020');
+  },
 };
 
 export function drawThumb(id: string, ctx: CanvasRenderingContext2D, t: number): void {
