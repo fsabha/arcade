@@ -21,7 +21,7 @@ function lightOf(pts: P3[]): number {
   return 0.55 + d * 0.7;
 }
 
-interface ScreenPoly { depth: number; pts: { x: number; y: number }[]; color: string; line?: string }
+interface ScreenPoly { depth: number; pts: { x: number; y: number }[]; color: string; line?: string; /** a model drawn as one, in its own order */ group?: ScreenPoly[] }
 
 /** Camera-space point: x right, y up, z forward. */
 function toCamera(cam: Camera, p: P3): P3 {
@@ -55,17 +55,34 @@ export class Painter {
 
   constructor(private cam: Camera) {}
 
-  add(poly: Poly): void {
+  private ground: ScreenPoly[] = [];
+
+  /** `flat` marks the road and grass: they are painted before every object standing on them. */
+  add(poly: Poly, flat = false): void {
+    const sp = this.screen(poly);
+    if (sp) (flat ? this.ground : this.list).push(sp);
+  }
+
+  /** A whole model (a car) already ordered back to front: sorted into the scene at the depth of `centre`. */
+  addGroup(polys: Poly[], centre: P3): void {
+    const group: ScreenPoly[] = [];
+    for (const p of polys) { const sp = this.screen(p); if (sp) group.push(sp); }
+    if (!group.length) return;
+    const z = toCamera(this.cam, centre).z;
+    this.list.push({ depth: z, pts: [], color: '', group });
+  }
+
+  private screen(poly: Poly): ScreenPoly | null {
     const cs = clipNear(poly.pts.map((p) => toCamera(this.cam, p)));
-    if (cs.length < 3) return;
+    if (cs.length < 3) return null;
     const color = poly.lit ? shade(poly.color, lightOf(poly.pts)) : poly.color;
     let depth = 0;
     for (const p of cs) depth += p.z;
     depth /= cs.length;
     const pts = cs.map((p) => project(this.cam, p));
     // skip polygons entirely off screen
-    if (pts.every((p) => p.x < -40) || pts.every((p) => p.x > W + 40) || pts.every((p) => p.y < -40) || pts.every((p) => p.y > 300)) return;
-    this.list.push({ depth, pts, color, line: poly.line });
+    if (pts.every((p) => p.x < -40) || pts.every((p) => p.x > W + 40) || pts.every((p) => p.y < -40) || pts.every((p) => p.y > 300)) return null;
+    return { depth, pts, color, line: poly.line };
   }
 
   /** A billboard: a vertical rectangle facing the camera, width w and height h at ground point p. */
@@ -77,20 +94,28 @@ export class Painter {
 
   draw(ctx: CanvasRenderingContext2D): void {
     this.list.sort((a, b) => b.depth - a.depth);
-    for (const p of this.list) {
+    const fill = (p: ScreenPoly, seam: number) => {
       ctx.fillStyle = p.color;
       ctx.beginPath();
-      ctx.moveTo(Math.round(p.pts[0].x), Math.round(p.pts[0].y));
-      for (let i = 1; i < p.pts.length; i++) ctx.lineTo(Math.round(p.pts[i].x), Math.round(p.pts[i].y));
+      ctx.moveTo(p.pts[0].x, p.pts[0].y);
+      for (let i = 1; i < p.pts.length; i++) ctx.lineTo(p.pts[i].x, p.pts[i].y);
       ctx.closePath();
       ctx.fill();
       if (p.line) { ctx.strokeStyle = p.line; ctx.lineWidth = 1; ctx.stroke(); }
+      else if (seam) { ctx.strokeStyle = p.color; ctx.lineWidth = seam; ctx.stroke(); } // hides hairline gaps between faces
+    };
+    this.ground.sort((a, b) => b.depth - a.depth);
+    for (const p of this.ground) fill(p, 0.5);
+    this.ground = [];
+    for (const p of this.list) {
+      if (p.group) for (const q of p.group) fill(q, 0.35);
+      else fill(p, 0.5);
     }
     this.list = [];
   }
 
   get count(): number {
-    return this.list.length;
+    return this.list.length + this.ground.length;
   }
 }
 

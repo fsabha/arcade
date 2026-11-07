@@ -91,6 +91,8 @@ export function parseSection(sec: FmSection): Parsed {
 }
 
 export class FmMusic {
+  /** Overall music level against the sound effects (the mixed FM voices peak near 1). */
+  static LEVEL = 0.28;
   private timer: ReturnType<typeof setInterval> | null = null;
   private song: FmSong | null = null;
   private parsed: Parsed[] = [];
@@ -129,7 +131,8 @@ export class FmMusic {
     const ctx = this.host.ctx;
     if (this.timer || !ctx || !this.host.out || !this.song) return;
     this.bus = ctx.createGain();
-    this.bus.gain.value = this.song.volume ?? 1;
+    // music sits well under the effects: the voices sum hot, so the bus starts at a third
+    this.bus.gain.value = (this.song.volume ?? 1) * FmMusic.LEVEL;
     this.bus.connect(this.host.out);
     this.next = ctx.currentTime + 0.1;
     this.pos = 0; this.step = 0; this.pass = 0;

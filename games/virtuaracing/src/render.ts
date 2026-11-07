@@ -13,27 +13,41 @@ import {
 const SKY: Record<string, [string, string]> = { bigforest: ['#2058c0', '#90c8f0'], baybridge: ['#3070d0', '#b0d8f8'], acropolis: ['#d08040', '#f0d0a0'] };
 const GRASS: Record<string, [string, string]> = { bigforest: ['#3c9a3c', '#348a34'], baybridge: ['#2058a0', '#1c4c90'], acropolis: ['#b09060', '#a08050'] };
 
-/** Liveries in the arcade's spirit: the player in red and white, rivals in their team colour with a contrasting accent. */
+/** Two-tone team liveries (generic, no real team or sponsor): main colour -> [second colour, accent]. */
+const SCHEMES: Record<string, [string, string]> = {
+  '#e02020': ['#f0f0f0', '#202020'], '#2040e0': ['#f0d020', '#f0f0f0'], '#f0d020': ['#2050c8', '#202020'], '#20c040': ['#f4f4f4', '#f0d020'],
+  '#f08020': ['#203070', '#f4f4f4'], '#c020c0': ['#f4f4f4', '#202020'], '#20c0c0': ['#203048', '#f4f4f4'], '#e0e0e0': ['#d02828', '#2040a0'],
+  '#8040c0': ['#f0c020', '#f4f4f4'], '#c08040': ['#283048', '#f0e0b0'], '#40c080': ['#202830', '#f4f4f4'], '#e06080': ['#f4f4f4', '#3040a0'],
+  '#4080e0': ['#f4f4f4', '#e02020'], '#a0a0a0': ['#203050', '#e02020'], '#f0f0a0': ['#208040', '#202020'],
+};
+
 const liveries = new Map<string, Record<CarMat, string>>();
 function liveryOf(c: Car): Record<CarMat, string> {
   const key = `${c.color}|${c.player}`;
   let l = liveries.get(key);
   if (!l) {
-    const accent = c.player ? '#f0c020' : shade(c.color, 0.6);
-    l = { body: c.color, white: c.player ? '#f4f4f4' : shade(c.color, 1.35), accent, dark: '#2a2a30', black: '#141418', tyre: '#202024', rim: '#b8bcc4', helmet: c.player ? '#f8f8f8' : '#f0d040', visor: '#2848a0', metal: '#606068' };
+    const [second, accent] = c.player ? ['#f6f6f6', '#f0c020'] : SCHEMES[c.color] ?? ['#f0f0f0', shade(c.color, 0.6)];
+    l = {
+      body: c.color, white: second, accent, side: c.player ? '#f6f6f6' : accent, dark: '#26262c', black: '#101014', tyre: '#1c1c20', rim: '#c8ccd4',
+      helmet: c.player ? '#f8f8f8' : second, visor: '#203878', metal: '#9a9ca4', light: '#ff3020',
+    };
     liveries.set(key, l);
   }
   return l;
 }
+
+export const RES = 3;
 
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
   private demoT = 0;
 
   constructor(canvas: HTMLCanvasElement) {
-    canvas.width = W;
-    canvas.height = H;
+    // the world is drawn at three times the logical resolution (the HUD keeps its pixel font)
+    canvas.width = W * RES;
+    canvas.height = H * RES;
     this.ctx = canvas.getContext('2d')!;
+    this.ctx.setTransform(RES, 0, 0, RES, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
   }
 
@@ -122,19 +136,19 @@ export class Renderer {
       const GL_a = { x: a.x - a.rx * gw, y: a.y, z: a.z - a.rz * gw }, GR_a = { x: a.x + a.rx * gw, y: a.y, z: a.z + a.rz * gw };
       const GL_b = { x: b.x - b.rx * gw, y: b.y, z: b.z - b.rz * gw }, GR_b = { x: b.x + b.rx * gw, y: b.y, z: b.z + b.rz * gw };
       const gc = grass[(i >> 1) & 1];
-      painter.add({ pts: [GL_a, L_a, L_b, GL_b], color: gc });
-      painter.add({ pts: [R_a, GR_a, GR_b, R_b], color: gc });
+      painter.add({ pts: [GL_a, L_a, L_b, GL_b], color: gc }, true);
+      painter.add({ pts: [R_a, GR_a, GR_b, R_b], color: gc }, true);
       // road, with the start line and checkpoint stripes
       const isStart = i === 0;
       const isCp = track.checkpoints.some((c) => Math.abs(a.s - c) < SAMPLE / 2);
-      painter.add({ pts: [L_a, R_a, R_b, L_b], color: isStart ? '#f0f0f0' : isCp ? '#e0e040' : (i & 2) ? '#6a6a70' : '#606066' });
+      painter.add({ pts: [L_a, R_a, R_b, L_b], color: isStart ? '#f0f0f0' : isCp ? '#e0e040' : (i & 2) ? '#6a6a70' : '#606066' }, true);
       // curbs
       const cw = 1.2;
       const CL_a = { x: a.x - a.rx * (hw + cw), y: a.y, z: a.z - a.rz * (hw + cw) }, CL_b = { x: b.x - b.rx * (hw + cw), y: b.y, z: b.z - b.rz * (hw + cw) };
       const CR_a = { x: a.x + a.rx * (hw + cw), y: a.y, z: a.z + a.rz * (hw + cw) }, CR_b = { x: b.x + b.rx * (hw + cw), y: b.y, z: b.z + b.rz * (hw + cw) };
       const curb = (i & 1) ? '#e03030' : '#f0f0f0';
-      painter.add({ pts: [CL_a, L_a, L_b, CL_b], color: curb });
-      painter.add({ pts: [R_a, CR_a, CR_b, R_b], color: curb });
+      painter.add({ pts: [CL_a, L_a, L_b, CL_b], color: curb }, true);
+      painter.add({ pts: [R_a, CR_a, CR_b, R_b], color: curb }, true);
       if (course === 'baybridge' && a.y > 3) {
         // the bridge deck has railings
         painter.add({ pts: [CL_a, CL_b, { ...CL_b, y: CL_b.y + 1 }, { ...CL_a, y: CL_a.y + 1 }], color: '#c0c8d0' });
@@ -180,7 +194,7 @@ export class Renderer {
       let ds = ((c.s % L) + L) % L - sNow;
       if (ds < -L / 2) ds += L; if (ds > L / 2) ds -= L;
       if (ds < -DRAW_BEHIND * SAMPLE || ds > DRAW_AHEAD * SAMPLE) continue;
-      this.drawCar(painter, track, c, time, Math.abs(ds) < 45);
+      this.drawCar(painter, track, c, time, Math.abs(ds) < 45, cam);
     }
     painter.draw(ctx);
     // the bumper view shows the nose of your own car
@@ -200,14 +214,14 @@ export class Renderer {
     }
   }
 
-  /** A formula car the Model 1 way: wedge body, sidepods, airbox, helmet, wings with endplates, eight-sided wheels. */
-  private drawCar(painter: Painter, track: Track, c: Car, time: number, near = true): void {
+  /** A formula car: the whole model sorted into the scene as one, seen from the camera. */
+  private drawCar(painter: Painter, track: Track, c: Car, time: number, near: boolean, cam: Camera): void {
     const p = world(track, c.s, c.d);
     const f = at(track, c.s);
     const yaw = Math.atan2(f.fx, f.fz) + c.steer * 0.15;
     const wobble = c.bump > 0 ? Math.sin(time * 40) * 0.08 : 0;
     const livery = liveryOf(c);
-    for (const q of carPolys(p.x, p.y, p.z, yaw + wobble, 1.25, livery, near, c.steer * -0.02)) painter.add(q);
+    painter.addGroup(carPolys(p.x, p.y, p.z, yaw + wobble, 1.25, livery, near, c.steer * -0.02, cam), p);
   }
 
   // ---------- HUD ----------
