@@ -132,8 +132,8 @@ export class Renderer {
     const logFrame = Math.floor(time * 10) % 2;
     for (const l of logs) ctx.drawImage(sprite(`log${l.rolling ? logFrame : 0}`), Math.round(l.x), GROUND_Y - LOG_H);
     for (const o of room.objects) {
-      if (o.kind === 'fire') ctx.drawImage(sprite(`fire${Math.floor(time * 8) % 2}`), o.x, GROUND_Y - 14);
-      else if (o.kind === 'snake') ctx.drawImage(sprite(`snake${Math.floor(time * 4) % 2}`), o.x, GROUND_Y - 10);
+      if (o.kind === 'fire') ctx.drawImage(sprite(`fire${Math.floor(time * 8) & 1}`), o.x, GROUND_Y - 14);
+      else if (o.kind === 'snake') ctx.drawImage(sprite(`snake${Math.floor(time * 4) & 1}`), o.x, GROUND_Y - 10);
     }
     if (treasure !== null || (!g && room.treasure !== null)) {
       const t = treasure ?? room.treasure ?? 0;
@@ -195,7 +195,7 @@ export class Renderer {
   }
 
   private drawScorpion(x: number, time: number): void {
-    const s = sprite(`scorpion${Math.floor(time * 6) % 2}`);
+    const s = sprite(`scorpion${Math.floor(time * 6) & 1}`);
     this.ctx.drawImage(s, Math.round(x), TUNNEL_Y - s.height);
   }
 
@@ -220,7 +220,7 @@ export class Renderer {
       case 'jump':
       case 'drop':
       case 'fall': name = 'jump'; break;
-      case 'climb': name = `climb${Math.floor(h.runPhase) % 2}`; break;
+      case 'climb': name = `climb${Math.floor(h.runPhase) & 1}`; break;
       case 'swing': name = 'swing'; break;
       case 'kneel':
       case 'sink': name = 'kneel'; break;

@@ -71,7 +71,7 @@ export class Renderer {
     if (st.oilDrum) {
       ctx.drawImage(sprite('oilDrum'), st.oilDrum.x, st.oilDrum.y - 16);
       const lit = g ? g.actors.fireballs.length > 0 || g.kind !== 'barrels' : true;
-      if (lit) ctx.drawImage(sprite(`drumFire${Math.floor(time * 8) % 2}`), st.oilDrum.x, st.oilDrum.y - 24);
+      if (lit) ctx.drawImage(sprite(`drumFire${(Math.floor(time * 8) & 1)}`), st.oilDrum.x, st.oilDrum.y - 24);
     }
     for (const h of st.hammers) if (!h.taken) ctx.drawImage(sprite('hammerItem'), h.x, h.y - 10);
     for (const it of st.items) if (!it.taken) ctx.drawImage(sprite(it.kind), it.x, it.y - 10);
@@ -136,11 +136,11 @@ export class Renderer {
       ctx.fillRect(s.x + 7, Math.round(c.y) - 6, 2, 6);
     }
     for (const b of a.barrels) {
-      const name = b.ladder ? (b.blue ? 'blue0' : 'barrel0') : `${b.blue ? 'blue' : 'barrel'}${Math.floor(b.phase) % 2}`;
+      const name = b.ladder ? (b.blue ? 'blue0' : 'barrel0') : `${b.blue ? 'blue' : 'barrel'}${Math.floor(b.phase) & 1}`;
       ctx.drawImage(sprite(name), Math.round(b.x) - 6, Math.round(b.y) - 10);
     }
     for (const f of a.fireballs) {
-      const name = g.hammering ? 'fireBlue0' : `fire${Math.floor(f.phase) % 2}`;
+      const name = g.hammering ? 'fireBlue0' : `fire${Math.floor(f.phase) & 1}`;
       ctx.drawImage(sprite(name, f.dir < 0), Math.round(f.x) - 6, Math.round(f.y) - 12);
     }
     for (const p of a.pies) ctx.drawImage(sprite('pie'), Math.round(p.x) - 8, Math.round(p.y) - 6);
@@ -157,9 +157,9 @@ export class Renderer {
     else if (g.hammering) name = Math.floor(m.swing / HAMMER_SWING) % 2 === 0 ? 'hammer0' : 'hammer1';
     else {
       switch (m.mode) {
-        case 'walk': name = m.walking ? `run${Math.floor(m.phase * 8) % 2}` : 'stand'; break;
+        case 'walk': name = m.walking ? `run${Math.floor(m.phase * 8) & 1}` : 'stand'; break;
         case 'jump': case 'fall': name = 'jump'; break;
-        case 'climb': name = `climb${Math.floor(m.phase * 6) % 2}`; break;
+        case 'climb': name = `climb${Math.floor(m.phase * 6) & 1}`; break;
       }
     }
     const s = sprite(name, m.facing < 0);

@@ -37,7 +37,7 @@ export class Renderer {
       this.demoCam = wrapX(this.demoCam + 0.5);
       this.demo.update(1 / 60, { x: this.demoCam + 100, y: 90, alive: false });
       this.drawWorld(this.demo, this.demoCam, g.time);
-      ctx.drawImage(sprite(`chopper${Math.floor(g.time * 20) % 2}`), 100, 90);
+      ctx.drawImage(sprite(`chopper${Math.floor(g.time * 20) & 1}`), 100, 90);
       ctx.fillStyle = 'rgba(0,0,0,0.66)';
       ctx.fillRect(0, 0, W, H);
       if (g.state === 'menu') this.drawMenu(g);
@@ -96,7 +96,7 @@ export class Renderer {
       const r = enemyRect(e);
       const x = this.sx(r.x, camera);
       if (x < -24 || x > W) continue;
-      const name = e.kind === 'jet' ? 'jet' : `heli${Math.floor(time * 20 + e.phase) % 2}`;
+      const name = e.kind === 'jet' ? 'jet' : `heli${Math.floor(time * 20 + e.phase) & 1}`;
       ctx.drawImage(sprite(name, e.dir > 0), Math.round(x), Math.round(r.y));
     }
     // missiles and bullets
@@ -124,7 +124,7 @@ export class Renderer {
       ctx.fillRect(Math.round(x) + 4, Math.round(c.y + k * (GROUND_Y - c.y - 6)), 16, 6);
       return;
     }
-    ctx.drawImage(sprite(`chopper${Math.floor(g.time * 20) % 2}`, c.facing < 0), Math.round(x), Math.round(c.y));
+    ctx.drawImage(sprite(`chopper${Math.floor(g.time * 20) & 1}`, c.facing < 0), Math.round(x), Math.round(c.y));
   }
 
   // ---------- long-range scanner ----------

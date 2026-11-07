@@ -123,7 +123,7 @@ export class Renderer {
       if (c.kind === 'spider' && !dark) { ctx.fillStyle = '#c0c0c0'; ctx.fillRect(c.x + 6 - ox, c.baseY - oy, 1, c.y - c.baseY); }
       ctx.drawImage(s, Math.round(c.x - ox), Math.round(c.y - oy));
     }
-    for (const t of w.tentacles) ctx.drawImage(sprite(`tentacle${Math.floor(time * 4) % 2}`), Math.round(t.x - ox), t.y - oy - 10);
+    for (const t of w.tentacles) ctx.drawImage(sprite(`tentacle${Math.floor(time * 4) & 1}`), Math.round(t.x - ox), t.y - oy - 10);
     ctx.globalAlpha = 1;
 
     if (g) this.drawHero(g, ox, oy, dark);
@@ -154,7 +154,7 @@ export class Renderer {
       ctx.fillStyle = '#000';
       ctx.fillRect(Math.round(g.blast.x - ox - r * 0.4), Math.round(g.blast.y - oy - r * 0.4), r * 0.8, r * 0.8);
     }
-    let name = h.flying || !h.grounded ? `hero${Math.floor(h.phase) % 2}` : h.walking ? `run${Math.floor(h.phase) % 2}` : 'hero0';
+    let name = h.flying || !h.grounded ? `hero${Math.floor(h.phase) & 1}` : h.walking ? `run${Math.floor(h.phase) & 1}` : 'hero0';
     if (h.mode === 'dead') name = Math.floor(h.t * 8) % 2 ? 'dead' : 'hero1';
     if (h.mode === 'rescue' && Math.floor(h.t * 6) % 2) name = 'hero1';
     ctx.drawImage(sprite(name, h.facing < 0), hx, hy);

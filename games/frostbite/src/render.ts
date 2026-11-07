@@ -86,7 +86,7 @@ export class Renderer {
       // creatures
       const grp = row.group;
       if (grp) {
-        const frame = Math.floor(time * 5) % 2;
+        const frame = Math.floor(time * 5) & 1; // & 1 stays 0..1 even if time is negative
         for (let i = 0; i < grp.xs.length; i++) {
           if (!grp.alive[i]) continue;
           const name = grp.kind === 'goose' ? `goose${frame}` : grp.kind === 'clam' ? `clam${frame}` : grp.kind;
@@ -101,7 +101,7 @@ export class Renderer {
     }
 
     if (g) {
-      if (g.bearActive) ctx.drawImage(sprite(`bear${Math.floor(time * 4) % 2}`, g.bearDir > 0), Math.round(g.bearX), SHORE_Y - 9);
+      if (g.bearActive) ctx.drawImage(sprite(`bear${Math.floor(time * 4) & 1}`, g.bearDir > 0), Math.round(g.bearX), SHORE_Y - 9);
       this.drawBailey(g);
     } else {
       ctx.drawImage(sprite('stand'), 40, SHORE_Y - BAILEY_H);
@@ -142,11 +142,11 @@ export class Renderer {
     }
     let name = 'stand';
     switch (b.mode) {
-      case 'stand': name = b.walking ? `run${Math.floor(b.phase) % 2}` : 'stand'; break;
+      case 'stand': name = b.walking ? `run${Math.floor(b.phase) & 1}` : 'stand'; break;
       case 'jump': name = 'jump'; break;
       case 'splash': name = 'splash'; break;
       case 'freeze': name = Math.floor(b.t * 8) % 2 ? 'stand' : 'jump'; break;
-      case 'chased': name = `run${Math.floor(g.time * 12) % 2}`; break;
+      case 'chased': name = `run${Math.floor(g.time * 12) & 1}`; break;
       case 'enter': name = 'stand'; break;
     }
     let lift = 0;

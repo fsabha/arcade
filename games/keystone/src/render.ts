@@ -39,7 +39,7 @@ export class Renderer {
       this.demo.elevator.update(1 / 60);
       this.drawStore(this.demo, 0, g.time);
       ctx.drawImage(sprite('stand'), 48, FEET[0] - KELLY_H);
-      ctx.drawImage(sprite(`harry${Math.floor(g.time * 8) % 2}`), 200, FEET[0] - HARRY_H);
+      ctx.drawImage(sprite(`harry${Math.floor(g.time * 8) & 1}`), 200, FEET[0] - HARRY_H);
       ctx.fillStyle = 'rgba(0,0,0,0.66)';
       ctx.fillRect(0, 0, W, H);
       if (g.state === 'menu') this.drawMenu(g);
@@ -175,7 +175,7 @@ export class Renderer {
     // Harry
     const h = g.harry;
     if (!h.escaped && h.x + 16 > ox && h.x < ox + W) {
-      const name = `harry${Math.floor(h.phase) % 2}`;
+      const name = `harry${Math.floor(h.phase) & 1}`;
       ctx.drawImage(sprite(name, h.facing < 0), Math.round(h.x - ox), Math.round(h.feet) - HARRY_H);
     }
     this.drawKelly(g, ox);
@@ -191,7 +191,7 @@ export class Renderer {
       case 'run':
         if (k.jumpT >= 0) name = 'jump';
         else if (k.ducking) name = 'duck';
-        else name = k.walking ? `run${Math.floor(k.phase) % 2}` : 'stand';
+        else name = k.walking ? `run${Math.floor(k.phase) & 1}` : 'stand';
         break;
       case 'escalator': name = 'stand'; break;
       case 'elevator': name = 'stand'; break;
