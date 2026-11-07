@@ -78,8 +78,8 @@ body:not(.ranking) /* Our own game: a glowing gradient border */
   border: 2px solid transparent;
   background:
     linear-gradient(var(--panel), var(--panel)) padding-box,
-    linear-gradient(135deg, #9fe0ff, #b98aff 50%, #ff7ad9) border-box;
-  box-shadow: 0 0 22px rgba(159, 224, 255, 0.35), 0 0 46px rgba(185, 138, 255, 0.18);
+    linear-gradient(135deg, var(--accent), color-mix(in srgb, var(--accent) 45%, #b98aff) 50%, #ff7ad9) border-box;
+  box-shadow: 0 0 22px color-mix(in srgb, var(--accent) 40%, transparent), 0 0 46px rgba(185, 138, 255, 0.18);
 }
 .card.featured::after {
   content: 'NOVO · ORIGINAL';

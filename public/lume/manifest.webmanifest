@@ -1,0 +1,20 @@
+{
+  "name": "Lume - Arcade",
+  "short_name": "Lume",
+  "description": "A última faísca do farol de Vau desce o abismo resgatando luzes. Criação original do projeto Arcade.",
+  "lang": "pt-BR",
+  "id": "/games/lume/",
+  "start_url": "/games/lume/index.html",
+  "scope": "/games/lume/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#06131c",
+  "theme_color": "#06131c",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/lume/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/lume/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/lume/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

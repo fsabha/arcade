@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#06131c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Lume" />
+    <meta name="description" content="LUME: a última faísca do farol de Vau desce o abismo resgatando luzes. Criação original do projeto Arcade." />
+    <link rel="manifest" href="/lume/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/lume/apple-touch-icon.png" />
+    <link rel="icon" href="/lume/icon-192.png" />
+    <title>Lume</title>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div class="score-box">
+          <div id="score" class="score">0</div>
+          <div id="depth" class="dist">0 M</div>
+        </div>
+        <div class="right-box">
+          <div id="tail" class="tail-count" aria-label="Luzes na cauda">&#10022; 0</div>
+          <button id="pause-btn" class="icon-btn" type="button" aria-label="Pausar">II</button>
+        </div>
+      </div>
+      <div id="memory" class="memory"></div>
+      <div id="banner" class="banner"></div>
+      <div class="hud-bottom">
+        <div class="lightbar" aria-label="Luz"><span>LUZ</span><i><b id="light-fill"></b></i></div>
+        <div id="hint" class="hint">arraste para guiar &middot; toque: pulso</div>
+      </div>
+    </div>
+
+    <section id="title" class="screen">
+      <h1 class="logo">LUME</h1>
+      <p class="tag">criação original do Arcade</p>
+      <p class="intro">Vau afundou. A Maré Negra apagou o farol.<br />Você é a última faísca.</p>
+      <div class="menu">
+        <button id="play" class="btn primary" type="button">MERGULHAR</button>
+        <button id="rank-btn" class="btn" type="button">RANKING</button>
+        <div class="row">
+          <button id="snd-btn" class="btn small" type="button">SOM: SIM</button>
+          <button id="mus-btn" class="btn small" type="button">MÚSICA: SIM</button>
+        </div>
+        <button id="mem-btn" class="btn small" type="button">MEMÓRIAS</button>
+        <button id="install-btn" class="btn small" type="button" hidden>INSTALAR NA TELA</button>
+      </div>
+      <ul class="how">
+        <li><b>Arraste</b> em qualquer lugar para guiar a faísca.</li>
+        <li>Sua <b>luz</b> se apaga devagar. Junte as <b>luzes perdidas</b>: elas te alimentam e te seguem como uma cauda.</li>
+        <li>Criaturas que tocam a <b>cauda</b> a cortam; o pedaço solto ainda pode ser recuperado por alguns segundos.</li>
+        <li>Leve a cauda até uma <b>lanterna</b>: quanto mais longa, muito mais pontos (comprimento²).</li>
+        <li><b>Toque</b> rápido: um pulso queima uma luz para atordoar criaturas e quebrar destroços.</li>
+      </ul>
+      <p id="ios-hint" class="small-note" hidden>No iPhone: Compartilhar &rsaquo; Adicionar à Tela de Início para jogar em tela cheia.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+      <p id="best" class="small-note"></p>
+    </section>
+
+    <section id="memories" class="screen" hidden>
+      <h2>MEMÓRIAS</h2>
+      <p class="small-note">Cada lanterna acesa devolve uma lembrança de Vau.</p>
+      <ol id="mem-list" class="mem-list"></ol>
+      <div class="menu">
+        <button id="mem-back" class="btn primary" type="button">VOLTAR</button>
+      </div>
+    </section>
+
+    <section id="pause" class="screen" hidden>
+      <h2>PAUSA</h2>
+      <div class="menu">
+        <button id="resume" class="btn primary" type="button">CONTINUAR</button>
+        <button id="quit" class="btn" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="over" class="screen" hidden>
+      <h2>A LUZ SE APAGOU</h2>
+      <div class="final">
+        <div><span id="f-score" class="big">0</span><small>pontos</small></div>
+        <div class="stats"><span id="f-depth">0 M</span> &middot; <span id="f-tail">maior cauda 0</span> &middot; <span id="f-banked">0 luzes salvas</span></div>
+        <div id="f-best" class="small-note"></div>
+      </div>
+      <form id="initials-form" class="initials" autocomplete="off">
+        <label for="initials">Suas iniciais no ranking global</label>
+        <div class="row">
+          <input id="initials" maxlength="3" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="AAA" />
+          <button class="btn primary small" type="submit">ENVIAR</button>
+        </div>
+        <div id="sent" class="small-note"></div>
+      </form>
+      <div class="menu">
+        <button id="again" class="btn primary" type="button">MERGULHAR DE NOVO</button>
+        <button id="over-rank" class="btn small" type="button">RANKING</button>
+        <button id="over-menu" class="btn small" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="ranking" class="screen" hidden>
+      <h2>RANKING GLOBAL</h2>
+      <ol id="rank-list" class="rank-list"></ol>
+      <div class="menu">
+        <button id="rank-back" class="btn primary" type="button">VOLTAR</button>
+      </div>
+    </section>
+
+    <div id="fail" class="screen" hidden>
+      <h2>Ops</h2>
+      <p>Este aparelho não conseguiu iniciar os gráficos (WebGL). Tente outro navegador.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

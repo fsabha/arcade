@@ -21,6 +21,7 @@ export function platformOf(g: GameInfo): Platform {
 }
 
 export const GAMES: GameInfo[] = [
+  { id: 'lume', title: 'LUME', original: 'Criação original do Arcade', year: 2026, blurb: 'Nossa criação: a última faísca do farol de Vau desce o abismo resgatando as luzes perdidas.', accent: '#ffb347', w: 320, h: 200, featured: true, page: true },
   { id: 'cometa', title: 'COMETA', original: 'Criação original do Arcade', year: 2026, blurb: 'Nossa criação e colaboração pessoal para o projeto: guie o cometa com um dedo pela nebulosa.', accent: '#9fe0ff', w: 320, h: 200, featured: true, page: true },
   { id: 'riverraid', title: 'RIVER RAID', original: 'Activision, Atari 2600', year: 1982, blurb: 'Voe pelo rio, abasteça e destrua pontes.', accent: '#3ddc84', w: 240, h: 320 },
   { id: 'endurance', title: 'ENDURANCE', original: 'Enduro - Activision, Atari 2600', year: 1983, blurb: 'Ultrapasse a cota de carros a cada dia.', accent: '#ff8c3a', w: 320, h: 240 },
