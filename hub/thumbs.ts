@@ -129,6 +129,20 @@ const THUMBS: Record<string, Draw> = {
     rect(ctx, ex, 22, 5, 10, '#30a040'); rect(ctx, ex + 1, 18, 3, 4, '#f0c090'); rect(ctx, ex - 6, 21, 6, 2, '#d0d8e0');
     rect(ctx, 54, 10, 6, 6, '#58a8ff');
   },
+  streetsofrage(ctx, t) {
+    // a night street: skyline, a neon sign, the sidewalk and the road
+    rect(ctx, 0, 0, TW, 22, '#140c30'); rect(ctx, 0, 22, TW, 6, '#505058'); rect(ctx, 0, 28, TW, 12, '#303038');
+    for (let i = 0; i < 5; i++) { rect(ctx, i * 13 + 1, 6 + (i % 3) * 3, 10, 16 - (i % 3) * 3, '#1c1838'); for (let w = 0; w < 3; w++) rect(ctx, i * 13 + 3 + w * 3, 9 + (i % 3) * 3, 2, 2, '#e0d080'); }
+    rect(ctx, 22, 14, 20, 4, Math.floor(t * 3) % 2 ? '#ff40a0' : '#40e0ff');
+    for (let i = 0; i < 4; i++) rect(ctx, i * 18 + mod(t * 10, 18) - 9, 34, 8, 1, '#d0c040');
+    // Axel punching a Galsia, a police car passing by
+    const x = 16 + Math.sin(t * 2) * 3;
+    rect(ctx, x, 22, 5, 10, '#3060c0'); rect(ctx, x, 22, 5, 5, '#f4f4f4'); rect(ctx, x + 1, 18, 3, 4, '#f0c090'); rect(ctx, x + 1, 17, 3, 1, '#f0d060'); rect(ctx, x + 5, 24 + Math.floor(t * 6) % 2, 5, 2, '#f0c090');
+    const ex = 36 - mod(t * 5, 8);
+    rect(ctx, ex, 22, 5, 10, '#303040'); rect(ctx, ex, 22, 5, 5, '#4060d0'); rect(ctx, ex + 1, 18, 3, 4, '#f0c090');
+    const px = mod(t * 24, TW + 20) - 20;
+    rect(ctx, px, 33, 14, 5, '#f0f0f8'); rect(ctx, px + 4, 33, 6, 5, '#2040c0'); rect(ctx, px + 5, 31, 4, 2, Math.floor(t * 8) % 2 ? '#ff3030' : '#3060ff');
+  },
   virtuaracing(ctx, t) {
     rect(ctx, 0, 0, TW, 18, '#2058c0'); rect(ctx, 0, 18, TW, 22, '#3c9a3c');
     for (let i = 0; i < 6; i++) rect(ctx, i * 11, 12, 8, 6, '#2c6a3c');

@@ -1,12 +1,13 @@
 import { drawText } from '@arcade/shared';
 import { drawRig, poseAt, POSES, REST } from './rig';
-import type { Keyframe } from './rig';
-import type { Actor, Brawl, Item, Spark } from './world';
+import type { Keyframe, RigDef, WeaponShape } from './rig';
+import { moveOf } from './world';
+import type { Actor, Brawl, Item, Projectile, Spark } from './world';
 
 /** Pose for an actor's current state (the move's own track when attacking). */
 export function actorPose(a: Actor): ReturnType<typeof poseAt> {
   let key: string = a.state;
-  if (a.state === 'attack' || a.state === 'dashAttack' || a.state === 'jumpAttack') key = a.move ? a.def.attacks[a.move]?.pose ?? a.move : a.state;
+  if (a.state === 'attack' || a.state === 'dashAttack' || a.state === 'jumpAttack') key = a.move ? moveOf(a, a.move)?.pose ?? a.move : a.state;
   if (a.state === 'knee') key = 'knee';
   if (a.state === 'throw') key = 'throw';
   if (a.state === 'flee') key = 'run';
@@ -26,6 +27,15 @@ export interface SceneOptions {
   floorOffset?: number;
   /** draw the hero in a tint while invulnerable */
   invulnTint?: string;
+  /** custom item sprites: return false to fall back to the built-in drawing */
+  item?(ctx: CanvasRenderingContext2D, it: Item, x: number, y: number): boolean;
+  /** custom projectile sprites (knives, boomerangs, flames); the default is a yellow dash */
+  projectile?(ctx: CanvasRenderingContext2D, p: Projectile, x: number, y: number): boolean;
+}
+
+/** The actor's rig, holding whatever weapon it picked up (weapon ids are rig shapes: 'pipe', 'bat', 'knife'...). */
+export function actorRig(a: Actor): RigDef {
+  return a.weapon ? { ...a.def.rig, weapon: a.weapon as WeaponShape } : a.def.rig;
 }
 
 /** Draws shadows and every actor/item/projectile sorted by depth. */
@@ -47,19 +57,20 @@ export function drawScene(ctx: CanvasRenderingContext2D, b: Brawl, opts: SceneOp
         const sw = a.def.width * a.def.rig.scale;
         ctx.fillRect(x - sw / 2, y - 2, sw, 3);
         const tint = a.team === 'hero' && a.invuln > 0 && Math.floor(a.t * 20) % 2 ? (opts.invulnTint ?? '#ffffff') : undefined;
-        drawRig(ctx, a.def.rig, actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
+        drawRig(ctx, actorRig(a), actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
       },
     });
   }
   for (const it of b.items) {
     const x = Math.round(it.x - sx);
     const y = Math.round(it.y + off);
-    list.push({ y: it.y - 1, draw: () => drawItem(ctx, it, x, y - Math.round(Math.sin(it.bounce * Math.PI) * 10)) });
+    const iy = y - Math.round(Math.sin(it.bounce * Math.PI) * 10);
+    list.push({ y: it.y - 1, draw: () => { if (!opts.item?.(ctx, it, x, iy)) drawItem(ctx, it, x, iy); } });
   }
   for (const p of b.projectiles) {
     const x = Math.round(p.x - sx);
     const y = Math.round(p.y + off);
-    list.push({ y: p.y, draw: () => { ctx.fillStyle = '#ffe060'; ctx.fillRect(x - 4, y - Math.round(p.z) - 2, 8, 3); } });
+    list.push({ y: p.y, draw: () => { if (!opts.projectile?.(ctx, p, x, y)) { ctx.fillStyle = '#ffe060'; ctx.fillRect(x - 4, y - Math.round(p.z) - 2, 8, 3); } } });
   }
   list.sort((a, c) => a.y - c.y);
   for (const d of list) d.draw();
@@ -91,9 +102,34 @@ export function drawItem(ctx: CanvasRenderingContext2D, it: Item, x: number, y: 
       ctx.fillStyle = '#ff3030'; ctx.fillRect(x - 1, y - 11, 2, 2);
       ctx.fillStyle = '#000'; ctx.fillRect(x - 6, y - 1, 3, 2); ctx.fillRect(x + 3, y - 1, 3, 2);
       break;
-    case 'weapon':
+    case 'weapon': drawWeaponItem(ctx, it.weapon ?? 'pipe', x, y); break;
+  }
+}
+
+/** A weapon lying on the floor, by shape id. */
+export function drawWeaponItem(ctx: CanvasRenderingContext2D, weapon: string, x: number, y: number): void {
+  switch (weapon) {
+    case 'bat':
+      ctx.fillStyle = '#c08040'; ctx.fillRect(x - 9, y - 4, 18, 3);
+      ctx.fillStyle = '#805020'; ctx.fillRect(x - 9, y - 3, 5, 2); ctx.fillRect(x + 4, y - 5, 5, 5);
+      break;
+    case 'knife':
+      ctx.fillStyle = '#d8e0e8'; ctx.fillRect(x - 6, y - 3, 9, 2);
+      ctx.fillStyle = '#403020'; ctx.fillRect(x + 3, y - 4, 4, 3);
+      break;
+    case 'bottle':
+      ctx.fillStyle = '#60c080'; ctx.fillRect(x - 6, y - 4, 9, 4);
+      ctx.fillStyle = '#a0e0b0'; ctx.fillRect(x - 5, y - 3, 3, 1);
+      ctx.fillStyle = '#306040'; ctx.fillRect(x + 3, y - 3, 4, 2);
+      break;
+    case 'shaker':
+      ctx.fillStyle = '#f0f0f0'; ctx.fillRect(x - 3, y - 8, 6, 7);
+      ctx.fillStyle = '#808890'; ctx.fillRect(x - 3, y - 10, 6, 2);
+      ctx.fillStyle = '#c04040'; ctx.fillRect(x - 2, y - 5, 4, 2);
+      break;
+    default: // pipe and anything else: a grey bar with a darker end
       ctx.fillStyle = '#b0b8c0'; ctx.fillRect(x - 8, y - 3, 16, 2);
-      ctx.fillStyle = '#604020'; ctx.fillRect(x - 8, y - 3, 4, 2);
+      ctx.fillStyle = '#707880'; ctx.fillRect(x - 8, y - 3, 4, 2);
       break;
   }
 }

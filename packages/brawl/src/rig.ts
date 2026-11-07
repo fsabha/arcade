@@ -16,7 +16,7 @@ export interface Palette {
   eyes?: string;
 }
 
-export type WeaponShape = 'none' | 'sword' | 'axe' | 'club' | 'hammer' | 'claws' | 'knife' | 'pipe' | 'bat' | 'whip' | 'boomerang' | 'bottle' | 'staff';
+export type WeaponShape = 'none' | 'sword' | 'axe' | 'club' | 'hammer' | 'claws' | 'knife' | 'pipe' | 'bat' | 'whip' | 'boomerang' | 'bottle' | 'staff' | 'shaker' | 'gun';
 
 export interface RigDef {
   palette: Palette;
@@ -169,6 +169,46 @@ export const POSES: Record<string, Keyframe[]> = {
   thrown: [
     { t: 0, pose: { lean: -2.2, lShoulder: 1.6, rShoulder: 1.2, lHip: 0.9, rHip: 0.4, lKnee: 0.5, rKnee: 0.7 } },
   ],
+  // bare-handed brawling (Streets of Rage): jabs, a straight, kicks
+  punch: [
+    { t: 0, pose: { rShoulder: -0.3, rElbow: 1.3, lShoulder: 0.6, lElbow: 1.4, lean: 0 } },
+    { t: 0.07, pose: { rShoulder: 1.55, rElbow: 0, lShoulder: 0.7, lElbow: 1.5, lean: 0.18, lHip: 0.25, rHip: -0.25, weapon: 0 } },
+    { t: 0.3, pose: { rShoulder: 1.45, rElbow: 0.1, lShoulder: 0.7, lElbow: 1.5, lean: 0.12, lHip: 0.25, rHip: -0.25, weapon: 0 } },
+  ],
+  punch2: [
+    { t: 0, pose: { lShoulder: -0.3, lElbow: 1.3, rShoulder: 0.6, rElbow: 1.4, lean: 0 } },
+    { t: 0.07, pose: { lShoulder: 1.55, lElbow: 0, rShoulder: 0.7, rElbow: 1.5, lean: 0.18, lHip: -0.25, rHip: 0.25 } },
+    { t: 0.3, pose: { lShoulder: 1.45, lElbow: 0.1, rShoulder: 0.7, rElbow: 1.5, lean: 0.12, lHip: -0.25, rHip: 0.25 } },
+  ],
+  kick: [
+    { t: 0, pose: { rHip: -0.5, rKnee: 0.9, lean: -0.1, lShoulder: 0.5, rShoulder: -0.6, lElbow: 1.0, rElbow: 1.0 } },
+    { t: 0.1, pose: { rHip: 1.65, rKnee: 0, lean: -0.2, lShoulder: -0.8, rShoulder: 0.9, lElbow: 0.8, rElbow: 0.6, crouch: 0.05 } },
+    { t: 0.45, pose: { rHip: 1.5, rKnee: 0.1, lean: -0.15, lShoulder: -0.8, rShoulder: 0.9, lElbow: 0.8, rElbow: 0.6 } },
+  ],
+  jumpKick: [
+    { t: 0, pose: { lHip: 0.6, lKnee: 1.3, rHip: -0.2, rKnee: 1.0, lShoulder: -0.6, rShoulder: -0.6, lElbow: 0.8, rElbow: 0.8 } },
+    { t: 0.08, pose: { lHip: 0.4, lKnee: 1.4, rHip: 1.7, rKnee: 0, lean: -0.25, lShoulder: -0.9, rShoulder: 0.9, lElbow: 0.6, rElbow: 0.4 } },
+    { t: 0.5, pose: { lHip: 0.4, lKnee: 1.4, rHip: 1.6, rKnee: 0.1, lean: -0.2, lShoulder: -0.9, rShoulder: 0.9, lElbow: 0.6, rElbow: 0.4 } },
+  ],
+  slide: [ // sliding kick along the floor
+    { t: 0, pose: { lean: 0.3, crouch: 0.3, rHip: 0.6, rKnee: 0.8, lHip: -0.3, lKnee: 0.8, lShoulder: -0.6, rShoulder: -0.6 } },
+    { t: 0.1, pose: { lean: 0.9, crouch: 0.8, rHip: 1.5, rKnee: 0, lHip: -0.6, lKnee: 1.4, lShoulder: -1.2, rShoulder: -1.0, lElbow: 0.5, rElbow: 0.5 } },
+    { t: 0.5, pose: { lean: 0.9, crouch: 0.8, rHip: 1.5, rKnee: 0, lHip: -0.6, lKnee: 1.4, lShoulder: -1.2, rShoulder: -1.0, lElbow: 0.5, rElbow: 0.5 } },
+  ],
+  lash: [ // whip crack straight ahead
+    { t: 0, pose: { rShoulder: -2.4, rElbow: 0.4, weapon: 1.0, lean: -0.1 } },
+    { t: 0.12, pose: { rShoulder: 1.5, rElbow: 0, weapon: 0.15, lean: 0.2, lHip: 0.3, rHip: -0.3 } },
+    { t: 0.4, pose: { rShoulder: 1.4, rElbow: 0.05, weapon: 0.2, lean: 0.15, lHip: 0.3, rHip: -0.3 } },
+  ],
+  shoot: [ // arm out, the weapon level with the ground
+    { t: 0, pose: { rShoulder: 1.5, rElbow: 0, weapon: 0.1, lShoulder: 0.9, lElbow: 1.2, lean: 0.05 } },
+    { t: 0.3, pose: { rShoulder: 1.45, rElbow: 0, weapon: 0.1, lShoulder: 0.9, lElbow: 1.2, lean: 0.05 } },
+  ],
+  breath: [ // leans back, then forward blowing fire
+    { t: 0, pose: { lean: -0.3, headTilt: -0.3, lShoulder: -0.5, rShoulder: -0.5, lElbow: 0.8, rElbow: 0.8 } },
+    { t: 0.3, pose: { lean: 0.2, headTilt: 0.35, lShoulder: 0.4, rShoulder: 0.4, lElbow: 0.5, rElbow: 0.5 } },
+    { t: 0.8, pose: { lean: 0.15, headTilt: 0.3, lShoulder: 0.4, rShoulder: 0.4 } },
+  ],
 };
 
 export interface Frame { x: number; y: number; scale: number; flip: boolean }
@@ -319,6 +359,13 @@ function drawWeapon(ctx: CanvasRenderingContext2D, rig: RigDef, hx: number, hy: 
     case 'whip': for (let i = 0; i < 6; i++) seg(ctx, hx + ux * i * 4 * s + Math.sin(i) * 2, hy + uy * i * 4 * s, hx + ux * (i + 1) * 4 * s + Math.sin(i + 1) * 2, hy + uy * (i + 1) * 4 * s, t, pal.weapon); break;
     case 'boomerang': rect(ctx, hx - 3 * s, hy - 3 * s, 6 * s, 6 * s, pal.weapon); break;
     case 'bottle': seg(ctx, hx, hy, hx + ux * 7 * s, hy + uy * 7 * s, t + 1, '#60c080'); break;
+    case 'shaker': seg(ctx, hx, hy, hx + ux * 6 * s, hy + uy * 6 * s, t + 2, '#f0f0f0'); rect(ctx, hx + ux * 6 * s - 2 * s, hy + uy * 6 * s - 2 * s, 4 * s, 3 * s, '#808890'); break;
+    case 'gun': { // sub-machine gun: barrel along the arm, stock behind, grip below
+      seg(ctx, hx - ux * 6 * s, hy - uy * 6 * s, hx + ux * 14 * s, hy + uy * 14 * s, t + 1, pal.weaponDark);
+      seg(ctx, hx + ux * 2 * s, hy + uy * 2 * s, hx + ux * 2 * s - uy * 5 * s * dir, hy + uy * 2 * s + ux * 5 * s * dir, t, pal.weaponDark);
+      rect(ctx, hx + ux * 10 * s - s, hy + uy * 10 * s - s, 3 * s, 2 * s, pal.weapon);
+      break;
+    }
     case 'none': break;
   }
 }

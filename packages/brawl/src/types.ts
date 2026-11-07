@@ -16,6 +16,8 @@ export interface AttackFrame {
   knock: Knock;
   /** horizontal push on the target, px/s */
   push: number;
+  /** seconds the target stands dazed after the hit (pepper shaker) */
+  stun?: number;
 }
 
 export interface MoveDef {
@@ -44,11 +46,28 @@ export interface AiDef {
   /** can grab the hero */
   grabs?: boolean;
   /** ranged attack: a projectile every `cooldown` from this distance */
-  ranged?: { range: number; speed: number; damage: number; height: number };
+  ranged?: RangedDef;
   /** boss: never grabbed, shrugs off stagger after this many hits in a row */
   armor?: number;
   /** thieves: run from the heroes instead of fighting */
   flee?: boolean;
+}
+
+export interface RangedDef {
+  range: number;
+  speed: number;
+  damage: number;
+  height: number;
+  /** projectile kind for the renderer ('shot' by default: knife, boomerang, flame, bullet...) */
+  kind?: string;
+  /** boomerang: turns back after `range` px and vanishes when it passes the thrower */
+  returns?: boolean;
+  /** machine gun: this many projectiles in a row per shot */
+  burst?: number;
+  /** fights hand to hand like a melee enemy and only shoots when the hero is out of reach */
+  mixed?: boolean;
+  /** move (pose, usually without frames) played while shooting */
+  move?: string;
 }
 
 export interface ActorDef {
@@ -61,6 +80,8 @@ export interface ActorDef {
   height: number;
   rig: RigDef;
   attacks: Record<string, MoveDef>;
+  /** moves that replace `attacks` entries while the actor holds that weapon (Streets of Rage pipes and bats) */
+  weaponAttacks?: Record<string, Record<string, MoveDef>>;
   /** points when defeated */
   points: number;
   /** can be grabbed/thrown by heroes */

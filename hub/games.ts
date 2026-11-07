@@ -33,5 +33,6 @@ export const GAMES: GameInfo[] = [
   { id: 'moonpatrol', title: 'MOON PATROL', original: 'Irem, arcade', year: 1982, blurb: 'Pule crateras, atire em pedras e OVNIs e complete o percurso de A a Z.', accent: '#e060e0', w: 256, h: 224 },
   { id: 'donkeykong', title: 'DONKEY KONG', original: 'Nintendo, arcade', year: 1981, blurb: 'Suba as vigas, desvie dos barris e salve Pauline nas quatro fases.', accent: '#e85050', w: 224, h: 256 },
   { id: 'goldenaxe', title: 'GOLDEN AXE', original: 'Sega, Mega Drive', year: 1989, blurb: 'Ax, Tyris ou Gilius contra Death Adder: combos, magia, montarias e ladrões.', accent: '#f0c040', w: 320, h: 224 },
+  { id: 'streetsofrage', title: 'STREETS OF RAGE', original: 'Sega, Mega Drive', year: 1991, blurb: 'Axel, Blaze ou Adam limpam as ruas do Mr. X; chame a polícia quando apertar.', accent: '#e05080', w: 320, h: 224 },
   { id: 'virtuaracing', title: 'VIRTUA RACING', original: 'Sega, Mega Drive', year: 1994, blurb: 'Três pistas em polígonos, quinze adversários e o botão VR das quatro câmeras.', accent: '#60c0ff', w: 320, h: 224 },
 ];

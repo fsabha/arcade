@@ -1,5 +1,5 @@
 import { Rng } from '@arcade/shared';
-import type { ActorDef, AiDef, ItemDef, ItemKind, MoveDef, StageDef, Team, Wave } from './types';
+import type { ActorDef, AiDef, ItemDef, ItemKind, MoveDef, RangedDef, StageDef, Team, Wave } from './types';
 
 export const GRAVITY = 520;
 export const JUMP_VZ = 190;
@@ -63,7 +63,14 @@ export interface Actor {
 
 export interface Item { id: number; kind: ItemKind; x: number; y: number; value: number; weapon?: string; taken: boolean; bounce: number }
 
-export interface Projectile { x: number; y: number; z: number; vx: number; vz: number; damage: number; team: Team; alive: boolean; kind: string }
+export interface Projectile {
+  x: number; y: number; z: number; vx: number; vz: number; damage: number; team: Team; alive: boolean; kind: string;
+  /** boomerang: world x where it turns back, and whether it already did */
+  turnAt?: number; returning?: boolean;
+  from?: Actor | null;
+  /** seconds alive, for spinning sprites */
+  t: number;
+}
 
 export interface Spark { x: number; y: number; z: number; t: number; kind: 'hit' | 'block' | 'pot' }
 
@@ -82,6 +89,11 @@ export interface Hooks {
 }
 
 export interface DefRegistry { [id: string]: ActorDef }
+
+/** A move by name, honouring the weapon the actor holds (`weaponAttacks` overrides `attacks`). */
+export function moveOf(a: Actor, name: string): MoveDef | undefined {
+  return (a.weapon ? a.def.weaponAttacks?.[a.weapon]?.[name] : undefined) ?? a.def.attacks[name];
+}
 
 let nextId = 1;
 
@@ -139,10 +151,19 @@ export class Brawl {
     return item;
   }
 
-  dropItem(kind: ItemKind, x: number, y: number, value = 0): Item {
-    const item = this.addItem({ kind, x, y, value });
+  dropItem(kind: ItemKind, x: number, y: number, value = 0, weapon?: string): Item {
+    const item = this.addItem({ kind, x, y, value, weapon });
     item.bounce = 1; // little hop when dropped
     return item;
+  }
+
+  /** A knocked-down actor loses the weapon it holds; it lands next to it, ready to be picked up again. */
+  private dropWeapon(a: Actor): void {
+    if (!a.weapon) return;
+    const w = a.weapon;
+    a.weapon = null;
+    const x = Math.max(this.scrollX + 12, Math.min(this.scrollX + this.W - 12, a.x - a.facing * 12));
+    this.dropItem('weapon', x, Math.max(this.stage.floorTop, Math.min(this.stage.floorBottom, a.y)), 0, w);
   }
 
   get heroes(): Actor[] {
@@ -223,7 +244,7 @@ export class Brawl {
         break;
       }
       case 'jump':
-        if (c?.attack && a.def.attacks.jumpAttack) this.startMove(a, 'jumpAttack', 'jumpAttack');
+        if (c?.attack && moveOf(a, 'jumpAttack')) this.startMove(a, 'jumpAttack', 'jumpAttack');
         break;
       case 'jumpAttack': break;
       case 'hit':
@@ -437,6 +458,7 @@ export class Brawl {
       case 'fly': a.vx = 0; this.setState(a, 'down'); break;
       case 'thrown': {
         a.vx = 0;
+        this.dropWeapon(a);
         // a thrown body bowls over whoever it lands on
         for (const o of this.actors) {
           if (o === a || o.dead || o.team === a.team && o.team === 'hero') continue;
@@ -452,11 +474,11 @@ export class Brawl {
   // ---------- moves ----------
 
   private moveDef(a: Actor): MoveDef | null {
-    return a.move ? a.def.attacks[a.move] ?? null : null;
+    return a.move ? moveOf(a, a.move) ?? null : null;
   }
 
   startMove(a: Actor, move: string, state: ActorState): void {
-    const mv = a.def.attacks[move];
+    const mv = moveOf(a, move);
     if (!mv) return;
     a.move = move;
     a.moveHits = new Set();
@@ -506,12 +528,12 @@ export class Brawl {
         if (box.x1 < b.x0 || box.x0 > b.x1 || box.z1 < b.z0 || box.z0 > b.z1) continue;
         a.moveHits.add(t.id);
         const dmgScale = a.team === 'enemy' ? 1 + a.variant * 0.25 : 1;
-        this.damage(a, t, Math.round(box.frame.damage * dmgScale), box.frame.knock, box.frame.push);
+        this.damage(a, t, Math.round(box.frame.damage * dmgScale), box.frame.knock, box.frame.push, box.frame.stun);
       }
     }
   }
 
-  damage(from: Actor | null, t: Actor, dmg: number, knock: string, push: number): void {
+  damage(from: Actor | null, t: Actor, dmg: number, knock: string, push: number, stun = 0): void {
     if (t.dead || t.state === 'die') return;
     const dir = from ? (t.x >= from.x ? 1 : -1) : -t.facing;
     // thieves drop their loot and run
@@ -536,6 +558,8 @@ export class Brawl {
     this.hooks.onHit?.(from ?? t, t, dmg, knock);
     const armor = t.def.ai?.armor ?? 0;
     const shrug = armor > 0 && t.hitsTaken % (armor + 1) !== 0 && knock === 'hit';
+    if (stun > 0 && !armor) t.stunned = Math.max(t.stunned, stun);
+    if (t.hp <= 0 || knock === 'down' || knock === 'launch') this.dropWeapon(t);
     if (t.hp <= 0) {
       t.vx = dir * 140; t.vz = 150; t.z = Math.max(t.z, 1);
       this.setState(t, 'fly');
@@ -581,6 +605,7 @@ export class Brawl {
     s.thinkT -= dt;
     s.retreat = Math.max(0, s.retreat - dt);
     if (!h) { a.state = 'idle'; return; }
+    if (a.stunned > 0) { a.stunned -= dt; a.state = 'idle'; return; } // dazed (pepper in the eyes)
     if (s.thinkT <= 0) {
       s.thinkT = 0.6 + this.rng.next() * 0.8;
       if (this.rng.chance(ai.flank)) s.side = -s.side as 1 | -1;
@@ -589,7 +614,7 @@ export class Brawl {
     }
     const target = h.mount ?? h;
     // ranged enemies keep their distance and shoot
-    if (ai.ranged) {
+    if (ai.ranged && !ai.ranged.mixed) {
       const d = Math.abs(target.x - a.x);
       a.facing = target.x > a.x ? 1 : -1;
       if (Math.abs(target.y - a.y) > 6) a.y += Math.sign(target.y - a.y) * a.def.speed * 0.5 * dt;
@@ -599,8 +624,7 @@ export class Brawl {
         a.state = 'idle';
         if (s.cooldown <= 0) {
           s.cooldown = ai.cooldown;
-          this.projectiles.push({ x: a.x + a.facing * 10, y: a.y, z: ai.ranged.height, vx: a.facing * ai.ranged.speed, vz: 0, damage: ai.ranged.damage, team: 'enemy', alive: true, kind: 'shot' });
-          this.hooks.onSwing?.(a, 'ranged');
+          this.fire(a, ai.ranged);
         }
       }
       return;
@@ -616,6 +640,12 @@ export class Brawl {
     a.facing = target.x > a.x ? 1 : -1;
     a.state = moved ? 'walk' : 'idle';
     const inRange = Math.abs(target.x - a.x) <= ai.range + 6 && Math.abs(ddy) <= 6;
+    // mixed fighters (fire breathers) shoot when the hero is lined up but out of reach
+    if (ai.ranged && s.cooldown <= 0 && !inRange && Math.abs(ddy) <= 8 && Math.abs(target.x - a.x) <= ai.ranged.range && Math.abs(target.x - a.x) > ai.range + 16) {
+      s.cooldown = ai.cooldown * (0.8 + this.rng.next() * 0.4) / this.difficulty;
+      this.fire(a, ai.ranged);
+      return;
+    }
     if (inRange && s.cooldown <= 0 && s.retreat <= 0) {
       s.cooldown = ai.cooldown * (0.7 + this.rng.next() * 0.6) / this.difficulty;
       if (ai.grabs && target.team === 'hero' && !target.mount && this.rng.chance(0.25) && (target.state === 'idle' || target.state === 'walk')) {
@@ -629,13 +659,29 @@ export class Brawl {
     }
   }
 
+  /** Throws/shoots the actor's ranged attack: one projectile, or a burst, optionally one that comes back. */
+  private fire(a: Actor, r: RangedDef): void {
+    const n = Math.max(1, r.burst ?? 1);
+    for (let i = 0; i < n; i++) {
+      this.projectiles.push({
+        x: a.x + a.facing * (10 - i * 14), y: a.y, z: r.height, vx: a.facing * r.speed, vz: 0, damage: r.damage, team: a.team, alive: true,
+        kind: r.kind ?? 'shot', turnAt: r.returns ? a.x + a.facing * r.range : undefined, returning: false, from: a, t: 0,
+      });
+    }
+    if (r.move && moveOf(a, r.move)) this.startMove(a, r.move, 'attack');
+    this.hooks.onSwing?.(a, 'ranged');
+  }
+
   // ---------- projectiles, items, camera, waves ----------
 
   private updateProjectiles(dt: number): void {
     for (const p of this.projectiles) {
       if (!p.alive) continue;
+      p.t += dt;
       p.x += p.vx * dt;
       p.z += p.vz * dt;
+      if (p.turnAt !== undefined && !p.returning && (p.vx > 0 ? p.x >= p.turnAt : p.x <= p.turnAt)) { p.vx = -p.vx; p.returning = true; }
+      if (p.returning && (!p.from || p.from.dead || (p.vx > 0 ? p.x >= p.from.x : p.x <= p.from.x))) { p.alive = false; continue; }
       if (p.x < this.scrollX - 40 || p.x > this.scrollX + this.W + 40) { p.alive = false; continue; }
       for (const t of this.actors) {
         if (t.dead || (t.team === p.team) || t.team === 'neutral') continue;
@@ -658,6 +704,10 @@ export class Brawl {
       for (const h of this.heroes) {
         if (h.state !== 'idle' && h.state !== 'walk' && h.state !== 'run') continue;
         if (Math.abs(h.x - it.x) < 12 && Math.abs(h.y - it.y) < 10) {
+          if (it.kind === 'weapon') {
+            if (h.weapon || it.bounce > 0) continue; // one weapon at a time; a dropped one is picked up after it settles
+            h.weapon = it.weapon ?? null;
+          }
           it.taken = true;
           this.hooks.onItem?.(h, it);
           break;
