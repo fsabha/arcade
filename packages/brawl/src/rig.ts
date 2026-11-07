@@ -50,7 +50,7 @@ export interface Pose {
 
 export interface Keyframe { t: number; pose: Partial<Pose> }
 
-export const REST: Pose = { lShoulder: 0.15, lElbow: 0.2, rShoulder: -0.15, rElbow: 0.2, lHip: 0.05, lKnee: 0, rHip: -0.05, rKnee: 0, lean: 0, crouch: 0, headTilt: 0, weapon: 2.7 };
+export const REST: Pose = { lShoulder: 0.15, lElbow: 0.2, rShoulder: -0.15, rElbow: 0.2, lHip: 0.05, lKnee: 0, rHip: -0.05, rKnee: 0, lean: 0, crouch: 0, headTilt: 0, weapon: 0.5 };
 
 function lerp(a: number, b: number, k: number): number {
   return a + (b - a) * k;
@@ -218,18 +218,36 @@ export interface Frame { x: number; y: number; scale: number; flip: boolean }
 /** When set, every primitive is drawn one pixel fatter in this colour: the 16-bit outline pass. */
 let outline: string | null = null;
 
-/** Draws a chunky pixel segment of thickness `t` from (x0,y0) to (x1,y1). */
+/** Disc kernels: pixel offsets inside a circle of diameter t, so limbs get round cross-sections and ends. */
+const KERNELS = new Map<number, [number, number][]>();
+function kernel(t: number): [number, number][] {
+  let k = KERNELS.get(t);
+  if (k) return k;
+  k = [];
+  const r = t / 2;
+  const lo = -Math.ceil(r), hi = Math.ceil(r);
+  for (let y = lo; y <= hi; y++) for (let x = lo; x <= hi; x++) {
+    if ((x + 0.5) * (x + 0.5) + (y + 0.5) * (y + 0.5) <= r * r + 0.3) k.push([x, y]);
+  }
+  KERNELS.set(t, k);
+  return k;
+}
+
+/** Draws a capsule of thickness `t` from (x0,y0) to (x1,y1): round ends, round cross-section. */
 function seg(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, t: number, color: string): void {
   ctx.fillStyle = outline ?? color;
   if (outline) t += 2;
   const dx = x1 - x0;
   const dy = y1 - y0;
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))));
-  const half = Math.floor(t / 2);
+  const k = kernel(Math.max(1, Math.round(t)));
+  let lastX = NaN, lastY = NaN;
   for (let i = 0; i <= n; i++) {
     const x = Math.round(x0 + (dx * i) / n);
     const y = Math.round(y0 + (dy * i) / n);
-    ctx.fillRect(x - half, y - half, t, t);
+    if (x === lastX && y === lastY) continue;
+    lastX = x; lastY = y;
+    for (const [ox, oy] of k) ctx.fillRect(x + ox, y + oy, 1, 1);
   }
 }
 
@@ -237,6 +255,20 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
   ctx.fillStyle = outline ?? c;
   const o = outline ? 1 : 0;
   ctx.fillRect(Math.round(x) - o, Math.round(y) - o, Math.round(w) + 2 * o, Math.round(h) + 2 * o);
+}
+
+/** A rectangle with chamfered corners (r pixels), the 16-bit way to draw a rounded shape. */
+function roundRect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number, c: string): void {
+  ctx.fillStyle = outline ?? c;
+  const o = outline ? 1 : 0;
+  const X = Math.round(x) - o, Y = Math.round(y) - o, Wd = Math.round(w) + 2 * o, Ht = Math.round(h) + 2 * o;
+  const rr = Math.max(0, Math.min(Math.round(r), Math.floor(Math.min(Wd, Ht) / 2)));
+  for (let row = 0; row < Ht; row++) {
+    const d = Math.min(row, Ht - 1 - row);
+    const inset = d < rr ? rr - d - (d === 0 ? 0 : 1) : 0;
+    const ins = Math.max(0, Math.min(inset, Math.floor(Wd / 2)));
+    ctx.fillRect(X + ins, Y + row, Wd - 2 * ins, 1);
+  }
 }
 
 /**
@@ -266,10 +298,13 @@ function tone(hex: string, k: number): string {
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
-/** A limb: dark segment with a lighter core, so one edge reads as shadow (16-bit shading). */
+/** A limb in three tones: shadow all round, mid tone, and a highlight ridge shifted to the light side (16-bit shading). */
 function limb(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, t: number, color: string, dark: string): void {
   seg(ctx, x0, y0, x1, y1, t, dark);
-  if (!outline && t > 1) seg(ctx, x0, y0, x1, y1, t - 1, color);
+  if (outline || t <= 1) return;
+  // the light comes from the upper left: shift the lighter tones that way
+  seg(ctx, x0 - 0.5, y0 - 0.5, x1 - 0.5, y1 - 0.5, t - 1, color);
+  if (t >= 4) seg(ctx, x0 - 1, y0 - 1, x1 - 1, y1 - 1, Math.max(1, t - 3), tone(color, 1.2));
 }
 
 /** Head sprites, 10 wide x 12 tall at scale 1. S skin, s shade, H hair, h hair dark, E eye, W white, M metal, m metal dark, A accent, a accent dark, B beard. */
@@ -331,8 +366,8 @@ function drawFigure(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: 
   const torsoW = (10 + bulk * 3 - slim * 2) * s;
   const armLen = 8 * s;
   const foreLen = 7 * s;
-  const legT = Math.max(2, Math.round((3 + bulk * 0.8 - slim * 0.5) * s));
-  const armT = Math.max(2, Math.round((2.5 + bulk * 0.8 - slim * 0.5) * s));
+  const legT = Math.max(3, Math.round((4 + bulk - slim * 0.5) * s));
+  const armT = Math.max(3, Math.round((3.5 + bulk - slim * 0.5) * s));
   const crouch = pose.crouch * 8 * s;
   const skinL = pal.skin, skinD = pal.skinDark;
   const topL = pal.top, topD = pal.topDark;
@@ -367,7 +402,7 @@ function drawFigure(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: 
     limb(ctx, shX, shY, ex, ey, armT, sleeveL, sleeveD);
     limb(ctx, ex, ey, hx, hy, armT, back ? skinD : skinL, tone(back ? skinD : skinL, 0.75));
     // hand (fist)
-    rect(ctx, hx - 1.5 * s, hy - 1.5 * s, 3 * s, 3 * s, back ? skinD : skinL);
+    seg(ctx, hx, hy, hx, hy, Math.max(3, Math.round(3.5 * s)), back ? skinD : skinL);
     if (withWeapon && rig.weapon !== 'none') drawWeapon(ctx, rig, hx, hy, sh + el + pose.weapon, dir, s);
   };
   arm(pose.lShoulder, pose.lElbow, true, false);
@@ -378,7 +413,9 @@ function drawFigure(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: 
   ctx.rotate(-lean * dir);
   const base = rig.bareChest ? skinL : topL;
   const shadeC = rig.bareChest ? skinD : topD;
-  rect(ctx, -tw / 2, -torsoH, tw, torsoH, base);
+  // shoulders a little wider than the waist, corners rounded
+  roundRect(ctx, -tw / 2, -torsoH, tw, torsoH * 0.55, 2 * s, base);
+  roundRect(ctx, -tw / 2 + 1 * s, -torsoH * 0.5, tw - 2 * s, torsoH * 0.5, 2 * s, base);
   if (!outline) {
     // back-side shadow band and front highlight
     rect(ctx, dir > 0 ? -tw / 2 : tw / 2 - 2 * s, -torsoH, 2 * s, torsoH, shadeC);
@@ -415,6 +452,8 @@ function drawFigure(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: 
 function drawWeapon(ctx: CanvasRenderingContext2D, rig: RigDef, hx: number, hy: number, angle: number, dir: number, s: number): void {
   const pal = rig.palette;
   // the blade points along `angle` from the hand (0 = straight down); (px,py) is the perpendicular
+  // heavy weapons rest on the shoulder instead of hanging down
+  if ((rig.weapon === 'hammer' || rig.weapon === 'club' || rig.weapon === 'axe' || rig.weapon === 'bat' || rig.weapon === 'pipe') && angle < 1.2 && angle > -0.5) angle = 2.6;
   const ux = Math.sin(angle) * dir;
   const uy = Math.cos(angle);
   const px = uy * dir, py = -ux * dir;

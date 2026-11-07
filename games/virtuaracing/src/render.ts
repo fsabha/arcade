@@ -2,7 +2,7 @@ import { W, H, HORIZON, DRAW_AHEAD, DRAW_BEHIND, SAMPLE, TRACK_W, CARS, LAPS, CO
 import { Game, MENU_ITEMS } from './game';
 import { Track, at, world } from './track';
 import type { Car } from './race';
-import { Painter, Camera, box, shade } from './render3d';
+import { Painter, Camera, box, shade, cylinder, cone, wedge } from './render3d';
 import {
   drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen, drawInitialsScreen, UI,
 } from '@arcade/shared';
@@ -126,7 +126,14 @@ export class Renderer {
       const p = world(track, sc.s, sc.d);
       const k = sc.scale ?? 1;
       switch (sc.kind) {
-        case 'tree': painter.addBillboard(p, 1.2, 5 * k, '#5a3a1a'); painter.addBillboard({ ...p, y: p.y + 4 * k }, 7 * k, 8 * k, course === 'acropolis' ? '#3a7a3a' : '#2c7a34', '#1c4a20'); break;
+        case 'tree': {
+          // polygon pines: trunk and two stacked cones, like the arcade's Big Forest
+          for (const q of box(p.x, p.y, p.z, 0.8 * k, 3 * k, 0.8 * k, 0, '#5a3a1a')) painter.add(q);
+          const green = course === 'acropolis' ? '#3a7a3a' : '#2c7a34';
+          for (const q of cone(p.x, p.y + 2 * k, p.z, 3.4 * k, 5 * k, 6, green)) painter.add(q);
+          for (const q of cone(p.x, p.y + 5 * k, p.z, 2.4 * k, 4.5 * k, 6, shade(green, 1.1))) painter.add(q);
+          break;
+        }
         case 'stand': for (const q of box(p.x, p.y, p.z, 10, 5, 30, Math.atan2(at(track, sc.s).fx, at(track, sc.s).fz), '#d0d0d8')) painter.add(q); break;
         case 'pit': for (const q of box(p.x, p.y, p.z, 12, 4, 40, Math.atan2(at(track, sc.s).fx, at(track, sc.s).fz), '#f0f0f0')) painter.add(q); break;
         case 'tower': for (const q of box(p.x, p.y - 20, p.z, 3, 60, 3, 0, '#c04030')) painter.add(q); break;
@@ -163,23 +170,33 @@ export class Renderer {
     }
   }
 
-  /** A formula car: body wedge, cockpit, wings and four wheels. */
+  /** A formula car the Model 1 way: wedge body, sidepods, airbox, helmet, wings with endplates, eight-sided wheels. */
   private drawCar(painter: Painter, track: Track, c: Car, time: number): void {
     const p = world(track, c.s, c.d);
     const f = at(track, c.s);
     const yaw = Math.atan2(f.fx, f.fz) + c.steer * 0.15;
-    const wobble = c.bump > 0 ? Math.sin(time * 40) * 0.1 : 0;
+    const wobble = c.bump > 0 ? Math.sin(time * 40) * 0.08 : 0;
     const col = c.color;
-    for (const q of box(p.x, p.y + 0.3, p.z, 1.6, 0.6, 4.4, yaw + wobble, col)) painter.add(q);
-    for (const q of box(p.x, p.y + 0.9, p.z - 0.2, 0.9, 0.5, 1.6, yaw, shade(col, 0.6))) painter.add(q);
-    // wings
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
-    for (const q of box(p.x + sy * 2.3, p.y + 0.2, p.z + cy * 2.3, 2.6, 0.25, 0.6, yaw, shade(col, 0.85))) painter.add(q);
-    for (const q of box(p.x - sy * 2.2, p.y + 0.9, p.z - cy * 2.2, 2.4, 0.3, 0.5, yaw, shade(col, 0.85))) painter.add(q);
-    // wheels
-    for (const [lx, lz] of [[-1.05, 1.4], [1.05, 1.4], [-1.05, -1.4], [1.05, -1.4]] as [number, number][]) {
-      const wx = p.x + lx * cy + lz * sy, wz = p.z - lx * sy + lz * cy;
-      for (const q of box(wx, p.y, wz, 0.5, 0.7, 0.9, yaw, '#181818')) painter.add(q);
+    const local = (lx: number, lz: number) => ({ x: p.x + lx * cy + lz * sy, z: p.z - lx * sy + lz * cy });
+    // monocoque: narrow nose, wider tail, raised cockpit section
+    for (const q of wedge(p.x, p.y + 0.25, p.z, 1.3, 0.5, 0.55, 4.6, yaw + wobble, col, 0.3)) painter.add(q);
+    // sidepods either side of the cockpit
+    for (const side of [-1, 1]) { const o = local(side * 0.95, -0.6); for (const q of box(o.x, p.y + 0.25, o.z, 0.6, 0.45, 2.2, yaw, shade(col, 0.95))) painter.add(q); }
+    // cockpit lip, helmet and airbox
+    { const o = local(0, -0.2); for (const q of box(o.x, p.y + 0.8, o.z, 0.8, 0.2, 1.2, yaw, shade(col, 0.7))) painter.add(q); }
+    { const o = local(0, -0.3); for (const q of cylinder(o.x, p.y + 1.05, o.z, 0.22, 0.4, yaw + Math.PI / 2, 6, c.player ? '#f0f0f0' : '#f0d040', '#202020')) painter.add(q); }
+    { const o = local(0, -1.3); for (const q of wedge(o.x, p.y + 0.8, o.z, 0.5, 0.4, 0.45, 1.4, yaw, shade(col, 0.85), 0.35)) painter.add(q); }
+    // front wing with endplates, rear wing on pylons
+    { const o = local(0, 2.5); for (const q of box(o.x, p.y + 0.12, o.z, 2.7, 0.12, 0.55, yaw, shade(col, 0.9))) painter.add(q); }
+    for (const side of [-1, 1]) { const o = local(side * 1.35, 2.5); for (const q of box(o.x, p.y + 0.05, o.z, 0.08, 0.35, 0.7, yaw, '#e8e8e8')) painter.add(q); }
+    { const o = local(0, -2.3); for (const q of box(o.x, p.y + 0.95, o.z, 2.2, 0.14, 0.5, yaw, shade(col, 0.9))) painter.add(q); }
+    for (const side of [-1, 1]) { const o = local(side * 1.1, -2.3); for (const q of box(o.x, p.y + 0.7, o.z, 0.08, 0.5, 0.6, yaw, '#e8e8e8')) painter.add(q); }
+    { const o = local(0, -2.1); for (const q of box(o.x, p.y + 0.55, o.z, 0.3, 0.4, 0.3, yaw, '#303030')) painter.add(q); }
+    // wheels: eight-sided drums, rear ones wider
+    for (const [lx, lz, w] of [[-1.05, 1.5, 0.38], [1.05, 1.5, 0.38], [-1.1, -1.4, 0.5], [1.1, -1.4, 0.5]] as [number, number, number][]) {
+      const o = local(lx, lz);
+      for (const q of cylinder(o.x, p.y + 0.34, o.z, 0.34, w, yaw, 8, '#1c1c20', '#6a6a70')) painter.add(q);
     }
   }
 
