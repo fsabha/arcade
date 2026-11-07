@@ -76,12 +76,16 @@ body:not(.ranking) .card .top {
   display: none;
 }
 
+/* The preview is the only part of a card that gives way: it is capped at a modest size and shrinks
+   (keeping 64:40 and its pixels) so the title, meta line and description always fit whole. */
 .card .thumb {
-  flex: none;
-  width: 100%;
-  max-width: 192px;
+  flex: 0 1 auto;
+  align-self: flex-start;
+  height: 90px;
+  min-height: 30px;
+  width: auto;
+  max-width: 100%;
   aspect-ratio: 64 / 40;
-  height: auto;
   margin: 2px 0 6px;
   image-rendering: pixelated;
   border: 1px solid var(--line);
@@ -116,12 +120,26 @@ body:not(.ranking) .card .top {
 #grid {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  grid-auto-rows: 1fr;
+  /* rows share the height, but never below what a card needs whole; short windows scroll the grid */
+  grid-auto-rows: minmax(var(--card-min, 174px), 1fr);
   gap: 10px;
   width: 100%;
   max-width: 1180px;
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-top: 2px;
+  box-sizing: border-box;
+}
+
+/* below the full width, four wider columns instead of five cramped ones (the grid scrolls) */
+@media (max-width: 1180px) {
+  #grid { grid-template-columns: repeat(4, 1fr); }
+}
+
+body.ranking #grid {
+  --card-min: 0px;
 }
 
 .card {
@@ -149,6 +167,7 @@ body:not(.ranking) .card .top {
 }
 
 .card-title {
+  flex: none;
   image-rendering: pixelated;
   display: block;
   max-width: 100%;
@@ -156,20 +175,20 @@ body:not(.ranking) .card .top {
 }
 
 .card .meta {
+  flex: none;
   color: var(--dim);
   font-size: 10px;
-  margin-bottom: 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  line-height: 1.35;
+  margin-bottom: 4px;
 }
 
 .card .blurb {
+  flex: none;
   font-size: 10px;
   line-height: 1.35;
   color: var(--fg);
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
