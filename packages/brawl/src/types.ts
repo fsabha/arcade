@@ -1,4 +1,5 @@
 import type { RigDef } from './rig';
+import type { SpriteSheet } from './sheet';
 
 export type Team = 'hero' | 'enemy' | 'neutral';
 
@@ -79,6 +80,8 @@ export interface ActorDef {
   width: number;
   height: number;
   rig: RigDef;
+  /** hand-drawn frames; states missing from the sheet fall back to the rig */
+  sheet?: SpriteSheet;
   attacks: Record<string, MoveDef>;
   /** moves that replace `attacks` entries while the actor holds that weapon (Streets of Rage pipes and bats) */
   weaponAttacks?: Record<string, Record<string, MoveDef>>;

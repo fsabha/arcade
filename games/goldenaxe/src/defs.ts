@@ -1,4 +1,5 @@
 import type { ActorDef, MoveDef, Palette, RigDef } from '@arcade/brawl';
+import { AX_SHEET } from './sheets/ax';
 
 // ---------- moves ----------
 
@@ -41,6 +42,7 @@ export const HEROES: Record<string, ActorDef> = {
   ax: {
     id: 'ax', name: 'AX BATTLER', hp: 12, speed: 78, width: 16, height: 44, points: 0, grabbable: false, maxMagic: 4,
     rig: rig({ palette: pal({ hair: '#4a2810', top: '#3060c0', topDark: '#203880', legs: '#2048a0', legsDark: '#183070', boots: '#5a3a1a' }), bareChest: true, weapon: 'sword', head: 'bare', bulk: 0.5 }),
+    sheet: AX_SHEET,
     attacks: swordCombo(26, 1),
   },
   tyris: {

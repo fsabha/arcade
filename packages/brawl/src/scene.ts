@@ -1,5 +1,6 @@
 import { drawText } from '@arcade/shared';
 import { drawRig, poseAt, POSES, REST } from './rig';
+import { frameCanvas, frameIndex } from './sheet';
 import type { Keyframe, RigDef, WeaponShape } from './rig';
 import { moveOf } from './world';
 import type { Actor, Brawl, Item, Projectile, Spark } from './world';
@@ -20,6 +21,41 @@ export function actorPose(a: Actor): ReturnType<typeof poseAt> {
   const len = track[track.length - 1].t || 1;
   const t = loops ? a.t % len : a.t;
   return poseAt(track, t);
+}
+
+/** The sheet key for an actor's state (moves use their own name). */
+export function sheetKey(a: Actor): string {
+  if (a.state === 'attack' || a.state === 'dashAttack' || a.state === 'jumpAttack') return a.move ?? a.state;
+  if (a.state === 'flee') return 'run';
+  return a.state;
+}
+
+/** Draws the hand-drawn frame for the actor's state, if the sheet has one. */
+export function drawSheetFrame(ctx: CanvasRenderingContext2D, a: Actor, x: number, feetY: number, tint?: string): boolean {
+  const sheet = a.def.sheet;
+  if (!sheet) return false;
+  let key = sheetKey(a);
+  if (!sheet.frames[key]) {
+    // sensible substitutes before giving up on the sheet
+    const alt: Record<string, string> = { run: 'walk', dashAttack: 'combo3', jumpAttack: 'combo1', getup: 'down', thrown: 'fly', grabbed: 'hit', die: 'down', special: 'idle', ride: 'idle', knee: 'combo1', throw: 'combo3', grab: 'idle' };
+    key = alt[key] ?? '';
+    if (!key || !sheet.frames[key]) return false;
+  }
+  const mv = a.move ? a.def.attacks[a.move] : undefined;
+  const idx = frameIndex(sheet, key, a.t, mv?.duration);
+  const c = frameCanvas(sheet, key, idx, a.facing < 0);
+  if (!c) return false;
+  const ax = sheet.anchorX ?? (c.width - 2) / 2;
+  const dx = a.facing < 0 ? (c.width - 2) - ax : ax;
+  ctx.drawImage(c, Math.round(x - dx - 1), Math.round(feetY - (c.height - 2) - 1));
+  if (tint) {
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = tint;
+    ctx.fillRect(Math.round(x - dx - 1), Math.round(feetY - c.height), c.width, c.height);
+    ctx.restore();
+  }
+  return true;
 }
 
 export interface SceneOptions {
@@ -57,7 +93,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, b: Brawl, opts: SceneOp
         const sw = a.def.width * a.def.rig.scale;
         ctx.fillRect(x - sw / 2, y - 2, sw, 3);
         const tint = a.team === 'hero' && a.invuln > 0 && Math.floor(a.t * 20) % 2 ? (opts.invulnTint ?? '#ffffff') : undefined;
-        drawRig(ctx, actorRig(a), actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
+        if (!drawSheetFrame(ctx, a, x, y - Math.round(a.z), tint)) drawRig(ctx, actorRig(a), actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
       },
     });
   }
