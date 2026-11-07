@@ -79,6 +79,7 @@ export class Renderer {
     const layers: Layer[] = [
       { speed: 0.2, draw: (c, s) => this.mountains(c, s, horizon, t.far, 48, 40, 11) },
       { speed: 0.45, draw: (c, s) => this.mountains(c, s, horizon + 8, t.mid, 36, 26, 7) },
+      { speed: 0.7, draw: (c, s) => this.treeline(c, s, horizon + 10, t) },
     ];
     if (theme === 'village') layers.push({ speed: 0.7, draw: (c, s) => this.huts(c, s, horizon) });
     if (theme === 'castle' || theme === 'gate' || theme === 'dungeon') layers.push({ speed: 0.7, draw: (c, s) => this.walls(c, s, horizon, t) });
@@ -92,10 +93,29 @@ export class Renderer {
     ctx.fillStyle = t.groundDark;
     for (let i = 0; i < 60; i++) {
       const x = ((i * 53 + 11) - scrollX) % (W + 40);
-      ctx.fillRect(Math.round((x + W + 40) % (W + 40)) - 20, horizon + 6 + ((i * 29) % (H - horizon - 10)), 10 + (i % 5) * 3, 2);
+      const y = horizon + 6 + ((i * 29) % (H - horizon - 10));
+      const bx = Math.round((x + W + 40) % (W + 40)) - 20;
+      ctx.fillRect(bx, y, 10 + (i % 5) * 3, 2);
+      // grass tufts
+      ctx.fillRect(bx + 4, y - 2, 1, 2); ctx.fillRect(bx + 7, y - 3, 1, 3);
     }
     ctx.fillStyle = t.path;
     ctx.fillRect(0, horizon, W, 3);
+  }
+
+  /** Bushes and tree tops along the horizon, two tones. */
+  private treeline(ctx: CanvasRenderingContext2D, scroll: number, base: number, t: Theme): void {
+    const period = 14;
+    for (let i = -1; i < W / period + 2; i++) {
+      const k = Math.floor((scroll + i * period) / period);
+      const x = Math.round(i * period - (scroll % period));
+      const h = 6 + ((k * 7 + 3) % 9);
+      ctx.fillStyle = k % 3 ? t.groundDark : t.mid;
+      ctx.fillRect(x, base - h, period - 2, h);
+      ctx.fillRect(x + 3, base - h - 3, period - 8, 3);
+      ctx.fillStyle = t.ground;
+      ctx.fillRect(x + 2, base - h + 2, 3, 2);
+    }
   }
 
   private mountains(ctx: CanvasRenderingContext2D, scroll: number, base: number, color: string, period: number, maxH: number, seed: number): void {

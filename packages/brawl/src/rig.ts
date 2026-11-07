@@ -33,6 +33,8 @@ export interface RigDef {
   beast?: 'chicken' | 'dragon';
   /** extra bulk for giants */
   bulk?: number;
+  /** custom 10x12 head sprite (see HEADS in rig.ts for the letters) */
+  headMap?: string[];
 }
 
 /** Joint angles in radians (0 = hanging down for limbs; positive swings forward). */
@@ -257,109 +259,212 @@ export function drawRig(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, 
   }
 }
 
+/** Lightens (k > 1) or darkens (k < 1) a hex colour. */
+function tone(hex: string, k: number): string {
+  if (!hex.startsWith('#') || hex.length !== 7) return hex;
+  const c = [1, 3, 5].map((i) => Math.max(0, Math.min(255, Math.round(parseInt(hex.slice(i, i + 2), 16) * k))));
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+/** A limb: dark segment with a lighter core, so one edge reads as shadow (16-bit shading). */
+function limb(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, t: number, color: string, dark: string): void {
+  seg(ctx, x0, y0, x1, y1, t, dark);
+  if (!outline && t > 1) seg(ctx, x0, y0, x1, y1, t - 1, color);
+}
+
+/** Head sprites, 10 wide x 12 tall at scale 1. S skin, s shade, H hair, h hair dark, E eye, W white, M metal, m metal dark, A accent, a accent dark, B beard. */
+const HEADS: Record<string, string[]> = {
+  bare: [
+    '..HHHHHH..', '.HHHHHHHH.', 'HHHhHHHHHH', 'HHHSSSSSHh', 'HhSSSSSSS.', '.ASSSESSS.', '.ASSSSSSS.', '.sSSSSsSS.', '.sSSSSSSs.', '..sSSSSs..', '..sSSSss..', '...ssss...'],
+  long: [
+    '..HHHHHH..', '.HHHHHHHH.', 'HHHHHHHHHH', 'HHHSSSSSHH', 'HHSSSSSSSH', 'HhSSSESSSH', 'HhSSSSSSSH', 'HhSSSSsSSH', 'HhsSSSSSsH', 'Hh.sSSSs.H', 'Hh..ssss.H', 'hh.......h'],
+  helmet: [
+    '..MMMMMM..', '.MMMMMMMM.', 'MMMMmMMMMM', 'MMMMMMMMMM', 'mmmmmmmmmm', '.SSSSmSSS.', '.SSSEmSSS.', '.sSSSmSSS.', '.sSSSSSSs.', '..sSSSSs..', '..sSSSss..', '...ssss...'],
+  horns: [
+    'm.MMMMMM.m', 'mmMMMMMMmm', '.MMMmMMMM.', '.MMMMMMMM.', '.mmmmmmmm.', '.SSSSESSS.', '.SSSSSSSS.', '.BBSSSSBB.', '.BBBBBBBB.', '.BBBBBBBB.', '..BBBBBB..', '...BBBB...'],
+  hood: [
+    '...AAAA...', '..AAAAAA..', '.AAAAAAAA.', '.AAaaaaAA.', 'AAasssssAA', 'AAasEsssAA', 'AAassssaAA', 'AAasssaaAA', '.AAaaaaAA.', '.AAAAAAAA.', '..AAAAAA..', '...AAAA...'],
+  mohawk: [
+    '....HH....', '....HH....', '....HH....', '..SSHHSS..', '.SSSHHSSS.', '.SSSSESSS.', '.SSSSSSSS.', '.sSSSSsSS.', '.sSSSSSSs.', '..sSSSSs..', '..sSSSss..', '...ssss...'],
+  cap: [
+    '..AAAAAA..', '.AAAAAAAA.', 'AAAAAAAAAA', 'aaaaaaaaaa', '.SSSSSSSaa', '.SSSSESSS.', '.SSSSSSSS.', '.sSSSSsSS.', '.sSSSSSSs.', '..sSSSSs..', '..sSSSss..', '...ssss...'],
+  skull: [
+    '..WWWWWW..', '.WWWWWWWW.', 'WWWWWWWWWW', 'WWWWWWWWWW', 'WWEEWWEEWW', 'WWEEWWEEWW', 'WWWWWWWWWW', '.WWWWWWWW.', '..WWWWWW..', '..WEWEWE..', '..WWWWWW..', '...WWWW...'],
+  beast: [
+    '..HHHHHH..', '.HHHHHHHH.', 'HHHHHHHHHH', 'HHHSSSSSHH', 'HHSSSSSSSH', '.ASSSESSS.', '.ASSSSSSS.', '.sSSSSsSS.', '.sSSSSSSs.', '..sSSSSs..', '..sSSSss..', '...ssss...'],
+};
+
+function drawHeadSprite(ctx: CanvasRenderingContext2D, rig: RigDef, cx: number, top: number, s: number, dir: number): void {
+  const pal = rig.palette;
+  const rows = rig.headMap ?? HEADS[rig.head] ?? HEADS.bare;
+  const w = rows[0].length;
+  const colors: Record<string, string> = {
+    S: pal.skin, s: pal.skinDark, H: pal.hair, h: tone(pal.hair, 0.65), E: pal.eyes ?? '#101010', W: '#e8e8d8', M: pal.weapon, m: pal.weaponDark,
+    A: pal.top, a: pal.topDark, B: tone(pal.hair, 1.1),
+  };
+  const px = Math.max(1, Math.round(s));
+  const x0 = cx - (w * s) / 2;
+  rows.forEach((row, ry) => {
+    for (let rx = 0; rx < w; rx++) {
+      const ch = row[rx];
+      const col = colors[ch];
+      if (!col) continue;
+      const sx = dir > 0 ? rx : w - 1 - rx;
+      ctx.fillStyle = outline ?? col;
+      const x = Math.round(x0 + sx * s), y = Math.round(top + ry * s);
+      if (outline) ctx.fillRect(x - 1, y - 1, px + 2, px + 2); else ctx.fillRect(x, y, px, px);
+    }
+  });
+}
+
 function drawFigure(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: number, fy: number, flip: boolean): void {
   if (rig.beast) { drawBeast(ctx, rig, pose, fx, fy, flip); return; }
   const s = rig.scale;
   const pal = rig.palette;
   const dir = flip ? -1 : 1;
   const bulk = rig.bulk ?? 0;
-  const slim = rig.slim ? -1 : 0;
-  // proportions (hero scale 1: ~46 px tall)
+  const slim = rig.slim ? 1 : 0;
+  // proportions (hero scale 1: about 46 px tall, head 12 of them)
   const legLen = 10 * s;
   const shin = 9 * s;
-  const torsoH = 15 * s;
-  const torsoW = (11 + bulk * 3 + slim * 2) * s;
+  const torsoH = 14 * s;
+  const torsoW = (10 + bulk * 3 - slim * 2) * s;
   const armLen = 8 * s;
   const foreLen = 7 * s;
-  const headR = 5 * s;
-  const limb = Math.max(2, Math.round((3 + bulk) * s));
+  const legT = Math.max(2, Math.round((3 + bulk * 0.8 - slim * 0.5) * s));
+  const armT = Math.max(2, Math.round((2.5 + bulk * 0.8 - slim * 0.5) * s));
   const crouch = pose.crouch * 8 * s;
+  const skinL = pal.skin, skinD = pal.skinDark;
+  const topL = pal.top, topD = pal.topDark;
 
   const hipY = fy - legLen - shin + crouch;
   const hipX = fx;
-  // legs: hip angle swings forward (+dir), knee bends back
-  const leg = (hip: number, knee: number, shade: boolean) => {
+  const leg = (hip: number, knee: number, back: boolean) => {
     const kx = hipX + Math.sin(hip) * legLen * dir;
     const ky = hipY + Math.cos(hip) * legLen;
     const ax = kx + Math.sin(hip - knee) * shin * dir;
     const ay = ky + Math.cos(hip - knee) * shin;
-    seg(ctx, hipX, hipY, kx, ky, limb, shade ? pal.legsDark : pal.legs);
-    seg(ctx, kx, ky, ax, ay, limb, shade ? pal.legsDark : pal.legs);
-    rect(ctx, ax - limb / 2 + (dir > 0 ? 0 : -2 * s), ay - 2 * s, limb + 2 * s, 3 * s, pal.boots);
+    const c = back ? pal.legsDark : pal.legs;
+    const d = back ? tone(pal.legsDark, 0.75) : pal.legsDark;
+    limb(ctx, hipX, hipY, kx, ky, legT, c, d);
+    limb(ctx, kx, ky, ax, ay, legT, c, d);
+    // boot: toe forward, dark sole
+    const bw = (legT + 3) * 1;
+    rect(ctx, ax - legT / 2 - (dir < 0 ? 3 : 0), ay - 3 * s, bw, 3 * s, back ? tone(pal.boots, 0.8) : pal.boots);
+    if (!outline) rect(ctx, ax - legT / 2 - (dir < 0 ? 3 : 0), ay - 1, bw, 1, tone(pal.boots, 0.6));
   };
   const lean = pose.lean;
   const shX = hipX + Math.sin(lean) * torsoH * dir;
   const shY = hipY - Math.cos(lean) * torsoH;
-  // back leg, back arm first
   leg(pose.lHip, pose.lKnee, true);
-  const arm = (sh: number, el: number, shade: boolean, withWeapon: boolean) => {
+  const arm = (sh: number, el: number, back: boolean, withWeapon: boolean) => {
     const ex = shX + Math.sin(sh) * armLen * dir;
     const ey = shY + Math.cos(sh) * armLen;
     const hx = ex + Math.sin(sh + el) * foreLen * dir;
     const hy = ey + Math.cos(sh + el) * foreLen;
-    const skin = shade ? pal.skinDark : pal.skin;
-    const sleeve = rig.bareChest ? skin : shade ? pal.topDark : pal.top;
-    seg(ctx, shX, shY, ex, ey, limb, sleeve);
-    seg(ctx, ex, ey, hx, hy, limb, skin);
+    const sleeveL = rig.bareChest ? (back ? skinD : skinL) : back ? topD : topL;
+    const sleeveD = rig.bareChest ? tone(back ? skinD : skinL, 0.75) : tone(back ? topD : topL, 0.7);
+    limb(ctx, shX, shY, ex, ey, armT, sleeveL, sleeveD);
+    limb(ctx, ex, ey, hx, hy, armT, back ? skinD : skinL, tone(back ? skinD : skinL, 0.75));
+    // hand (fist)
+    rect(ctx, hx - 1.5 * s, hy - 1.5 * s, 3 * s, 3 * s, back ? skinD : skinL);
     if (withWeapon && rig.weapon !== 'none') drawWeapon(ctx, rig, hx, hy, sh + el + pose.weapon, dir, s);
   };
   arm(pose.lShoulder, pose.lElbow, true, false);
-  // torso
+  // torso: a block with shading on the back edge, a lighter chest in front
   const tw = torsoW;
   ctx.save();
   ctx.translate(Math.round(hipX), Math.round(hipY));
   ctx.rotate(-lean * dir);
-  rect(ctx, -tw / 2, -torsoH, tw, torsoH, rig.bareChest ? pal.skin : pal.top);
-  rect(ctx, -tw / 2, -torsoH * 0.45, tw, torsoH * 0.45, rig.bareChest ? pal.skinDark : pal.topDark);
-  if (rig.bareChest) rect(ctx, -tw / 2, -3 * s, tw, 3 * s, pal.legs); // belt
+  const base = rig.bareChest ? skinL : topL;
+  const shadeC = rig.bareChest ? skinD : topD;
+  rect(ctx, -tw / 2, -torsoH, tw, torsoH, base);
+  if (!outline) {
+    // back-side shadow band and front highlight
+    rect(ctx, dir > 0 ? -tw / 2 : tw / 2 - 2 * s, -torsoH, 2 * s, torsoH, shadeC);
+    rect(ctx, dir > 0 ? tw / 2 - 2 * s : -tw / 2, -torsoH + 2 * s, 1 * s, torsoH * 0.5, tone(base, 1.18));
+    if (rig.bareChest) {
+      // pectorals and abs
+      rect(ctx, -tw / 2 + 2 * s, -torsoH + 3 * s, tw - 4 * s, 1 * s, skinD);
+      rect(ctx, -0.5 * s, -torsoH + 3 * s, 1 * s, torsoH - 6 * s, skinD);
+      rect(ctx, -tw / 2 + 2 * s, -torsoH + 7 * s, tw - 4 * s, 1 * s, skinD);
+      rect(ctx, -tw / 2 + 2 * s, -torsoH + 10 * s, tw - 4 * s, 1 * s, skinD);
+      rect(ctx, -tw / 2, -3 * s, tw, 3 * s, pal.legsDark); // belt
+      rect(ctx, -1.5 * s, -3 * s, 3 * s, 3 * s, pal.weapon); // buckle
+    } else {
+      rect(ctx, -tw / 2, -3 * s, tw, 2 * s, tone(topD, 0.7)); // belt
+      rect(ctx, -1.5 * s, -3 * s, 3 * s, 2 * s, pal.weapon);
+      rect(ctx, -2 * s, -torsoH, 4 * s, 2 * s, shadeC); // collar
+    }
+    if (rig.slim) rect(ctx, -tw / 2 + 1 * s, -torsoH + 5 * s, tw - 2 * s, 1 * s, shadeC); // bodice line
+  }
   ctx.restore();
-  // head
-  const hx = shX + Math.sin(lean + pose.headTilt) * headR * 1.2 * dir;
-  const hy = shY - Math.cos(lean + pose.headTilt) * headR * 1.2;
-  rect(ctx, hx - headR, hy - headR, headR * 2, headR * 2, pal.skin);
-  drawHead(ctx, rig, hx, hy, headR, dir);
-  // eye (colour pass only)
-  if (!outline) rect(ctx, hx + dir * headR * 0.4, hy - headR * 0.1, Math.max(1, s), Math.max(1, s), pal.eyes ?? '#000');
-  // front leg, front arm with weapon
+  // head: a pixel sprite sitting on the shoulders, tilting with the pose
+  const tilt = lean + pose.headTilt;
+  const headW = 10 * s, headH = 12 * s;
+  const hcx = shX + Math.sin(tilt) * headH * 0.5 * dir;
+  const htop = shY - Math.cos(tilt) * headH * 0.9 - 1 * s;
+  // neck
+  rect(ctx, shX - 1.5 * s, shY - 3 * s, 3 * s, 3 * s, skinD);
+  drawHeadSprite(ctx, rig, hcx, htop, s, dir);
+  void headW;
   leg(pose.rHip, pose.rKnee, false);
   arm(pose.rShoulder, pose.rElbow, false, true);
 }
 
-function drawHead(ctx: CanvasRenderingContext2D, rig: RigDef, hx: number, hy: number, r: number, dir: number): void {
-  const pal = rig.palette;
-  switch (rig.head) {
-    case 'bare': rect(ctx, hx - r, hy - r, r * 2, r * 0.7, pal.hair); break;
-    case 'long': rect(ctx, hx - r, hy - r, r * 2, r * 0.7, pal.hair); rect(ctx, hx - r * 1.2 * dir - (dir > 0 ? r * 0.6 : 0), hy - r, r * 0.8, r * 2.6, pal.hair); break;
-    case 'helmet': rect(ctx, hx - r * 1.1, hy - r * 1.2, r * 2.2, r * 1.1, pal.weapon); rect(ctx, hx - r * 1.1, hy - r * 1.2, r * 2.2, r * 0.3, pal.weaponDark); break;
-    case 'horns': rect(ctx, hx - r * 1.1, hy - r * 1.2, r * 2.2, r, pal.weapon); rect(ctx, hx - r * 1.6, hy - r * 1.9, r * 0.5, r, pal.weaponDark); rect(ctx, hx + r * 1.1, hy - r * 1.9, r * 0.5, r, pal.weaponDark); break;
-    case 'hood': rect(ctx, hx - r * 1.1, hy - r * 1.2, r * 2.2, r * 1.6, pal.top); rect(ctx, hx - r * 0.6 + dir * r * 0.2, hy - r * 0.6, r * 1.3, r * 1.2, pal.skinDark); break;
-    case 'mohawk': rect(ctx, hx - r * 0.3, hy - r * 1.8, r * 0.6, r * 1.2, pal.hair); break;
-    case 'cap': rect(ctx, hx - r, hy - r * 1.1, r * 2, r * 0.8, pal.top); rect(ctx, hx + dir * r * 0.3, hy - r * 0.5, r * 1.1, r * 0.3, pal.topDark); break;
-    case 'skull': rect(ctx, hx - r, hy - r, r * 2, r * 2, '#e8e8d8'); rect(ctx, hx + dir * r * 0.3, hy - r * 0.2, r * 0.5, r * 0.5, '#000'); rect(ctx, hx - dir * r * 0.5, hy - r * 0.2, r * 0.5, r * 0.5, '#000'); break;
-    case 'beast': rect(ctx, hx - r, hy - r, r * 2, r * 0.6, pal.topDark); break;
-  }
-}
-
 function drawWeapon(ctx: CanvasRenderingContext2D, rig: RigDef, hx: number, hy: number, angle: number, dir: number, s: number): void {
   const pal = rig.palette;
-  // the blade points along `angle` from the hand (0 = straight down)
+  // the blade points along `angle` from the hand (0 = straight down); (px,py) is the perpendicular
   const ux = Math.sin(angle) * dir;
   const uy = Math.cos(angle);
+  const px = uy * dir, py = -ux * dir;
   const t = Math.max(2, Math.round(2 * s));
+  const along = (k: number) => ({ x: hx + ux * k * s, y: hy + uy * k * s });
+  const hi = tone(pal.weapon, 1.3);
+  const handle = tone(pal.hair, 0.9);
   switch (rig.weapon) {
-    case 'sword': seg(ctx, hx, hy, hx + ux * 18 * s, hy + uy * 18 * s, t, pal.weapon); seg(ctx, hx - uy * 3 * s * dir, hy + ux * 3 * s * dir, hx + uy * 3 * s * dir, hy - ux * 3 * s * dir, t, pal.weaponDark); break;
-    case 'axe': { seg(ctx, hx, hy, hx + ux * 16 * s, hy + uy * 16 * s, t, pal.weaponDark); const bx = hx + ux * 12 * s; const by = hy + uy * 12 * s; rect(ctx, bx - 5 * s, by - 4 * s, 10 * s, 8 * s, pal.weapon); break; }
-    case 'club': seg(ctx, hx, hy, hx + ux * 14 * s, hy + uy * 14 * s, t + 1, pal.weaponDark); rect(ctx, hx + ux * 12 * s - 3 * s, hy + uy * 12 * s - 3 * s, 6 * s, 6 * s, pal.weapon); break;
-    case 'hammer': { seg(ctx, hx, hy, hx + ux * 20 * s, hy + uy * 20 * s, t, pal.weaponDark); const bx = hx + ux * 18 * s; const by = hy + uy * 18 * s; rect(ctx, bx - 7 * s, by - 5 * s, 14 * s, 10 * s, pal.weapon); break; }
-    case 'staff': seg(ctx, hx - ux * 10 * s, hy - uy * 10 * s, hx + ux * 20 * s, hy + uy * 20 * s, t, pal.weapon); rect(ctx, hx + ux * 20 * s - 2 * s, hy + uy * 20 * s - 2 * s, 4 * s, 4 * s, '#a0e0ff'); break;
-    case 'claws': for (let i = -1; i <= 1; i++) seg(ctx, hx, hy + i * 2 * s, hx + ux * 9 * s, hy + uy * 9 * s + i * 3 * s, t, pal.weapon); break;
-    case 'knife': seg(ctx, hx, hy, hx + ux * 8 * s, hy + uy * 8 * s, t, pal.weapon); break;
-    case 'pipe': seg(ctx, hx, hy, hx + ux * 16 * s, hy + uy * 16 * s, t, pal.weapon); break;
-    case 'bat': seg(ctx, hx, hy, hx + ux * 16 * s, hy + uy * 16 * s, t + 1, pal.weapon); break;
-    case 'whip': for (let i = 0; i < 6; i++) seg(ctx, hx + ux * i * 4 * s + Math.sin(i) * 2, hy + uy * i * 4 * s, hx + ux * (i + 1) * 4 * s + Math.sin(i + 1) * 2, hy + uy * (i + 1) * 4 * s, t, pal.weapon); break;
-    case 'boomerang': rect(ctx, hx - 3 * s, hy - 3 * s, 6 * s, 6 * s, pal.weapon); break;
-    case 'bottle': seg(ctx, hx, hy, hx + ux * 7 * s, hy + uy * 7 * s, t + 1, '#60c080'); break;
-    case 'shaker': seg(ctx, hx, hy, hx + ux * 6 * s, hy + uy * 6 * s, t + 2, '#f0f0f0'); rect(ctx, hx + ux * 6 * s - 2 * s, hy + uy * 6 * s - 2 * s, 4 * s, 3 * s, '#808890'); break;
+    case 'sword': {
+      const g = along(2), tip = along(19);
+      limb(ctx, hx, hy, g.x, g.y, t, handle, tone(handle, 0.7)); // grip
+      seg(ctx, g.x - px * 3 * s, g.y - py * 3 * s, g.x + px * 3 * s, g.y + py * 3 * s, t, pal.weaponDark); // guard
+      limb(ctx, g.x, g.y, tip.x, tip.y, t + 1, pal.weapon, pal.weaponDark); // blade
+      if (!outline) seg(ctx, g.x + px * 0.5, g.y + py * 0.5, tip.x, tip.y, 1, hi); // edge highlight
+      break;
+    }
+    case 'axe': {
+      const b = along(13), tip = along(17);
+      limb(ctx, hx, hy, tip.x, tip.y, t, handle, tone(handle, 0.7));
+      const w = 5 * s;
+      // double blade: a wide dark slab with a lighter face
+      seg(ctx, b.x - px * w, b.y - py * w, b.x + px * w, b.y + py * w, t + 3, pal.weaponDark);
+      if (!outline) seg(ctx, b.x - px * (w - 1), b.y - py * (w - 1), b.x + px * (w - 1), b.y + py * (w - 1), t + 1, pal.weapon);
+      if (!outline) seg(ctx, b.x - px * w, b.y - py * w + 1, b.x + px * w, b.y + py * w + 1, 1, hi);
+      break;
+    }
+    case 'club': {
+      const m = along(7), tip = along(14);
+      limb(ctx, hx, hy, m.x, m.y, t, pal.weaponDark, tone(pal.weaponDark, 0.7));
+      limb(ctx, m.x, m.y, tip.x, tip.y, t + 2, pal.weapon, pal.weaponDark);
+      if (!outline) for (let k = 8; k < 14; k += 2) { const q = along(k); rect(ctx, q.x - 1, q.y - 1, 2, 2, tone(pal.weapon, 0.6)); }
+      break;
+    }
+    case 'hammer': {
+      const b = along(12), tip = along(15); // short haft: the head rides beside the shoulder, not over the face
+      limb(ctx, hx, hy, tip.x, tip.y, t, handle, tone(handle, 0.7));
+      const w = 6 * s;
+      seg(ctx, b.x - px * w, b.y - py * w, b.x + px * w, b.y + py * w, t + 5, pal.weaponDark);
+      if (!outline) seg(ctx, b.x - px * (w - 1), b.y - py * (w - 1), b.x + px * (w - 1), b.y + py * (w - 1), t + 3, pal.weapon);
+      break;
+    }
+    case 'staff': { const a = along(-10), b = along(20); limb(ctx, a.x, a.y, b.x, b.y, t, pal.weapon, pal.weaponDark); rect(ctx, b.x - 2 * s, b.y - 2 * s, 4 * s, 4 * s, '#a0e0ff'); break; }
+    case 'claws': for (let i = -1; i <= 1; i++) { const a = { x: hx + px * i * 2 * s, y: hy + py * i * 2 * s }; seg(ctx, a.x, a.y, a.x + ux * 9 * s, a.y + uy * 9 * s, Math.max(1, t - 1), pal.weapon); } break;
+    case 'knife': { const g = along(2), tip = along(9); limb(ctx, hx, hy, g.x, g.y, t, '#303030', '#101010'); limb(ctx, g.x, g.y, tip.x, tip.y, t, pal.weapon, pal.weaponDark); break; }
+    case 'pipe': { const tip = along(16); limb(ctx, hx, hy, tip.x, tip.y, t, pal.weapon, pal.weaponDark); const e = along(15); rect(ctx, e.x - 1.5 * s, e.y - 1.5 * s, 3 * s, 3 * s, pal.weaponDark); break; }
+    case 'bat': { const m = along(6), tip = along(17); limb(ctx, hx, hy, m.x, m.y, t, pal.weapon, pal.weaponDark); limb(ctx, m.x, m.y, tip.x, tip.y, t + 2, pal.weapon, pal.weaponDark); break; }
+    case 'whip': for (let i = 0; i < 7; i++) { const a = along(i * 4), b = along((i + 1) * 4); const wob = Math.sin(i * 1.3) * 2; seg(ctx, a.x + px * wob, a.y + py * wob, b.x + px * Math.sin((i + 1) * 1.3) * 2, b.y + py * Math.sin((i + 1) * 1.3) * 2, Math.max(1, t - 1), i < 2 ? pal.weaponDark : pal.weapon); } break;
+    case 'boomerang': { const a = along(5), b = { x: hx + px * 5 * s, y: hy + py * 5 * s }; limb(ctx, hx, hy, a.x, a.y, t, pal.weapon, pal.weaponDark); limb(ctx, hx, hy, b.x, b.y, t, pal.weapon, pal.weaponDark); break; }
+    case 'bottle': { const n = along(5), tip = along(8); limb(ctx, hx, hy, n.x, n.y, t + 1, '#60c080', '#308050'); limb(ctx, n.x, n.y, tip.x, tip.y, t - 1, '#60c080', '#308050'); break; }
+    case 'shaker': { const tip = along(6); limb(ctx, hx, hy, tip.x, tip.y, t + 2, '#f0f0f0', '#a0a8b0'); rect(ctx, tip.x - 2 * s, tip.y - 2 * s, 4 * s, 3 * s, '#808890'); break; }
     case 'gun': { // sub-machine gun: barrel along the arm, stock behind, grip below
       seg(ctx, hx - ux * 6 * s, hy - uy * 6 * s, hx + ux * 14 * s, hy + uy * 14 * s, t + 1, pal.weaponDark);
       seg(ctx, hx + ux * 2 * s, hy + uy * 2 * s, hx + ux * 2 * s - uy * 5 * s * dir, hy + uy * 2 * s + ux * 5 * s * dir, t, pal.weaponDark);
