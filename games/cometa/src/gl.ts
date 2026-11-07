@@ -306,7 +306,7 @@ export class Renderer {
     const Y = (y: number) => this.H - (y - w.camY) * s + shy;
 
     // palette eases to the sector's colours
-    const target = PALETTES[w.sector % PALETTES.length].flat();
+    const target = PALETTES[((w.sector % PALETTES.length) + PALETTES.length) % PALETTES.length].flat();
     for (let i = 0; i < 9; i++) this.pal[i] += (target[i] - this.pal[i]) * Math.min(1, dt * 0.8);
 
     // pass 1: nebula at quarter resolution

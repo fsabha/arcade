@@ -352,7 +352,7 @@ export class Renderer {
     for (const o of near) this.addLight(X(o.x), Y(o.y), 0.07 * s, 0.35, 0.26, 0.1);
 
     // water, at a third of the resolution
-    const target = WATERS[Math.min(w.sector, WATERS.length - 1)].flat();
+    const target = WATERS[Math.max(0, Math.min(w.sector, WATERS.length - 1))].flat();
     for (let i = 0; i < 6; i++) this.water0[i] += (target[i] - this.water0[i]) * Math.min(1, dt * 0.6);
     gl.bindFramebuffer(gl.FRAMEBUFFER, this.fbo);
     gl.viewport(0, 0, this.fw, this.fh);

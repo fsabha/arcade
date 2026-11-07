@@ -320,6 +320,13 @@ window.addEventListener('beforeinstallprompt', (e) => {
 });
 click(ui.install, () => { installEvt?.prompt().catch(() => undefined); ui.install.hidden = true; });
 if (!standalone && /iPhone|iPad|iPod/.test(navigator.userAgent)) ui.iosHint.hidden = false;
+// on a computer: say how to play with keyboard and mouse
+if (!coarse) {
+  ui.hint.textContent = 'setas ou arraste com o mouse · espaço: impulso · P: pausa';
+  const li = document.createElement('li');
+  li.innerHTML = '<b>No computador:</b> setas (ou WASD) ou arraste com o mouse; <b>espaço</b> para impulso; <b>P</b> pausa; <b>Enter</b> começa.';
+  document.querySelector('.how')?.append(li);
+}
 
 if ('serviceWorker' in navigator && !import.meta.env.DEV) navigator.serviceWorker.register('/sw.js').catch(() => undefined);
 
@@ -409,9 +416,12 @@ function handleEvents(): void {
 }
 
 function frame(now: number): void {
-  const raw = (now - last) / 1000;
+  // the frame keeps coming even if something below throws
+  requestAnimationFrame(frame);
+  // the first rAF timestamp can be a hair before performance.now(): never let time run backwards
+  const raw = Math.max(0, (now - last) / 1000);
   const dt = Math.min(0.05, raw);
-  last = now;
+  last = Math.max(last, now);
   // adaptive resolution: drop when frames run long, climb back when there is headroom
   if (raw < 0.25) {
     if (raw > 1 / 45) { slow += raw; fast = 0; } else if (raw < 1 / 70) { fast += raw; slow = Math.max(0, slow - raw); }
@@ -445,7 +455,6 @@ function frame(now: number): void {
     world.update(0);
   }
   renderer.draw(world, now / 1000, state === 'pause' ? 0 : dt, state === 'play' || state === 'title' || state === 'ranking');
-  requestAnimationFrame(frame);
 }
 
 show('title');

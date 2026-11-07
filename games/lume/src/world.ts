@@ -130,6 +130,7 @@ export class World {
   }
 
   update(dt: number): void {
+    if (!(dt > 0)) return; // no time, negative time or NaN: nothing happens
     const steps = Math.max(1, Math.ceil(dt / (1 / 120)));
     const h = dt / steps;
     for (let i = 0; i < steps; i++) this.step(h);
