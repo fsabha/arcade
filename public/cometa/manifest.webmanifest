@@ -1,0 +1,20 @@
+{
+  "name": "Cometa - Arcade",
+  "short_name": "Cometa",
+  "description": "Guie o cometa com um dedo pela nebulosa. Criação original do projeto Arcade.",
+  "lang": "pt-BR",
+  "id": "/games/cometa/",
+  "start_url": "/games/cometa/index.html",
+  "scope": "/games/cometa/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#06030f",
+  "theme_color": "#06030f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/cometa/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/cometa/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/cometa/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

@@ -4,7 +4,7 @@
  */
 export const GAMES = [
   'riverraid', 'endurance', 'seaquest', 'pacman', 'freeway', 'pitfall', 'frostbite', 'hero', 'asteroids', 'keystone',
-  'missile', 'frogger', 'chopper', 'moonpatrol', 'donkeykong', 'goldenaxe', 'streetsofrage', 'virtuaracing',
+  'missile', 'frogger', 'chopper', 'moonpatrol', 'donkeykong', 'goldenaxe', 'streetsofrage', 'virtuaracing', 'cometa',
 ] as const;
 export type GameId = (typeof GAMES)[number];
 

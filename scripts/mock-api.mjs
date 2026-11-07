@@ -1,6 +1,6 @@
 // Mock of /api/scores for local development (npm run dev:api): fake top lists, accepts any POST.
 import { createServer } from 'node:http';
-const games = ['riverraid','endurance','seaquest','pacman','freeway','pitfall','frostbite','hero','asteroids','keystone','missile','frogger','chopper','moonpatrol','donkeykong','goldenaxe','streetsofrage','virtuaracing'];
+const games = ['riverraid','endurance','seaquest','pacman','freeway','pitfall','frostbite','hero','asteroids','keystone','missile','frogger','chopper','moonpatrol','donkeykong','goldenaxe','streetsofrage','virtuaracing','cometa'];
 createServer((req, res) => {
   // dev helper: POST /api/dump with a data URL saves a PNG to /tmp/shot.png (for looking at the canvas)
   if (req.method === 'POST' && req.url === '/api/dump') {

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#06030f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Cometa" />
+    <meta name="description" content="COMETA: guie o cometa com um dedo pela nebulosa. Criação original do projeto Arcade." />
+    <link rel="manifest" href="/cometa/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/cometa/apple-touch-icon.png" />
+    <link rel="icon" href="/cometa/icon-192.png" />
+    <title>Cometa</title>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div class="score-box">
+          <div id="score" class="score">0</div>
+          <div id="dist" class="dist">0 KM</div>
+        </div>
+        <div class="right-box">
+          <div id="shield" class="shield" aria-label="Energia"></div>
+          <button id="pause-btn" class="icon-btn" type="button" aria-label="Pausar">II</button>
+        </div>
+      </div>
+      <div id="combo" class="combo"></div>
+      <div class="hud-bottom">
+        <div id="charges" class="charges" aria-label="Impulsos"></div>
+        <div id="hint" class="hint">arraste para guiar &middot; toque para impulso</div>
+      </div>
+    </div>
+
+    <section id="title" class="screen">
+      <h1 class="logo">COMETA</h1>
+      <p class="tag">criação original do Arcade</p>
+      <div class="menu">
+        <button id="play" class="btn primary" type="button">JOGAR</button>
+        <button id="rank-btn" class="btn" type="button">RANKING</button>
+        <div class="row">
+          <button id="snd-btn" class="btn small" type="button">SOM: SIM</button>
+          <button id="mus-btn" class="btn small" type="button">MÚSICA: SIM</button>
+        </div>
+        <button id="install-btn" class="btn small" type="button" hidden>INSTALAR NA TELA</button>
+      </div>
+      <ul class="how">
+        <li><b>Arraste</b> em qualquer lugar: o cometa segue seu dedo.</li>
+        <li><b>Toque</b> rápido: impulso que quebra asteroides (gasta uma carga).</li>
+        <li>Pegue <b>luz</b> em sequência para multiplicar os pontos e recarregar o impulso.</li>
+        <li>Passe entre os <b>portais</b>, contorne os <b>buracos negros</b> para ganhar o estilingue, mas não encoste no centro.</li>
+      </ul>
+      <p id="ios-hint" class="small-note" hidden>No iPhone: Compartilhar &rsaquo; Adicionar à Tela de Início para jogar em tela cheia.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+      <p id="best" class="small-note"></p>
+    </section>
+
+    <section id="pause" class="screen" hidden>
+      <h2>PAUSA</h2>
+      <div class="menu">
+        <button id="resume" class="btn primary" type="button">CONTINUAR</button>
+        <button id="quit" class="btn" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="over" class="screen" hidden>
+      <h2>FIM DA VIAGEM</h2>
+      <div class="final">
+        <div><span id="f-score" class="big">0</span><small>pontos</small></div>
+        <div class="stats"><span id="f-dist">0 KM</span> &middot; <span id="f-combo">combo 0</span></div>
+        <div id="f-best" class="small-note"></div>
+      </div>
+      <form id="initials-form" class="initials" autocomplete="off">
+        <label for="initials">Suas iniciais no ranking global</label>
+        <div class="row">
+          <input id="initials" maxlength="3" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="AAA" />
+          <button class="btn primary small" type="submit">ENVIAR</button>
+        </div>
+        <div id="sent" class="small-note"></div>
+      </form>
+      <div class="menu">
+        <button id="again" class="btn primary" type="button">JOGAR DE NOVO</button>
+        <button id="over-rank" class="btn small" type="button">RANKING</button>
+        <button id="over-menu" class="btn small" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="ranking" class="screen" hidden>
+      <h2>RANKING GLOBAL</h2>
+      <ol id="rank-list" class="rank-list"></ol>
+      <div class="menu">
+        <button id="rank-back" class="btn primary" type="button">VOLTAR</button>
+      </div>
+    </section>
+
+    <div id="fail" class="screen" hidden>
+      <h2>Ops</h2>
+      <p>Este aparelho não conseguiu iniciar os gráficos (WebGL). Tente outro navegador.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+    </div>
+
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

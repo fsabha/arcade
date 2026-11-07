@@ -29,7 +29,7 @@ const thumbs: { id: string; ctx: CanvasRenderingContext2D }[] = [];
 function card(g: GameInfo): HTMLButtonElement {
   const el = document.createElement('button');
   el.type = 'button';
-  el.className = 'card';
+  el.className = g.featured ? 'card featured' : 'card';
   el.style.setProperty('--accent', g.accent);
   const c = document.createElement('canvas');
   c.className = 'card-title';
@@ -91,6 +91,11 @@ function renderGrid(): void {
 }
 
 function open(g: GameInfo): void {
+  if (g.page) { // its own full-screen page (installable on its own)
+    trackEvent('play', { game: g.id });
+    location.href = `games/${g.id}/index.html`;
+    return;
+  }
   frame.src = `games/${g.id}/index.html`;
   playing.textContent = g.title;
   document.body.classList.add('in-game');

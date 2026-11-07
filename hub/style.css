@@ -72,7 +72,30 @@ body.ranking .card .meta, body.ranking .card .blurb, body.ranking .card .thumb {
   display: none;
 }
 
-body:not(.ranking) .card .thumb.film {
+body:not(.ranking) /* Our own game: a glowing gradient border */
+.card.featured {
+  position: relative;
+  border: 2px solid transparent;
+  background:
+    linear-gradient(var(--panel), var(--panel)) padding-box,
+    linear-gradient(135deg, #9fe0ff, #b98aff 50%, #ff7ad9) border-box;
+  box-shadow: 0 0 22px rgba(159, 224, 255, 0.35), 0 0 46px rgba(185, 138, 255, 0.18);
+}
+.card.featured::after {
+  content: 'NOVO · ORIGINAL';
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: #06030f;
+  background: linear-gradient(90deg, #9fe0ff, #ff7ad9);
+  border-radius: 999px;
+  padding: 2px 7px;
+  font-weight: bold;
+}
+
+.card .thumb.film {
   image-rendering: auto; /* footage from the game: scaled smooth, not as pixel art */
 }
 
