@@ -1,18 +1,6 @@
-import { SoundBase } from '@arcade/shared';
-import type { Tune } from '@arcade/shared';
+import { FmMusic, SoundBase } from '@arcade/shared';
+import { VR_SONG } from './music';
 
-// Original loop in the spirit of the arcade's driving theme (not a transcription of the Sega score).
-const VR_TUNE: Tune = {
-  bpm: 132,
-  lead: 'square',
-  volume: 0.028,
-  melody: [
-    'A4', '=', 'C5', 'A4', 'E5', '=', 'D5', 'C5', 'A4', '=', 'C5', 'A4', 'G4', '=', '-', '-',
-    'F4', '=', 'A4', 'F4', 'C5', '=', 'B4', 'A4', 'G4', '=', 'B4', 'G4', 'E4', '=', '-', '-',
-  ],
-  bass: ['A2', 'A2', 'A2', 'A3', 'F2', 'F2', 'F2', 'F3', 'G2', 'G2', 'G2', 'G3', 'E2', 'E2', 'E2', 'E3'],
-  drum: true,
-};
 
 /** Engine note that follows the revs, plus beeps, skids and jingles. */
 export class SoundFx extends SoundBase {
@@ -41,9 +29,11 @@ export class SoundFx extends SoundBase {
     this.engine.frequency.setTargetAtTime(50 + revs * 160 + speedK * 40, this.ctx.currentTime, 0.05);
   }
 
-  musicStart(): void { this.music.start(VR_TUNE); }
-  musicStop(): void { this.music.stop(); }
-  setMusicEnabled(on: boolean): void { this.music.setEnabled(on); }
+  /** Mega Drive FM music (see music.ts) */
+  private fm = ((s: SoundFx) => new FmMusic({ get ctx() { return s.ctx; }, get out() { return s.master; }, get noise() { return s.noiseBuf; } }))(this);
+  musicStart(): void { this.fm.start(VR_SONG); }
+  musicStop(): void { this.fm.stop(); }
+  setMusicEnabled(on: boolean): void { this.fm.setEnabled(on); }
 
   blip(): void { this.tone(700, 0.05, 'square', 0.08); }
   countdown(final: boolean): void { this.tone(final ? 880 : 440, final ? 0.5 : 0.18, 'square', 0.12); }

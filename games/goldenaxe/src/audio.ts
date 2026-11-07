@@ -1,20 +1,6 @@
-import { SoundBase } from '@arcade/shared';
-import type { Tune } from '@arcade/shared';
+import { FmMusic, SoundBase } from '@arcade/shared';
+import { GA_SONG } from './music';
 
-// Original loop in the spirit of the cartridge's heroic marches (not a transcription of the Sega score).
-const GA_TUNE: Tune = {
-  bpm: 128,
-  lead: 'square',
-  volume: 0.03,
-  melody: [
-    'E4', '=', 'G4', '=', 'B4', '=', 'E5', '=', 'D5', '=', 'B4', '=', 'G4', '=', '-', '-',
-    'C4', '=', 'E4', '=', 'G4', '=', 'C5', '=', 'B4', '=', 'G4', '=', 'E4', '=', '-', '-',
-    'A4', '=', 'B4', '=', 'C5', '=', 'E5', '=', 'D5', '=', 'C5', '=', 'B4', '=', 'A4', '=',
-    'G4', '=', 'A4', '=', 'B4', '=', 'D5', '=', 'E5', '=', '=', '=', '-', '-', '-', '-',
-  ],
-  bass: ['E2', 'E2', 'E2', 'E3', 'C2', 'C2', 'C2', 'C3', 'A2', 'A2', 'A2', 'A3', 'G2', 'G2', 'B2', 'B2'],
-  drum: true,
-};
 
 /** All sounds are synthesized with Web Audio; no asset files. */
 export class SoundFx extends SoundBase {
@@ -22,9 +8,11 @@ export class SoundFx extends SoundBase {
     super(0.5);
   }
 
-  musicStart(): void { this.music.start(GA_TUNE); }
-  musicStop(): void { this.music.stop(); }
-  setMusicEnabled(on: boolean): void { this.music.setEnabled(on); }
+  /** Mega Drive FM music (see music.ts) */
+  private fm = ((s: SoundFx) => new FmMusic({ get ctx() { return s.ctx; }, get out() { return s.master; }, get noise() { return s.noiseBuf; } }))(this);
+  musicStart(): void { this.fm.start(GA_SONG); }
+  musicStop(): void { this.fm.stop(); }
+  setMusicEnabled(on: boolean): void { this.fm.setEnabled(on); }
 
   blip(): void { this.tone(700, 0.05, 'square', 0.08); }
   swing(): void { this.noise(0.12, 0.18, 2400); }

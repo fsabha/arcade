@@ -8,3 +8,4 @@ export * from './analytics';
 export * from './shell';
 export * from './screens';
 export * from './music';
+export * from './fm';
