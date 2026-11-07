@@ -50,8 +50,8 @@ export class Renderer {
   // ---------- the world ----------
 
   private camera(track: Track, s: number, d: number, view: number, car?: Car): Camera {
-    const back = [1.5, 7, 14, 22][view];
-    const height = [1.1, 2.4, 4.2, 10][view];
+    const back = [1.5, 8.5, 15, 23][view];
+    const height = [1.1, 2.9, 4.6, 10][view];
     const horizon = [HORIZON + 8, HORIZON, HORIZON - 6, HORIZON - 30][view];
     const eye = world(track, s - back, d * (view === 0 ? 1 : 0.6), height);
     const look = at(track, s + 6);
@@ -161,12 +161,18 @@ export class Renderer {
     painter.draw(ctx);
     // the bumper view shows the nose of your own car
     if (player && view === 0) {
-      ctx.fillStyle = '#e8e8f0';
-      ctx.fillRect(W / 2 - 60, H - 26, 120, 26);
-      ctx.fillStyle = '#c0c0d0';
-      ctx.fillRect(W / 2 - 30, H - 34, 60, 8);
-      ctx.fillStyle = '#202028';
-      ctx.fillRect(W / 2 - 78, H - 22, 18, 22); ctx.fillRect(W / 2 + 60, H - 22, 18, 22);
+      // the bumper view shows your own nose cone and the tops of the front tyres
+      const poly = (pts: [number, number][], fill: string) => { ctx.fillStyle = fill; ctx.beginPath(); ctx.moveTo(pts[0][0], pts[0][1]); for (const [x, y] of pts.slice(1)) ctx.lineTo(x, y); ctx.closePath(); ctx.fill(); };
+      const cx = W / 2;
+      for (const side of [-1, 1]) {
+        const x = cx + side * 104;
+        ctx.fillStyle = '#18181c'; ctx.beginPath(); ctx.ellipse(x, H + 4, 26, 30, 0, Math.PI, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#34343a'; ctx.beginPath(); ctx.ellipse(x - side * 4, H + 4, 18, 24, 0, Math.PI, Math.PI * 2); ctx.fill();
+      }
+      poly([[cx - 22, H - 40], [cx + 22, H - 40], [cx + 64, H], [cx - 64, H]], '#e8e8f0');
+      poly([[cx - 22, H - 40], [cx + 22, H - 40], [cx + 26, H - 34], [cx - 26, H - 34]], '#ffffff');
+      poly([[cx - 8, H - 40], [cx + 8, H - 40], [cx + 20, H], [cx - 20, H]], player.color);
+      poly([[cx - 64, H - 4], [cx + 64, H - 4], [cx + 66, H], [cx - 66, H]], '#9a9aa8');
     }
   }
 
@@ -179,24 +185,39 @@ export class Renderer {
     const col = c.color;
     const cy = Math.cos(yaw), sy = Math.sin(yaw);
     const local = (lx: number, lz: number) => ({ x: p.x + lx * cy + lz * sy, z: p.z - lx * sy + lz * cy });
-    // monocoque: narrow nose, wider tail, raised cockpit section
-    for (const q of wedge(p.x, p.y + 0.25, p.z, 1.3, 0.5, 0.55, 4.6, yaw + wobble, col, 0.3)) painter.add(q);
-    // sidepods either side of the cockpit
-    for (const side of [-1, 1]) { const o = local(side * 0.95, -0.6); for (const q of box(o.x, p.y + 0.25, o.z, 0.6, 0.45, 2.2, yaw, shade(col, 0.95))) painter.add(q); }
-    // cockpit lip, helmet and airbox
-    { const o = local(0, -0.2); for (const q of box(o.x, p.y + 0.8, o.z, 0.8, 0.2, 1.2, yaw, shade(col, 0.7))) painter.add(q); }
-    { const o = local(0, -0.3); for (const q of cylinder(o.x, p.y + 1.05, o.z, 0.22, 0.4, yaw + Math.PI / 2, 6, c.player ? '#f0f0f0' : '#f0d040', '#202020')) painter.add(q); }
-    { const o = local(0, -1.3); for (const q of wedge(o.x, p.y + 0.8, o.z, 0.5, 0.4, 0.45, 1.4, yaw, shade(col, 0.85), 0.35)) painter.add(q); }
-    // front wing with endplates, rear wing on pylons
-    { const o = local(0, 2.5); for (const q of box(o.x, p.y + 0.12, o.z, 2.7, 0.12, 0.55, yaw, shade(col, 0.9))) painter.add(q); }
-    for (const side of [-1, 1]) { const o = local(side * 1.35, 2.5); for (const q of box(o.x, p.y + 0.05, o.z, 0.08, 0.35, 0.7, yaw, '#e8e8e8')) painter.add(q); }
-    { const o = local(0, -2.3); for (const q of box(o.x, p.y + 0.95, o.z, 2.2, 0.14, 0.5, yaw, shade(col, 0.9))) painter.add(q); }
-    for (const side of [-1, 1]) { const o = local(side * 1.1, -2.3); for (const q of box(o.x, p.y + 0.7, o.z, 0.08, 0.5, 0.6, yaw, '#e8e8e8')) painter.add(q); }
-    { const o = local(0, -2.1); for (const q of box(o.x, p.y + 0.55, o.z, 0.3, 0.4, 0.3, yaw, '#303030')) painter.add(q); }
-    // wheels: eight-sided drums, rear ones wider
-    for (const [lx, lz, w] of [[-1.05, 1.5, 0.38], [1.05, 1.5, 0.38], [-1.1, -1.4, 0.5], [1.1, -1.4, 0.5]] as [number, number, number][]) {
-      const o = local(lx, lz);
-      for (const q of cylinder(o.x, p.y + 0.34, o.z, 0.34, w, yaw, 8, '#1c1c20', '#6a6a70')) painter.add(q);
+    const K = 1.25; // Model 1 cars read big on screen
+    const L = (lx: number, lz: number) => local(lx * K, lz * K);
+    const lift = (h: number) => p.y + h * K;
+    const add = (qs: ReturnType<typeof box>) => { for (const q of qs) painter.add(q); };
+    const white = '#f0f0f0';
+    // monocoque: narrow nose, wider tail; the nose cone is two-tone like the arcade liveries
+    add(wedge(p.x, lift(0.22), p.z, 1.2 * K, 0.42 * K, 0.55 * K, 4.6 * K, yaw + wobble, col, 0.28 * K));
+    { const o = L(0, 1.9); add(wedge(o.x, lift(0.24), o.z, 0.62 * K, 0.36 * K, 0.4 * K, 1.2 * K, yaw + wobble, white, 0.26 * K)); }
+    // sidepods with radiator intakes
+    for (const side of [-1, 1]) {
+      { const o = L(side * 0.9, -0.2); add(box(o.x, lift(0.22), o.z, 0.55 * K, 0.48 * K, 1.5 * K, yaw, shade(col, 0.95))); }
+      { const o = L(side * 0.9, 0.56); add(box(o.x, lift(0.28), o.z, 0.45 * K, 0.34 * K, 0.06 * K, yaw, '#18181c')); }
+    }
+    // cockpit opening, driver's helmet with visor, airbox behind
+    { const o = L(0, -0.1); add(box(o.x, lift(0.78), o.z, 0.78 * K, 0.18 * K, 1.2 * K, yaw, '#202024')); }
+    { const o = L(0, -0.3); add(cylinder(o.x, lift(1.05), o.z, 0.24 * K, 0.42 * K, yaw + Math.PI / 2, 8, c.player ? '#f8f8f8' : '#f0d040', '#202020')); }
+    { const o = L(0, -0.12); add(box(o.x, lift(1.0), o.z, 0.36 * K, 0.1 * K, 0.06 * K, yaw, '#3060c0')); }
+    { const o = L(0, -1.3); add(wedge(o.x, lift(0.78), o.z, 0.52 * K, 0.36 * K, 0.5 * K, 1.4 * K, yaw, shade(col, 0.85), 0.36 * K)); }
+    // front wing with endplates, rear wing on pylons with big endplates
+    { const o = L(0, 2.45); add(box(o.x, lift(0.1), o.z, 2.7 * K, 0.1 * K, 0.6 * K, yaw, col)); }
+    for (const side of [-1, 1]) { const o = L(side * 1.36, 2.45); add(box(o.x, lift(0.04), o.z, 0.08 * K, 0.36 * K, 0.72 * K, yaw, white)); }
+    { const o = L(0, -2.3); add(box(o.x, lift(0.98), o.z, 2.2 * K, 0.16 * K, 0.55 * K, yaw, col)); }
+    { const o = L(0, -2.3); add(box(o.x, lift(0.84), o.z, 2.2 * K, 0.1 * K, 0.4 * K, yaw, white)); }
+    for (const side of [-1, 1]) { const o = L(side * 1.12, -2.3); add(box(o.x, lift(0.6), o.z, 0.08 * K, 0.62 * K, 0.7 * K, yaw, white)); }
+    { const o = L(0, -2.05); add(box(o.x, lift(0.5), o.z, 0.34 * K, 0.42 * K, 0.3 * K, yaw, '#303030')); }
+    // gearbox and diffuser
+    { const o = L(0, -2.05); add(box(o.x, lift(0.18), o.z, 0.7 * K, 0.36 * K, 0.5 * K, yaw, '#28282c')); }
+    // wheels: twelve-sided drums, fat rears, with a lighter rim face
+    for (const [lx, lz, w, r] of [[-1.05, 1.5, 0.4, 0.36], [1.05, 1.5, 0.4, 0.36], [-1.12, -1.45, 0.56, 0.42], [1.12, -1.45, 0.56, 0.42]] as [number, number, number, number][]) {
+      const o = L(lx, lz);
+      add(cylinder(o.x, lift(r), o.z, r * K, w * K, yaw, 12, '#1e1e22', '#55555c'));
+      const hub = L(lx + Math.sign(lx) * (w / 2 + 0.01), lz);
+      add(cylinder(hub.x, lift(r), hub.z, r * 0.5 * K, 0.02, yaw, 10, '#a8a8b0', '#c8c8d0'));
     }
   }
 
