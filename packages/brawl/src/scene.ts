@@ -95,7 +95,7 @@ export function drawScene(ctx: CanvasRenderingContext2D, b: Brawl, opts: SceneOp
         ctx.fillRect(x - sw / 2, y - 2, sw, 3);
         const tint = a.team === 'hero' && a.invuln > 0 && Math.floor(a.t * 20) % 2 ? (opts.invulnTint ?? '#ffffff') : undefined;
         const rg = actorRig(a);
-        if (rg.look && !rg.beast) drawHd(ctx, rg, actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
+        if (rg.look) drawHd(ctx, rg, actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
         else if (!drawSheetFrame(ctx, a, x, y - Math.round(a.z), tint)) drawRig(ctx, actorRig(a), actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
       },
     });

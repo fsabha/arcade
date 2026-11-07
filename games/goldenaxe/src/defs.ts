@@ -156,14 +156,14 @@ const THIEVES_BASE: Record<string, ActorDef> = {
 
 export const MOUNTS: Record<string, ActorDef> = {
   chickenleg: { id: 'chickenleg', name: 'BIZARRIAN', hp: 8, speed: 60, width: 26, height: 30, points: 0, grabbable: false, attacks: {},
-    rig: rig({ palette: pal({ top: '#60c0e0', topDark: '#3080a0', legs: '#f0a040', legsDark: '#b07020', weapon: '#804020' }), beast: 'chicken', weapon: 'none', head: 'beast' }),
-    mount: { speed: 95, attack: { duration: 0.45, frames: [hit(0.1, 0.3, -36, 44, 2, 'down', 150, 0, 30)], pose: 'idle' } } },
+    rig: rig({ palette: pal({ top: '#60c0e0', topDark: '#3080a0', legs: '#f0a040', legsDark: '#b07020', weapon: '#804020' }), beast: 'chicken', weapon: 'none', head: 'beast', look: { height: 58, colors: { top: ['#f0a0c0', '#b86888'], top2: ['#fff0f4', '#d8b0c0'], legs: ['#80c0f0', '#4878b0'] } } }),
+    mount: { seat: 25, seatX: 5, speed: 95, attack: { duration: 0.45, frames: [hit(0.1, 0.3, -36, 44, 2, 'down', 150, 0, 30)], pose: 'idle' } } },
   dragonBlue: { id: 'dragonBlue', name: 'DRAGAO', hp: 10, speed: 56, width: 34, height: 32, points: 0, grabbable: false, attacks: {},
-    rig: rig({ palette: pal({ top: '#4070e0', topDark: '#2040a0', legs: '#4070e0', legsDark: '#2040a0', weapon: '#804020' }), beast: 'dragon', weapon: 'none', head: 'beast' }),
-    mount: { speed: 85, attack: { duration: 0.6, frames: [hit(0.15, 0.45, 18, 70, 3, 'down', 140, 0, 30)], pose: 'idle' } } },
+    rig: rig({ palette: pal({ top: '#4070e0', topDark: '#2040a0', legs: '#4070e0', legsDark: '#2040a0', weapon: '#804020' }), beast: 'dragon', weapon: 'none', head: 'beast', look: { height: 62, colors: { top: ['#5890f0', '#2c50b0'], top2: ['#f0e090', '#b09840'], legs: ['#3c64c8', '#203880'] } } }),
+    mount: { seat: 25, seatX: 5, speed: 85, attack: { duration: 0.6, frames: [hit(0.15, 0.45, 18, 70, 3, 'down', 140, 0, 30)], pose: 'idle' } } },
   dragonRed: { id: 'dragonRed', name: 'DRAGAO', hp: 10, speed: 56, width: 34, height: 32, points: 0, grabbable: false, attacks: {},
-    rig: rig({ palette: pal({ top: '#e04040', topDark: '#902020', legs: '#e04040', legsDark: '#902020', weapon: '#804020' }), beast: 'dragon', weapon: 'none', head: 'beast' }),
-    mount: { speed: 85, attack: { duration: 0.6, frames: [hit(0.15, 0.45, 18, 110, 4, 'launch', 160, 0, 30)], pose: 'idle' } } },
+    rig: rig({ palette: pal({ top: '#e04040', topDark: '#902020', legs: '#e04040', legsDark: '#902020', weapon: '#804020' }), beast: 'dragon', weapon: 'none', head: 'beast', look: { height: 62, colors: { top: ['#f06048', '#a82c20'], top2: ['#f8d070', '#b88a30'], legs: ['#d04838', '#802018'] } } }),
+    mount: { seat: 25, seatX: 5, speed: 85, attack: { duration: 0.6, frames: [hit(0.15, 0.45, 18, 110, 4, 'launch', 160, 0, 30)], pose: 'idle' } } },
 };
 
 const ENEMIES_BASE: Record<string, ActorDef> = {

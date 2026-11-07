@@ -93,7 +93,7 @@ export interface ActorDef {
   /** heroes: how many hearts/pots the HUD shows */
   maxMagic?: number;
   /** rideable creature */
-  mount?: { attack: MoveDef; speed: number };
+  mount?: { attack: MoveDef; speed: number; /** rider height above the ground (default 14) */ seat?: number; /** rider sits this far behind the centre */ seatX?: number };
   /** what a thief drops when hit */
   drop?: { kind: ItemKind; value?: number };
 }

@@ -315,7 +315,7 @@ export class Brawl {
     a.y = Math.max(this.stage.floorTop, Math.min(this.stage.floorBottom, a.y));
     if (a.team === 'hero') a.x = Math.max(this.scrollX + 10, Math.min(this.scrollX + this.W - 10, a.x));
     else a.x = Math.max(-40, Math.min(this.stage.length + 40, a.x));
-    if (a.rider) { a.rider.x = a.x; a.rider.y = a.y; a.rider.z = a.z + 14; a.rider.facing = a.facing; }
+    if (a.rider) { const m = a.def.mount; a.rider.x = a.x - a.facing * (m?.seatX ?? 0); a.rider.y = a.y; a.rider.z = a.z + (m?.seat ?? 14); a.rider.facing = a.facing; }
   }
 
   private heroMove(a: Actor, dt: number, c: Controls): void {

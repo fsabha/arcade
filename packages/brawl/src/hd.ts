@@ -27,7 +27,7 @@ export interface Look {
   /** knee pads / greaves in metal */
   greaves?: boolean;
   /** hand-drawn head, facing right; letters: a-d skin, h-k hair, m-p helm metal, q-t top, u-w gold, x dark, y white, z red, e eye */
-  head: string[];
+  head?: string[];
   /** pixel of the art that sits on the neck (default: bottom row, 45% across) */
   neck?: [number, number];
   /** blade length of swords, haft of axes (px at height 64) */
@@ -272,6 +272,7 @@ export function hdFrame(rig: RigDef, pose: Pose): Built {
 }
 
 function paint(rig: RigDef, look: Look, pose: Pose): Built {
+  if (rig.beast) return paintBeast(rig, look, pose);
   const H = look.height ?? Math.round(64 * rig.scale);
   const D = BUILDS[look.build ?? 'hero'];
   const std = D.thigh + D.shin + D.ankle + D.torso + D.neck + 12;
@@ -445,6 +446,7 @@ function paint(rig: RigDef, look: Look, pose: Pose): Built {
   // ---- head: hand-drawn art, rotated by the tilt in 22.5 degree steps ----
   const drawHead = () => {
     const art = look.head;
+    if (!art || art.length === 0) return;
     const hw = art[0].length, hh = art.length;
     const [ax, ay] = look.neck ?? [Math.round(hw * 0.45), hh - 1];
     const tilt = lean + pose.headTilt * 0.6;
@@ -569,6 +571,94 @@ function drawWeapon(buf: Buf, w: WeaponShape, h: V, a: number, reach: number, s:
       break;
     case 'none': break;
   }
+}
+
+/**
+ * Golden Axe mounts, two-legged like the cartridge's: the chicken-leg Bizarrian (beak, crest,
+ * whip tail) and the dragons (snout, jaw, back spines, heavy tail). Legs swing with the walk pose,
+ * the tail with pose.weapon and the head with pose.headTilt.
+ */
+function paintBeast(rig: RigDef, look: Look, pose: Pose): Built {
+  const H = look.height ?? 60;
+  const s = H / 60;
+  const dragon = rig.beast === 'dragon';
+  const W = Math.ceil(H * 2.8) + 8, BH = Math.ceil(H * 1.6) + 10;
+  const ox = Math.floor(W / 2), oy = BH - 8;
+  const ramps = rampsFor(rig, look);
+  const buf = new Buf(W, BH, ramps);
+  const P = (x: number, y: number): V => ({ x: ox + x * s, y: oy + y * s });
+  const bob = Math.sin(pose.lHip * 3) * 1.2;
+  const body = (dx: number, dy: number) => P(dx, dy + bob);
+
+  // legs: thigh forward, shin back (bird knee), three toes
+  const leg = (swing: number, back: boolean) => {
+    const g = back ? 1 : 3, sh = back ? 1 : 0;
+    const hip = body(back ? -4 : 2, -30);
+    const knee = add(hip, dirOf(0.75 + swing * 0.8), 12 * s);
+    const ankle = add(knee, dirOf(-0.55 + swing * 0.6), 14 * s);
+    const ground = Math.min(ankle.y, oy - 2 * s);
+    const foot = { x: ankle.x, y: ground };
+    capsule(buf, knee, hip, 3.2 * s, (dragon ? 6.4 : 5.6) * s, g, sh, () => (dragon ? 'top' : 'legs'), 0.15, 0.6);
+    capsule(buf, foot, knee, 1.8 * s, 2.8 * s, g, sh, () => 'legs');
+    for (const t of [-0.5, 0.2, 0.9]) capsule(buf, foot, add(foot, { x: Math.cos(t * 0.6), y: Math.sin(t * 0.6) * 0.3 + 0.2 }, 6 * s), 1.4 * s, 0.6 * s, g, sh, () => 'gold');
+    capsule(buf, foot, add(foot, { x: -1, y: 0 }, 3 * s), 1.2 * s, 0.6 * s, g, sh, () => 'gold');
+  };
+  leg(pose.lHip, true);
+
+  // tail: tapering chain swinging with pose.weapon
+  const wag = Math.sin(pose.weapon * 1.7) * 0.5;
+  let prev = body(-12, -38);
+  let ang = -1.9 + wag;
+  const segs = dragon ? 9 : 10;
+  for (let i = 0; i < segs; i++) {
+    const r0 = (dragon ? 7 : 5) * (1 - i / segs) + 1.2, r1 = (dragon ? 7 : 5) * (1 - (i + 1) / segs) + 1;
+    const next = add(prev, dirOf(ang), (dragon ? 4.6 : 4.4) * s);
+    capsule(buf, next, prev, r1 * s, r0 * s, 2, 0, () => 'top');
+    if (dragon && i % 2 === 0) poly(buf, [add(prev, { x: 0, y: -1 }, r0 * s), add(next, { x: 0, y: -1 }, r1 * s), add({ x: (prev.x + next.x) / 2, y: (prev.y + next.y) / 2 }, { x: 0, y: -1 }, (r0 + 4) * s)], 2, 'top2', () => 2);
+    prev = next;
+    ang += dragon ? -0.08 : -0.16 + wag * 0.15;
+  }
+  if (!dragon) { // the tail ends in a feathered club
+    disc(buf, prev, 4 * s, 2, 0, 'top2');
+  }
+
+  // body: a big egg, belly lighter
+  capsule(buf, body(-12, -37), body(9, -39), (dragon ? 12 : 11) * s, (dragon ? 11 : 10) * s, 4, 0, (_t, u) => (u > 0.45 ? 'top2' : 'top'), 0.08, 0.5);
+  if (dragon) for (let i = 0; i < 5; i++) { // back spines
+    const b = body(-12 + i * 5, -49 + Math.abs(i - 2) * 0.6);
+    poly(buf, [add(b, { x: -1, y: 0 }, 2.5 * s), add(b, { x: 1, y: 0 }, 2.5 * s), add(b, { x: -0.4, y: -1 }, 5 * s)], 5, 'top2', () => 1);
+  }
+  // saddle and reins
+  poly(buf, [body(-7, -48), body(5, -49), body(6, -44), body(-8, -43)], 5, 'belt', (_x, y) => (y < oy + (-47 + bob) * s ? 1 : 2));
+
+  // neck and head
+  const tilt = pose.headTilt;
+  const neckA = body(8, -42);
+  const headC = add(body(18, -60), { x: Math.sin(tilt), y: Math.cos(tilt) * 0.3 }, 5 * s);
+  capsule(buf, headC, neckA, (dragon ? 4.8 : 3.6) * s, (dragon ? 7 : 6) * s, 6, 0, (_t, u) => (u < -0.4 ? 'top2' : 'top'));
+  if (dragon) {
+    capsule(buf, add(headC, { x: -1, y: 0 }, 2 * s), add(headC, { x: 1, y: 0.15 }, 11 * s), 5.2 * s, 3.4 * s, 7, 0, () => 'top'); // snout
+    const open = Math.max(0, tilt) * 6;
+    capsule(buf, add(headC, { x: 0, y: 1 }, 3 * s), add(headC, { x: 1, y: 0.45 + open * 0.08 }, 10 * s), 2.4 * s, 1.6 * s, 7, 1, () => 'top2'); // jaw
+    poly(buf, [add(headC, { x: -0.8, y: -1 }, 4 * s), add(headC, { x: -1, y: -0.2 }, 9 * s), add(headC, { x: -0.3, y: -1 }, 7 * s)], 7, 'gold', () => 1); // horn
+    for (const t of [3, 6, 9]) disc(buf, add(add(headC, { x: 1, y: 0.15 }, t * s), { x: 0, y: 1 }, 2.6 * s), 0.6 * s, 7, 0, 'bone' as Mat);
+  } else {
+    disc(buf, headC, 5 * s, 7, 0, 'top');
+    poly(buf, [add(headC, { x: 0.5, y: -0.6 }, 3 * s), add(headC, { x: 1, y: 0.1 }, 12 * s), add(headC, { x: 0.4, y: 0.6 }, 3.5 * s)], 7, 'gold', (_x, y) => (y < headC.y ? 0 : 2)); // beak
+    for (let i = 0; i < 3; i++) poly(buf, [add(headC, { x: -0.3 - i * 0.3, y: -1 }, 3.5 * s), add(headC, { x: -0.6 - i * 0.35, y: -1 }, 9 * s), add(headC, { x: -0.9 - i * 0.3, y: -0.6 }, 5 * s)], 7, 'legs', () => 1); // crest
+  }
+  // eye
+  const eye = add(headC, { x: 0.35, y: -0.55 }, 3 * s);
+  disc(buf, eye, 1.3 * s, 8, 0, 'bone' as Mat);
+  const ei = Math.round(eye.y) * W + Math.round(eye.x + 0.5);
+  if (ei >= 0 && ei < buf.col.length) buf.col[ei] = 0x180c10;
+
+  leg(pose.rHip, false);
+  if (dragon) { // little arms
+    const sh = body(10, -36);
+    capsule(buf, add(sh, dirOf(0.9), 8 * s), sh, 1.6 * s, 2.6 * s, 9, 0, () => 'top');
+  }
+  return { canvas: buf.toCanvas(), ox, oy };
 }
 
 const tinted = new Map<string, HTMLCanvasElement>();
