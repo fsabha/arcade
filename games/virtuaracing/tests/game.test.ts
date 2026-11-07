@@ -143,5 +143,5 @@ describe('virtua racing', () => {
     expect(game.state).toBe('gameover');
     input.tap('confirm'); step();
     if (game.state === 'initials') { for (let i = 0; i < 3; i++) { input.tap('confirm'); step(); } expect(game.state).toBe('ranking'); }
-  });
+  }, 20000); // thirty seconds of racing rendered on a fake canvas: slow under Node, under 1 ms a frame in the browser
 });
