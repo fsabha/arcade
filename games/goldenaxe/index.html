@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#05070c" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <title>Golden Axe</title>
+  </head>
+  <body>
+    <div id="app">
+      <div id="stage">
+        <canvas id="game" width="320" height="224"></canvas>
+        <div id="crt"></div>
+      </div>
+      <div id="touch" aria-label="Controles de toque">
+        <div class="group">
+          <button type="button" data-action="left" aria-label="Esquerda">&#9664;</button>
+          <button type="button" data-action="right" aria-label="Direita">&#9654;</button>
+          <button type="button" data-action="up" aria-label="Cima">&#9650;</button>
+          <button type="button" data-action="down" aria-label="Baixo">&#9660;</button>
+        </div>
+        <div class="group">
+          <button type="button" data-action="pause" class="small" aria-label="Pausa">II</button>
+        </div>
+        <div class="group">
+          <button type="button" data-action="special" class="brake" aria-label="Magia">MAGIA</button>
+          <button type="button" data-action="jump" class="gas" aria-label="Pular">PULO</button>
+          <button type="button" data-action="fire" class="fire" aria-label="Atacar">ATAQUE</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

@@ -48,7 +48,7 @@ export interface Pose {
 
 export interface Keyframe { t: number; pose: Partial<Pose> }
 
-export const REST: Pose = { lShoulder: 0.15, lElbow: 0.2, rShoulder: -0.15, rElbow: 0.2, lHip: 0.05, lKnee: 0, rHip: -0.05, rKnee: 0, lean: 0, crouch: 0, headTilt: 0, weapon: 0.4 };
+export const REST: Pose = { lShoulder: 0.15, lElbow: 0.2, rShoulder: -0.15, rElbow: 0.2, lHip: 0.05, lKnee: 0, rHip: -0.05, rKnee: 0, lean: 0, crouch: 0, headTilt: 0, weapon: 2.7 };
 
 function lerp(a: number, b: number, k: number): number {
   return a + (b - a) * k;
@@ -173,9 +173,13 @@ export const POSES: Record<string, Keyframe[]> = {
 
 export interface Frame { x: number; y: number; scale: number; flip: boolean }
 
+/** When set, every primitive is drawn one pixel fatter in this colour: the 16-bit outline pass. */
+let outline: string | null = null;
+
 /** Draws a chunky pixel segment of thickness `t` from (x0,y0) to (x1,y1). */
 function seg(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, y1: number, t: number, color: string): void {
-  ctx.fillStyle = color;
+  ctx.fillStyle = outline ?? color;
+  if (outline) t += 2;
   const dx = x1 - x0;
   const dy = y1 - y0;
   const n = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy))));
@@ -188,8 +192,9 @@ function seg(ctx: CanvasRenderingContext2D, x0: number, y0: number, x1: number, 
 }
 
 function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, c: string): void {
-  ctx.fillStyle = c;
-  ctx.fillRect(Math.round(x), Math.round(y), Math.round(w), Math.round(h));
+  ctx.fillStyle = outline ?? c;
+  const o = outline ? 1 : 0;
+  ctx.fillRect(Math.round(x) - o, Math.round(y) - o, Math.round(w) + 2 * o, Math.round(h) + 2 * o);
 }
 
 /**
@@ -197,6 +202,22 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h:
  * Returns nothing; the caller sorts by depth.
  */
 export function drawRig(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: number, fy: number, flip: boolean, tint?: string): void {
+  // outline pass first (dark, one pixel fatter), then the coloured figure on top
+  outline = '#141018';
+  drawFigure(ctx, rig, pose, fx, fy, flip);
+  outline = null;
+  drawFigure(ctx, rig, pose, fx, fy, flip);
+  if (tint) {
+    ctx.save();
+    ctx.globalAlpha = 0.45;
+    ctx.fillStyle = tint;
+    const s = rig.scale;
+    ctx.fillRect(Math.round(fx - 14 * s), Math.round(fy - 48 * s), Math.round(28 * s), Math.round(50 * s));
+    ctx.restore();
+  }
+}
+
+function drawFigure(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, fx: number, fy: number, flip: boolean): void {
   if (rig.beast) { drawBeast(ctx, rig, pose, fx, fy, flip); return; }
   const s = rig.scale;
   const pal = rig.palette;
@@ -257,18 +278,11 @@ export function drawRig(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, 
   const hy = shY - Math.cos(lean + pose.headTilt) * headR * 1.2;
   rect(ctx, hx - headR, hy - headR, headR * 2, headR * 2, pal.skin);
   drawHead(ctx, rig, hx, hy, headR, dir);
-  // eye
-  rect(ctx, hx + dir * headR * 0.4, hy - headR * 0.1, Math.max(1, s), Math.max(1, s), pal.eyes ?? '#000');
+  // eye (colour pass only)
+  if (!outline) rect(ctx, hx + dir * headR * 0.4, hy - headR * 0.1, Math.max(1, s), Math.max(1, s), pal.eyes ?? '#000');
   // front leg, front arm with weapon
   leg(pose.rHip, pose.rKnee, false);
   arm(pose.rShoulder, pose.rElbow, false, true);
-  if (tint) {
-    ctx.save();
-    ctx.globalAlpha = 0.45;
-    ctx.fillStyle = tint;
-    ctx.fillRect(Math.round(fx - 14 * s), Math.round(fy - 48 * s), Math.round(28 * s), Math.round(50 * s));
-    ctx.restore();
-  }
 }
 
 function drawHead(ctx: CanvasRenderingContext2D, rig: RigDef, hx: number, hy: number, r: number, dir: number): void {

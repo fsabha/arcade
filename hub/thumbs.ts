@@ -120,6 +120,15 @@ const THUMBS: Record<string, Draw> = {
     for (let i = 0; i < 3; i++) { const k = mod(t * 0.5 + i * 0.33, 1); rect(ctx, k * 56, 5 + Math.floor(k * 4) * 9, 4, 3, '#c08040'); }
     rect(ctx, 30, 32 - 4 * Math.abs(Math.sin(t * 4)), 4, 3, '#e03030'); rect(ctx, 30, 35 - 4 * Math.abs(Math.sin(t * 4)), 4, 2, '#3050d0');
   },
+  goldenaxe(ctx, t) {
+    rect(ctx, 0, 0, TW, 22, '#3050a0'); rect(ctx, 0, 22, TW, 18, '#5a9a40');
+    for (let i = 0; i < 4; i++) rect(ctx, i * 18 + 2, 14 - (i % 2) * 4, 14, 8 + (i % 2) * 4, '#405880');
+    const x = 14 + Math.sin(t * 2) * 4;
+    rect(ctx, x, 22, 5, 10, '#3060c0'); rect(ctx, x + 1, 18, 3, 4, '#f0c090'); rect(ctx, x + 5, 20 + Math.sin(t * 8) * 3, 8, 2, '#d0d8e0');
+    const ex = 44 - mod(t * 6, 10);
+    rect(ctx, ex, 22, 5, 10, '#30a040'); rect(ctx, ex + 1, 18, 3, 4, '#f0c090'); rect(ctx, ex - 6, 21, 6, 2, '#d0d8e0');
+    rect(ctx, 54, 10, 6, 6, '#58a8ff');
+  },
 };
 
 export function drawThumb(id: string, ctx: CanvasRenderingContext2D, t: number): void {

@@ -19,6 +19,7 @@ Clássicos do Atari 2600 e do fliperama recriados para o navegador, em um só lu
 | Chopper Command | Activision, Atari 2600, 1982 | `games/chopper` |
 | Moon Patrol | Irem, arcade, 1982 | `games/moonpatrol` |
 | Donkey Kong | Nintendo, arcade, 1981 | `games/donkeykong` |
+| Golden Axe | Sega, Mega Drive, 1989 | `games/goldenaxe` |
 
 ## Rodar
 
@@ -57,6 +58,7 @@ Em desenvolvimento, `npm run dev:api` sobe um mock em `localhost:5199` para o qu
 ```
 arcade/
   index.html, hub/      menu: cards com a fonte pixel, abre o jogo em um iframe (botão MENU volta)
+  packages/brawl/       motor de beat'em up (@arcade/brawl): bonecos articulados, combos, agarrões, IA, ondas
   packages/shared/      código comum: @arcade/shared
     font.ts             fonte pixel 3x5 (drawText, drawTextCentered, textWidth, normalizeText)
     input.ts            teclado, botões de toque (com vibração), gestos de deslizar e gamepad
