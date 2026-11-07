@@ -92,7 +92,7 @@ export function parseSection(sec: FmSection): Parsed {
 
 export class FmMusic {
   /** Overall music level against the sound effects (the mixed FM voices peak near 1). */
-  static LEVEL = 0.28;
+  static LEVEL = 0.12;
   private timer: ReturnType<typeof setInterval> | null = null;
   private song: FmSong | null = null;
   private parsed: Parsed[] = [];
