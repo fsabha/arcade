@@ -1,6 +1,7 @@
 import { W, H, HUD_H, FLOOR_TOP, BAR, MAX_POTS, MAGIC_NAMES, HERO_IDS, HERO_NAMES, CONTINUES } from './config';
 import { Game, MENU_ITEMS } from './game';
 import { STAGES } from './stages';
+import { drawStrips, themeStrips } from './scenery';
 import { HEROES } from './defs';
 import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, poseAt, POSES } from '@arcade/brawl';
 import type { Layer } from '@arcade/brawl';
@@ -70,6 +71,12 @@ export class Renderer {
     const ctx = this.ctx;
     const t = THEMES[theme] ?? THEMES.wilderness;
     const horizon = FLOOR_TOP - 10;
+    // 16-bit painted strips; the flat drawing below is only the fallback for headless tests
+    if (drawStrips(ctx, themeStrips(theme, HUD_H, horizon), scrollX)) {
+      if (theme === 'camp') this.campfire(ctx, scrollX, time);
+      if (theme === 'castle' || theme === 'gate' || theme === 'dungeon') this.torchFlames(ctx, scrollX * 0.6, horizon, time);
+      return;
+    }
     // sky gradient in bands
     for (let y = HUD_H; y < horizon; y += 4) {
       const k = (y - HUD_H) / (horizon - HUD_H);
@@ -166,6 +173,17 @@ export class Renderer {
     for (let i = 0; i < 12; i++) {
       const x = ((i * 61 - scroll) % (W + 40) + W + 40) % (W + 40) - 20;
       ctx.fillRect(Math.round(x), base - 6 + Math.round(Math.sin(time * 3 + i) * 2), 30, 4);
+    }
+  }
+
+  /** Flickering flames on the torches painted into the wall strip (one every 128 px at x + 32). */
+  private torchFlames(ctx: CanvasRenderingContext2D, scroll: number, base: number, time: number): void {
+    for (let i = -1; i < W / 128 + 2; i++) {
+      const x = Math.round(i * 128 + 32 - (((scroll % 512) + 512) % 512) % 128 + 0);
+      const f = Math.floor(time * 12 + i) % 3;
+      ctx.fillStyle = '#ff6018'; ctx.fillRect(x - 1, base - 58 + f, 6, 8 - f);
+      ctx.fillStyle = '#ffd040'; ctx.fillRect(x, base - 56 + f, 4, 5 - f);
+      ctx.fillStyle = '#ffffff'; ctx.fillRect(x + 1, base - 54 + f, 2, 2);
     }
   }
 
