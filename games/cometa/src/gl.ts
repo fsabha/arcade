@@ -6,7 +6,7 @@
  * with a swirling accretion disc, rings) and blended additively or over, in draw order.
  */
 import type { World } from './world';
-import { COMET_R, ORB_R } from './world';
+import { COMET_R, ORB_R, COMBO_TIME, WARN_TIME } from './world';
 
 const VS_SPRITE = `
 attribute vec2 aPos; attribute vec2 aUv; attribute vec4 aCol; attribute vec2 aK;
@@ -71,8 +71,16 @@ void main() {
   } else if (k < 5.5) { // thin ring, additive
     float band = exp(-pow((r - 0.85) / 0.05, 2.0));
     o = vec4(vCol.rgb * band * vCol.a, 0.0);
-  } else { // flat tint over
+  } else if (k < 6.5) { // flat tint over
     o = vec4(vCol.rgb * vCol.a, vCol.a);
+  } else if (k < 7.5) { // speed streak: thin along v, fading at the ends, additive
+    float a = exp(-pow(vUv.x / 0.05, 2.0)) * (1.0 - abs(vUv.y));
+    o = vec4(vCol.rgb * a * vCol.a, 0.0);
+  } else { // warning chevron: a pulsing downward triangle, additive
+    float tri = step(abs(vUv.x) * 1.15, (0.55 - vUv.y) * 0.9) * step(-0.65, vUv.y);
+    float inner = step(abs(vUv.x) * 1.15, (0.25 - vUv.y) * 0.9) * step(-0.35, vUv.y);
+    float glow = exp(-r * r * 2.5) * 0.35;
+    o = vec4(vCol.rgb * ((tri - inner * 0.6) + glow) * vCol.a, 0.0);
   }
   gl_FragColor = o;
 }`;
@@ -121,9 +129,17 @@ void main() {
 
 const FS_BLIT = `
 precision mediump float;
-uniform sampler2D uTex; uniform float uFlash; uniform vec3 uFlashCol;
+uniform sampler2D uTex; uniform float uFlash; uniform vec3 uFlashCol; uniform float uDanger; uniform float uNova; uniform float uStorm;
 varying vec2 vUv;
-void main() { gl_FragColor = vec4(texture2D(uTex, vUv).rgb + uFlashCol * uFlash, 1.0); }`;
+void main() {
+  vec3 c = texture2D(uTex, vUv).rgb;
+  vec2 v = vUv - 0.5;
+  float edge = smoothstep(0.12, 0.5, dot(v, v));
+  c = mix(c, c * vec3(1.5, 1.05, 0.7) + vec3(0.08, 0.03, 0.0), uNova);   // supernova: everything runs hot
+  c = mix(c, c * vec3(1.3, 0.75, 0.75), uStorm * 0.6);                    // meteor shower: a red cast
+  c += vec3(0.8, 0.05, 0.12) * edge * uDanger;                            // last life: the edges pulse red
+  gl_FragColor = vec4(c + uFlashCol * uFlash, 1.0);
+}`;
 
 /** Nebula palettes, one per sector (every 600 km): deep colour, wisps, hot cores. */
 const PALETTES: [number, number, number][][] = [
@@ -172,6 +188,9 @@ export class Renderer {
   private flash = 0;
   private flashCol: [number, number, number] = [1, 1, 1];
   private shake = 0;
+  private novaGlow = 0;
+  private stormGlow = 0;
+  private streaks: { x: number; y: number; len: number; v: number }[] = [];
   /** palette blend: current colours ease towards the sector's */
   private pal: number[] = PALETTES[0].flat();
   /** device pixels per CSS pixel actually used (lowered on slow devices) */
@@ -314,6 +333,12 @@ export class Renderer {
     gl.uniform1i(gl.getUniformLocation(this.blit, 'uTex'), 0);
     gl.uniform1f(gl.getUniformLocation(this.blit, 'uFlash'), this.flash);
     gl.uniform3f(gl.getUniformLocation(this.blit, 'uFlashCol'), this.flashCol[0], this.flashCol[1], this.flashCol[2]);
+    const beat = 0.5 + 0.5 * Math.sin(time * 7.5);
+    gl.uniform1f(gl.getUniformLocation(this.blit, 'uDanger'), w.shield === 1 && !w.over ? 0.18 + 0.3 * beat * beat : 0);
+    this.novaGlow += ((w.novaT > 0 ? 1 : 0) - this.novaGlow) * Math.min(1, dt * 4);
+    this.stormGlow += ((w.storm > 0 ? 1 : 0) - this.stormGlow) * Math.min(1, dt * 3);
+    gl.uniform1f(gl.getUniformLocation(this.blit, 'uNova'), this.novaGlow * 0.45);
+    gl.uniform1f(gl.getUniformLocation(this.blit, 'uStorm'), this.stormGlow);
     gl.drawArrays(gl.TRIANGLES, 0, 6);
     this.flash = Math.max(0, this.flash - dt * 2.5);
 
@@ -333,6 +358,31 @@ export class Renderer {
         this.push(x, y, size * 3, 0.8 + hx * 0.2, 0.85, 1, 0.55 * tw * (0.5 + layer * 0.25), 0);
         if (layer === 2 && i % 6 === 0) this.push(x, y, size * 9, 0.6, 0.7, 1, 0.12 * tw, 0);
       }
+    }
+
+    // speed streaks: more and longer the faster you go
+    const fastK = Math.max(0, Math.min(1, (w.speed - 0.8) / 1.2));
+    if (playing && dt > 0) {
+      const want = Math.round(fastK * 26);
+      while (this.streaks.length < want) this.streaks.push({ x: Math.random(), y: Math.random(), len: 0.5 + Math.random(), v: 0.6 + Math.random() * 0.8 });
+      if (this.streaks.length > want) this.streaks.length = want;
+      for (const st of this.streaks) {
+        st.y -= w.speed * st.v * dt * 1.6 / (this.H / s);
+        if (st.y < -0.1) { st.y = 1.1; st.x = Math.random(); }
+      }
+    }
+    for (const st of this.streaks) {
+      const L = s * 0.12 * st.len * (0.5 + fastK);
+      const hot = w.novaT > 0 ? [1, 0.75, 0.4] : [0.6, 0.8, 1];
+      this.push(st.x * this.W, this.H - st.y * this.H, L, hot[0], hot[1], hot[2], 0.22 * fastK + 0.05, 7);
+    }
+
+    // incoming meteors: red chevrons at the top edge, faster pulse as impact nears
+    for (const wn of w.warnings) {
+      const k = 1 - wn.t / WARN_TIME;
+      const pulse = 0.6 + 0.4 * Math.sin(time * (10 + k * 20));
+      this.push(X(wn.x), s * 0.07 + shy, s * (0.045 + 0.015 * k), 1, 0.25 + 0.3 * (1 - k), 0.2, pulse, 8);
+      this.push(X(wn.x), s * 0.07 + shy, s * 0.13, 1, 0.2, 0.15, 0.35 * pulse, 0);
     }
 
     // gates: two beacons and a dotted beam
@@ -362,6 +412,10 @@ export class Renderer {
 
     // rocks
     for (const r of w.rocks) {
+      if (r.fast) { // a burning meteor: fire trail above it
+        for (let i = 1; i <= 6; i++) this.push(X(r.x - r.vx * i * 0.025), Y(r.y + i * 0.03), r.r * s * (1.5 - i * 0.15), 1, 0.45 - i * 0.04, 0.15, 0.5 - i * 0.07, 0);
+        this.push(X(r.x), Y(r.y), r.r * s * 2.2, 1, 0.4, 0.15, 0.35, 0);
+      }
       const tint = 0.75 + r.seed * 0.25;
       this.push(X(r.x), Y(r.y), r.r * s * 1.15, 0.62 * tint, 0.54 * tint, 0.58 * tint, 1, 2, r.seed * 10, r.a);
     }
@@ -400,6 +454,15 @@ export class Renderer {
     this.particles = this.particles.filter((p) => p.life > 0);
     if (!w.over && !blink) {
       const cx = X(c.x), cy = Y(c.y);
+      if (w.novaT > 0) {
+        const fade = Math.min(1, w.novaT / 1.2), flick = w.novaT < 1.5 && Math.floor(time * 12) % 2 === 0 ? 0.5 : 1;
+        this.push(cx, cy, s * 0.42, 1, 0.55, 0.2, 0.55 * fade * flick, 0);
+        this.push(cx, cy, s * 0.17, 1, 0.85, 0.5, 0.9 * fade, 5, 0, time * 3);
+        this.push(cx, cy, s * 0.11, 1, 0.95, 0.7, 0.7 * fade, 5, 0, -time * 4);
+        if (Math.random() < 0.9) this.particles.push({ x: c.x + (Math.random() - 0.5) * 0.06, y: c.y, vx: (Math.random() - 0.5) * 0.4, vy: -0.3 - Math.random() * 0.4, life: 0.5, max: 0.5, size: 0.014, r: 1, g: 0.7, b: 0.3, kind: 0 });
+      }
+      // the combo clock: a ring that shrinks away while the combo can still be kept
+      if (w.combo >= 3 && w.comboT > 0) this.push(cx, cy, s * (0.05 + 0.05 * (w.comboT / COMBO_TIME)), 1, 0.82, 0.4, 0.55, 5);
       this.push(cx, cy, s * 0.2, dash ? 1 : 0.35, dash ? 0.6 : 0.65, dash ? 0.3 : 1, dash ? 0.75 : 0.5, 0);
       this.push(cx, cy, s * COMET_R * 2.6, dash ? 1 : 0.7, dash ? 0.85 : 0.9, 1, 1, 1);
       // shield sparks orbit the head, one per remaining point

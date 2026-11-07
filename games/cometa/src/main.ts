@@ -1,6 +1,6 @@
 import './style.css';
 import { installAnalytics, trackEvent } from '@arcade/shared';
-import { World, MAX_SHIELD, MAX_CHARGES } from './world';
+import { World, MAX_SHIELD, MAX_CHARGES, NOVA_TIME } from './world';
 import { Renderer } from './gl';
 import { Sound } from './audio';
 
@@ -9,7 +9,7 @@ type State = 'title' | 'play' | 'pause' | 'over' | 'ranking';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('gl');
 const ui = {
-  hud: $('hud'), score: $('score'), dist: $('dist'), shield: $('shield'), combo: $('combo'), charges: $('charges'), hint: $('hint'),
+  hud: $('hud'), nova: $('nova'), novaFill: $('nova-fill'), banner: $('banner'), score: $('score'), dist: $('dist'), shield: $('shield'), combo: $('combo'), charges: $('charges'), hint: $('hint'),
   title: $('title'), pause: $('pause'), over: $('over'), ranking: $('ranking'), fail: $('fail'),
   fScore: $('f-score'), fDist: $('f-dist'), fCombo: $('f-combo'), fBest: $('f-best'), best: $('best'),
   form: $<HTMLFormElement>('initials-form'), initials: $<HTMLInputElement>('initials'), sent: $('sent'), rankList: $('rank-list'),
@@ -86,6 +86,7 @@ function show(s: State): void {
 
 function start(): void {
   sound.unlock();
+  sound.nova = false; sound.danger = false; warpT = 0;
   goFullscreen();
   world = new World(renderer.fieldH, (Math.random() * 2 ** 31) | 0);
   renderer.reset();
@@ -111,6 +112,7 @@ function resume(): void {
 
 function toMenu(): void {
   sound.stopMusic();
+  sound.nova = false; sound.danger = false;
   newDemo();
   show('title');
 }
@@ -147,6 +149,10 @@ function updateHud(): void {
     shownShield = world.shield;
     [...ui.shield.children].forEach((el, i) => el.classList.toggle('off', i >= world.shield));
   }
+  const nv = world.novaT > 0 ? world.novaT / NOVA_TIME : world.nova;
+  ui.novaFill.style.transform = `scaleX(${nv})`;
+  ui.nova.classList.toggle('full', world.novaT > 0);
+  ui.nova.classList.toggle('ready', world.novaT <= 0 && world.nova > 0.8);
   [...ui.charges.querySelectorAll('b')].forEach((b, i) => { (b as HTMLElement).style.transform = `scaleX(${Math.max(0, Math.min(1, world.charges - i))})`; });
   const c = world.combo;
   if (c !== shownCombo) {
@@ -154,6 +160,25 @@ function updateHud(): void {
     ui.combo.textContent = c >= 3 ? `${c} em sequência  ×${world.mult}` : '';
     ui.combo.classList.toggle('on', c >= 3);
   }
+}
+
+let bannerTimer: ReturnType<typeof setTimeout> | null = null;
+/** A big centred title for the run's big moments. */
+function banner(text: string, sub: string, cls: string): void {
+  ui.banner.innerHTML = '';
+  const a = document.createElement('div'); a.className = 'b-main'; a.textContent = text;
+  const b = document.createElement('div'); b.className = 'b-sub'; b.textContent = sub;
+  ui.banner.append(a, b);
+  ui.banner.className = `banner show ${cls}`;
+  if (bannerTimer) clearTimeout(bannerTimer);
+  bannerTimer = setTimeout(() => { ui.banner.className = 'banner'; }, 1600);
+}
+
+/** Time warps: hit-stop on impact, a breath of slow motion on near misses. */
+let warpT = 0, warpScale = 1;
+function warp(scale: number, seconds: number): void {
+  if (warpT > 0 && warpScale < scale) return;
+  warpScale = scale; warpT = seconds;
 }
 
 function pop(x: number, y: number, text: string, color: string, big = false): void {
@@ -338,15 +363,44 @@ function handleEvents(): void {
         renderer.burst(ev.x, ev.y, 40, [0.6, 0.8, 1], 0.8, 0.014);
         renderer.hitFlash([0.9, 0.2, 0.35], 0.45, 1);
         sound.hit(); vibrate(70);
+        warp(0.05, 0.12);
+        if (world.shield === 1) banner('ÚLTIMA ENERGIA', 'cuidado', 'red');
+        break;
+      case 'graze':
+        renderer.burst(ev.x, ev.y, 8, [0.8, 0.9, 1], 0.4, 0.008, 0.35);
+        sound.graze(); vibrate(8);
+        warp(0.45, 0.14);
+        pop(world.comet.x, world.comet.y + 0.07, `RASPÃO +${ev.value}`, '#bfe6ff');
+        break;
+      case 'nova':
+        renderer.burst(ev.x, ev.y, 90, [1, 0.75, 0.35], 1.2, 0.02, 1);
+        renderer.ring(ev.x, ev.y, [1, 0.8, 0.4], 0.6);
+        renderer.hitFlash([1, 0.75, 0.35], 0.55, 0.8);
+        sound.novaStart(); sound.nova = true; vibrate([20, 30, 20, 30, 60]);
+        warp(0.15, 0.35);
+        banner('SUPERNOVA', 'invencível · pontos em dobro', 'gold');
+        break;
+      case 'novaEnd':
+        sound.novaEnd(); sound.nova = false;
+        break;
+      case 'storm':
+        if (ev.value > 0) { sound.storm(); vibrate([30, 60, 30]); banner('CHUVA DE METEOROS', 'sobreviva sem dano para o bônus', 'red'); }
+        break;
+      case 'warn':
+        sound.warn();
+        break;
+      case 'stormEnd':
+        if (ev.value > 0) { sound.stormClear(); banner(`INTACTO +${ev.value}`, 'chuva superada', 'green'); }
         break;
       case 'level':
         renderer.ring(ev.x, ev.y, [0.7, 0.8, 1], 0.5);
         sound.level();
-        pop(0.5, world.camY + world.H * 0.62, `SETOR ${ev.value + 1}`, '#cfe0ff', true);
         break;
       case 'over':
         renderer.burst(ev.x, ev.y, 120, [0.7, 0.85, 1], 1.1, 0.02, 1.2);
         renderer.hitFlash([1, 1, 1], 0.6, 1.2);
+        sound.nova = false; sound.danger = false;
+        warp(0.2, 0.6);
         gameOver();
         break;
     }
@@ -370,8 +424,11 @@ function frame(now: number): void {
     if (keys.has('ArrowRight') || keys.has('KeyD')) world.steer(dt * 0.9, 0);
     if (keys.has('ArrowUp') || keys.has('KeyW')) world.steer(0, -dt * 0.9);
     if (keys.has('ArrowDown') || keys.has('KeyS')) world.steer(0, dt * 0.9);
-    world.update(dt);
-    sound.intensity = Math.max(0, Math.min(1, (world.speed - 0.55) / 1.1));
+    let sdt = dt;
+    if (warpT > 0) { warpT -= dt; sdt = dt * warpScale; }
+    world.update(sdt);
+    sound.intensity = world.novaT > 0 ? 1 : Math.max(0, Math.min(1, (world.speed - 0.55) / 1.1));
+    sound.danger = world.shield === 1;
     handleEvents();
     updateHud();
   } else if (state === 'title' || state === 'ranking') {

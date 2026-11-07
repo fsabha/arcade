@@ -18,13 +18,19 @@ export const MAX_CHARGES = 3;
 export const DASH_TIME = 0.5;
 export const INVULNERABLE = 1.4;
 export const COMBO_TIME = 1.8;
+export const NOVA_TIME = 6;
+export const STORM_TIME = 7;
+export const WARN_TIME = 0.9;
+/** how close counts as a near miss, beyond touching */
+export const GRAZE = 0.04;
 
 export interface Orb { x: number; y: number; taken: boolean; phase: number }
-export interface Rock { x: number; y: number; r: number; vx: number; vy: number; spin: number; a: number; seed: number; broken: boolean }
+export interface Rock { x: number; y: number; r: number; vx: number; vy: number; spin: number; a: number; seed: number; broken: boolean; fast?: boolean; /** 0 untouched, 1 grazing, 2 hit */ graze?: number }
+export interface Warning { x: number; t: number }
 export interface Hole { x: number; y: number; core: number; reach: number; close: number; paid: boolean }
 export interface Gate { x1: number; x2: number; y: number; passed: boolean; missed: boolean }
 
-export type EventKind = 'orb' | 'hit' | 'gate' | 'dash' | 'sling' | 'break' | 'over' | 'level';
+export type EventKind = 'orb' | 'hit' | 'gate' | 'dash' | 'sling' | 'break' | 'over' | 'level' | 'graze' | 'nova' | 'novaEnd' | 'storm' | 'stormEnd' | 'warn';
 export interface WorldEvent { kind: EventKind; x: number; y: number; value: number }
 
 export class World {
@@ -44,6 +50,15 @@ export class World {
   over = false;
   /** sector of the nebula (changes colour every 60 units) */
   sector = 0;
+  /** supernova meter 0..1; full = NOVA_TIME seconds of supernova */
+  nova = 0;
+  novaT = 0;
+  /** meteor shower time left, and whether it has hurt you yet */
+  storm = 0;
+  private stormHit = false;
+  private stormGap = 0;
+  private loneGap = 8;
+  warnings: Warning[] = [];
   comet = { x: 0.5, y: 0, tx: 0.5, sy: 0.26, ty: 0.26 };
   orbs: Orb[] = [];
   rocks: Rock[] = [];
@@ -68,7 +83,22 @@ export class World {
   }
 
   get mult(): number {
-    return Math.min(8, 1 + Math.floor(this.combo / 6));
+    return Math.min(8, 1 + Math.floor(this.combo / 6)) * (this.novaT > 0 ? 2 : 1);
+  }
+
+  /** Something that makes the run safer right now (dash or supernova). */
+  get unstoppable(): boolean {
+    return this.dashT > 0 || this.novaT > 0;
+  }
+
+  private charge(k: number): void {
+    if (this.novaT > 0) return;
+    this.nova = Math.min(1, this.nova + k);
+    if (this.nova >= 1) {
+      this.nova = 0;
+      this.novaT = NOVA_TIME;
+      this.emit('nova', this.comet.x, this.comet.y, 0);
+    }
   }
 
   /** The screen got taller or shorter (rotation, browser bars). */
@@ -98,7 +128,8 @@ export class World {
   }
 
   private hit(): void {
-    if (this.inv > 0 || this.dashT > 0 || this.over) return;
+    if (this.inv > 0 || this.unstoppable || this.over) return;
+    if (this.storm > 0) this.stormHit = true;
     this.shield -= 1;
     this.inv = INVULNERABLE;
     this.combo = 0;
@@ -128,12 +159,21 @@ export class World {
     this.t += dt;
     const c = this.comet;
     const base = Math.min(1.75, 0.55 + this.t * 0.011);
-    this.speed = base * (this.dashT > 0 ? 2.1 : 1);
+    this.speed = base * (this.dashT > 0 ? 2.1 : this.novaT > 0 ? 1.3 : 1);
     this.camY += this.speed * dt;
     this.frac += this.speed * dt * 10;
     if (this.frac >= 1) { this.score += Math.floor(this.frac); this.frac -= Math.floor(this.frac); }
     const sector = Math.floor(this.camY / 60);
-    if (sector !== this.sector) { this.sector = sector; this.emit('level', c.x, c.y, sector); }
+    if (sector !== this.sector) {
+      this.sector = sector;
+      this.emit('level', c.x, c.y, sector);
+      // every new sector opens with a meteor shower
+      this.storm = STORM_TIME;
+      this.stormHit = false;
+      this.stormGap = 0.6;
+      this.emit('storm', c.x, c.y, sector);
+    }
+    this.meteors(dt);
 
     // black holes pull the target and the comet alike
     for (const hole of this.holes) {
@@ -146,7 +186,7 @@ export class World {
         c.x += (dx / d) * f * 0.5;
         if (d < hole.reach * 0.5) hole.close += dt;
       }
-      if (d < hole.core + COMET_R) {
+      if (d < hole.core + COMET_R && this.novaT <= 0) {
         this.hit();
         // thrown clear of the core
         const away = c.x < hole.x ? -1 : 1;
@@ -157,6 +197,7 @@ export class World {
         hole.paid = true;
         const p = this.add(40 + Math.round(hole.close * 120));
         this.emit('sling', c.x, c.y, p);
+        this.charge(0.12);
       }
     }
 
@@ -169,6 +210,10 @@ export class World {
 
     for (const o of this.orbs) {
       if (o.taken) continue;
+      if (this.novaT > 0) { // supernova: light is drawn in
+        const dx = c.x - o.x, dy = c.y - o.y, d = Math.hypot(dx, dy);
+        if (d < 0.3 && d > 1e-4) { o.x += (dx / d) * dt * 1.4; o.y += (dy / d) * dt * 1.4; }
+      }
       if (Math.hypot(o.x - c.x, o.y - c.y) < ORB_R + COMET_R + 0.012) {
         o.taken = true;
         this.combo += 1;
@@ -177,6 +222,7 @@ export class World {
         this.charges = Math.min(MAX_CHARGES, this.charges + 0.1);
         const p = this.add(10);
         this.emit('orb', o.x, o.y, p);
+        this.charge(0.022);
       }
     }
 
@@ -186,12 +232,21 @@ export class World {
       r.y += r.vy * dt;
       r.a += r.spin * dt;
       if (r.x < -0.1 || r.x > 1.1) r.vx = -r.vx;
-      if (Math.hypot(r.x - c.x, r.y - c.y) < r.r * 0.85 + COMET_R) {
-        if (this.dashT > 0) {
+      const d = Math.hypot(r.x - c.x, r.y - c.y);
+      if (d < r.r * 0.85 + COMET_R) {
+        if (this.unstoppable) {
           r.broken = true;
           const p = this.add(25);
           this.emit('break', r.x, r.y, p);
-        } else this.hit();
+          this.charge(0.03);
+        } else { r.graze = 2; this.hit(); }
+      } else if (d < r.r * 0.85 + COMET_R + GRAZE && !r.graze && this.inv <= 0) r.graze = 1;
+      // a near miss pays once the rock is behind you
+      if (r.graze === 1 && r.y < c.y - r.r - COMET_R) {
+        r.graze = 3;
+        const p = this.add(15);
+        this.emit('graze', r.x, r.y, p);
+        this.charge(0.07);
       }
     }
 
@@ -202,6 +257,7 @@ export class World {
           g.passed = true;
           const p = this.add(100);
           this.emit('gate', (g.x1 + g.x2) / 2, g.y, p);
+          this.charge(0.08);
         } else g.missed = true;
       }
     }
@@ -209,6 +265,7 @@ export class World {
     if (this.comboT > 0) { this.comboT -= dt; if (this.comboT <= 0) this.combo = 0; }
     if (this.inv > 0) this.inv -= dt;
     if (this.dashT > 0) this.dashT -= dt;
+    if (this.novaT > 0) { this.novaT -= dt; if (this.novaT <= 0) this.emit('novaEnd', c.x, c.y, 0); }
 
     while (this.nextSpawn < this.camY + this.H + 0.4) this.spawn(this.nextSpawn);
     const floor = this.camY - 0.35;
@@ -216,6 +273,48 @@ export class World {
     this.rocks = this.rocks.filter((r) => r.y > floor - r.r && !r.broken);
     this.holes = this.holes.filter((h2) => h2.y > floor - h2.reach);
     this.gates = this.gates.filter((g) => g.y > floor);
+  }
+
+  /** Meteor showers (and, later on, lone fast meteors): each one is announced at the top first. */
+  private meteors(dt: number): void {
+    const rng = this.rng, c = this.comet;
+    if (this.storm > 0) {
+      this.storm -= dt;
+      this.stormGap -= dt;
+      if (this.stormGap <= 0 && this.storm > WARN_TIME) {
+        this.stormGap = rng.range(0.28, 0.5) - Math.min(0.12, this.sector * 0.02);
+        // aim some at the comet so standing still is not safe
+        const x = rng.chance(0.35) ? Math.max(0.08, Math.min(0.92, c.x + rng.range(-0.08, 0.08))) : rng.range(0.06, 0.94);
+        this.warnings.push({ x, t: WARN_TIME });
+        this.emit('warn', x, this.camY + this.H, 0);
+      }
+      if (this.storm <= 0) {
+        this.storm = 0;
+        if (!this.stormHit && !this.over) {
+          const p = this.add(300);
+          this.emit('stormEnd', c.x, c.y, p);
+          this.charge(0.25);
+        } else this.emit('stormEnd', c.x, c.y, 0);
+      }
+    } else if (this.t > 35) {
+      this.loneGap -= dt;
+      if (this.loneGap <= 0) {
+        this.loneGap = rng.range(5, 9);
+        const x = rng.range(0.08, 0.92);
+        this.warnings.push({ x, t: WARN_TIME });
+        this.emit('warn', x, this.camY + this.H, 0);
+      }
+    }
+    for (const w of this.warnings) {
+      w.t -= dt;
+      if (w.t <= 0) {
+        this.rocks.push({
+          x: w.x, y: this.camY + this.H + 0.06, r: rng.range(0.032, 0.048), vx: rng.range(-0.04, 0.04), vy: -rng.range(1.0, 1.35),
+          spin: rng.range(-4, 4), a: 0, seed: rng.next(), broken: false, fast: true,
+        });
+      }
+    }
+    this.warnings = this.warnings.filter((w) => w.t > 0);
   }
 
   /** Lays out one band of the course starting at height y. */

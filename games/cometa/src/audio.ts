@@ -18,6 +18,10 @@ export class Sound extends SoundBase {
   private step = 0;
   /** 0..1, how hard the score drives (follows the speed) */
   intensity = 0;
+  /** supernova: drums join and everything goes up */
+  nova = false;
+  /** last life: a heartbeat under the music */
+  danger = false;
   private delay: DelayNode | null = null;
 
   constructor() {
@@ -83,7 +87,7 @@ export class Sound extends SoundBase {
 
   private schedule(): void {
     if (!this.ctx || !this.bus) return;
-    const bpm = 96 + this.intensity * 30;
+    const bpm = 96 + this.intensity * 30 + (this.nova ? 12 : 0);
     const sixteenth = 60 / bpm / 4;
     while (this.next < this.ctx.currentTime + 0.25) {
       const t = this.next, s = this.step;
@@ -93,6 +97,13 @@ export class Sound extends SoundBase {
         for (const n of chord) for (const dt of [-7, 7]) this.voice(note(n), t, sixteenth * 16, 0.05, 'triangle', 0.6, this.bus, dt);
         this.voice(note(chord[0] - 12), t, sixteenth * 16, 0.12, 'sine', 0.05, this.bus);
       }
+      // supernova: four on the floor and an open hat on the off-beats
+      if (this.nova) {
+        if (s % 4 === 0) this.kick(t);
+        if (s % 4 === 2) this.hat(t);
+      }
+      // last life: a heartbeat (lub-dub) every bar half
+      if (this.danger && s % 8 === 0) { this.voice(55, t, 0.18, 0.5, 'sine', 0.004, this.bus); this.voice(50, t + 0.16, 0.18, 0.35, 'sine', 0.004, this.bus); }
       // pulse on the beats once the run gets going
       if (s % 4 === 0 && this.intensity > 0.15) this.voice(note(chord[0] - 12), t, sixteenth * 2, 0.06 + this.intensity * 0.05, 'sine', 0.005, this.bus);
       // arpeggio: every eighth at first, every sixteenth when fast
@@ -108,7 +119,60 @@ export class Sound extends SoundBase {
     }
   }
 
+  private kick(t: number): void {
+    const ctx = this.ctx!;
+    const o = ctx.createOscillator(), g = ctx.createGain();
+    o.frequency.setValueAtTime(150, t);
+    o.frequency.exponentialRampToValueAtTime(45, t + 0.12);
+    g.gain.setValueAtTime(0.9, t);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+    o.connect(g).connect(this.bus!);
+    o.start(t); o.stop(t + 0.25);
+  }
+
+  private hat(t: number): void {
+    const ctx = this.ctx!;
+    if (!this.noiseBuf) return;
+    const src = ctx.createBufferSource(); src.buffer = this.noiseBuf;
+    const f = ctx.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000;
+    const g = ctx.createGain(); g.gain.setValueAtTime(0.25, t); g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    src.connect(f).connect(g).connect(this.bus!);
+    src.start(t, Math.random() * 0.5); src.stop(t + 0.1);
+  }
+
   // ---------- effects ----------
+
+  graze(): void {
+    this.noise(0.18, 0.12, 6000);
+    this.tone(880, 0.12, 'sine', 0.06, 1760);
+  }
+
+  novaStart(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    [0, 4, 7, 12, 16, 19, 24].forEach((n, i) => this.voice(note(n + 12), t + i * 0.04, 1.2, 0.08, 'sawtooth', 0.01, this.master!, 0, true));
+    this.noise(0.8, 0.2, 9000);
+  }
+
+  novaEnd(): void {
+    this.tone(note(24), 0.6, 'triangle', 0.08, note(12));
+  }
+
+  storm(): void {
+    // two-tone alarm
+    for (let i = 0; i < 3; i++) { this.tone(660, 0.16, 'square', 0.05, undefined, i * 0.36); this.tone(440, 0.16, 'square', 0.05, undefined, i * 0.36 + 0.18); }
+  }
+
+  warn(): void {
+    this.tone(1200, 0.05, 'square', 0.025);
+  }
+
+  stormClear(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    [12, 19, 24, 28, 31].forEach((n, i) => this.voice(note(n), t + i * 0.07, 0.9, 0.08, 'triangle', 0.01, this.master!, 0, true));
+  }
+
 
   orb(combo: number): void {
     if (!this.ctx || !this.master) return;

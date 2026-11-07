@@ -94,3 +94,45 @@ describe('cometa world', () => {
     expect(w.holes.length + w.gates.length).toBeGreaterThanOrEqual(0);
   });
 });
+
+describe('cometa emotion', () => {
+  it('a near miss pays once the rock is behind and charges the supernova', () => {
+    const w = new World(2, 21);
+    w.orbs = []; w.rocks = []; w.holes = []; w.gates = [];
+    const c = w.comet;
+    w.rocks.push({ x: c.x + 0.022 + 0.05 * 0.85 + 0.02, y: c.y + 0.03, r: 0.05, vx: 0, vy: 0, spin: 0, a: 0, seed: 0, broken: false });
+    run(w, 0.5);
+    expect(w.shield).toBe(3);
+    expect(w.events.some((e) => e.kind === 'graze')).toBe(true);
+    expect(w.nova).toBeGreaterThan(0.05);
+  });
+
+  it('a full meter starts a supernova: invincible, double points, smashes rocks', () => {
+    const w = new World(2, 22);
+    w.orbs = []; w.rocks = []; w.holes = []; w.gates = [];
+    w.nova = 0.99;
+    w.orbs.push({ x: w.comet.x, y: w.comet.y + 0.03, taken: false, phase: 0 });
+    run(w, 0.2);
+    expect(w.novaT).toBeGreaterThan(0);
+    expect(w.mult).toBe(2);
+    w.rocks.push({ x: w.comet.x, y: w.comet.y + 0.02, r: 0.05, vx: 0, vy: 0, spin: 0, a: 0, seed: 0, broken: false });
+    w.update(1 / 60);
+    expect(w.shield).toBe(3);
+    expect(w.events.some((e) => e.kind === 'break')).toBe(true);
+    run(w, 7);
+    expect(w.novaT).toBeLessThanOrEqual(0);
+    expect(w.events.some((e) => e.kind === 'novaEnd')).toBe(true);
+  });
+
+  it('a new sector brings a meteor shower announced by warnings', () => {
+    const w = new World(2, 23);
+    w.camY = 59.9;
+    run(w, 2, (x) => { x.inv = 9; });
+    expect(w.events.some((e) => e.kind === 'storm')).toBe(true);
+    expect(w.events.some((e) => e.kind === 'warn')).toBe(true);
+    expect(w.rocks.some((r) => r.fast)).toBe(true);
+    run(w, 8, (x) => { x.inv = 9; });
+    expect(w.storm).toBe(0);
+    expect(w.events.some((e) => e.kind === 'stormEnd')).toBe(true);
+  });
+});
