@@ -1,4 +1,6 @@
+import { scaleDefs } from '@arcade/brawl';
 import type { ActorDef, MoveDef, Palette, RigDef } from '@arcade/brawl';
+import { LOOKS } from './looks';
 
 // ---------- moves ----------
 
@@ -71,20 +73,20 @@ const rig = (r: Partial<RigDef> & { palette: Palette }): RigDef => ({ scale: 1, 
 
 // ---------- heroes ----------
 
-export const HEROES: Record<string, ActorDef> = {
+const HEROES_BASE: Record<string, ActorDef> = {
   axel: {
     id: 'axel', name: 'AXEL', hp: 24, speed: 80, width: 16, height: 44, points: 0, grabbable: false, maxMagic: 3,
-    rig: rig({ palette: pal({ hair: '#f0d060', top: '#f4f4f4', topDark: '#b8c0c8', legs: '#3060c0', legsDark: '#203c80', boots: '#f0f0f0' }), bulk: 0.4 }),
+    rig: rig({ palette: pal({ hair: '#f0d060', top: '#f4f4f4', topDark: '#b8c0c8', legs: '#3060c0', legsDark: '#203c80', boots: '#f0f0f0' }), bulk: 0.4 , look: LOOKS.axel }),
     attacks: brawlerCombo(18, 2, 4), weaponAttacks: weaponMoves(2),
   },
   blaze: {
     id: 'blaze', name: 'BLAZE', hp: 24, speed: 92, width: 14, height: 42, points: 0, grabbable: false, maxMagic: 3,
-    rig: rig({ palette: pal({ skin: '#f4d0a8', skinDark: '#d0a070', hair: '#7a3018', top: '#d83048', topDark: '#901828', legs: '#d83048', legsDark: '#901828', boots: '#d83048' }), slim: true, head: 'long' }),
+    rig: rig({ palette: pal({ skin: '#f4d0a8', skinDark: '#d0a070', hair: '#7a3018', top: '#d83048', topDark: '#901828', legs: '#d83048', legsDark: '#901828', boots: '#d83048' }), slim: true, head: 'long' , look: LOOKS.blaze }),
     attacks: brawlerCombo(16, 2, 3, 0.85), weaponAttacks: weaponMoves(1, 0.85),
   },
   adam: {
     id: 'adam', name: 'ADAM', hp: 24, speed: 68, width: 18, height: 46, points: 0, grabbable: false, maxMagic: 3,
-    rig: rig({ palette: pal({ skin: '#8a5a30', skinDark: '#5c3a1c', hair: '#201810', top: '#f0d040', topDark: '#b09020', legs: '#303038', legsDark: '#181820', boots: '#404048' }), bulk: 0.7 }),
+    rig: rig({ palette: pal({ skin: '#8a5a30', skinDark: '#5c3a1c', hair: '#201810', top: '#f0d040', topDark: '#b09020', legs: '#303038', legsDark: '#181820', boots: '#404048' }), bulk: 0.7 , look: LOOKS.adam }),
     attacks: brawlerCombo(20, 3, 5, 1.2), weaponAttacks: weaponMoves(3, 1.2),
   },
 };
@@ -96,7 +98,7 @@ function galsia(variant: number): ActorDef {
   const c = GALSIA_JACKETS[variant] ?? GALSIA_JACKETS[0];
   return {
     id: `galsia${variant}`, name: 'GALSIA', hp: 6 + variant * 2, speed: 60 + variant * 4, width: 16, height: 44, points: 500 + variant * 200, grabbable: true,
-    rig: rig({ palette: pal({ top: c, topDark: '#283058', legs: '#303040', legsDark: '#181828', hair: '#301808', boots: '#202020' }) }),
+    rig: rig({ palette: pal({ top: c, topDark: '#283058', legs: '#303040', legsDark: '#181828', hair: '#301808', boots: '#202020' }) , look: LOOKS.galsia }),
     attacks: punchCombo(20, 2), ai: { range: 22, cooldown: 1.6, flank: 0.35, caution: 0.3, approach: 1, grabs: true },
   };
 }
@@ -106,7 +108,7 @@ function donovan(variant: number): ActorDef {
   const c = DONOVAN_TOPS[variant] ?? DONOVAN_TOPS[0];
   return {
     id: `donovan${variant}`, name: 'DONOVAN', hp: 8 + variant * 3, speed: 52, width: 18, height: 46, points: 600 + variant * 200, grabbable: true,
-    rig: rig({ palette: pal({ top: c, topDark: '#303048', legs: '#5060a0', legsDark: '#304070', hair: '#f0c090', boots: '#302010' }), bulk: 0.7 }),
+    rig: rig({ palette: pal({ top: c, topDark: '#303048', legs: '#5060a0', legsDark: '#304070', hair: '#f0c090', boots: '#302010' }), bulk: 0.7 , look: LOOKS.donovan }),
     attacks: punchCombo(22, 3, 1.15), ai: { range: 24, cooldown: 1.9, flank: 0.25, caution: 0.15, approach: 0.9 },
   };
 }
@@ -116,7 +118,7 @@ function signal(variant: number): ActorDef {
   const c = SIGNAL_JACKETS[variant] ?? SIGNAL_JACKETS[0];
   return {
     id: `signal${variant}`, name: 'Y. SIGNAL', hp: 7 + variant * 3, speed: 78, width: 16, height: 46, points: 700 + variant * 200, grabbable: true,
-    rig: rig({ palette: pal({ top: c, topDark: '#402040', legs: '#202028', legsDark: '#101018', hair: variant ? '#f04040' : '#f0e040', boots: '#404040' }), head: 'mohawk' }),
+    rig: rig({ palette: pal({ top: c, topDark: '#402040', legs: '#202028', legsDark: '#101018', hair: variant ? '#f04040' : '#f0e040', boots: '#404040' }), head: 'mohawk' , look: LOOKS.signal }),
     attacks: {
       ...kickCombo(22, 2, 0.9),
       combo2: { duration: 0.75, frames: [hit(0.15, 0.5, 2, 26, 3, 'down', 150, 0, 20)], pose: 'slide', lunge: 220 },
@@ -128,7 +130,7 @@ function signal(variant: number): ActorDef {
 function whipWoman(id: string, name: string, top: string, hair: string, hp: number, points: number): ActorDef {
   return {
     id, name, hp, speed: 70, width: 14, height: 42, points, grabbable: true,
-    rig: rig({ palette: pal({ skin: '#f4d0a8', skinDark: '#d0a070', top, topDark: '#402040', legs: top, legsDark: '#402040', hair, boots: '#202020', weapon: '#806040', weaponDark: '#503818' }), slim: true, head: 'long', weapon: 'whip' }),
+    rig: rig({ palette: pal({ skin: '#f4d0a8', skinDark: '#d0a070', top, topDark: '#402040', legs: top, legsDark: '#402040', hair, boots: '#202020', weapon: '#806040', weaponDark: '#503818' }), slim: true, head: 'long', weapon: 'whip' , look: LOOKS.whip }),
     attacks: whipCombo(40, 3), ai: { range: 38, cooldown: 1.5, flank: 0.45, caution: 0.5, approach: 1 },
   };
 }
@@ -138,7 +140,7 @@ function jack(variant: number): ActorDef {
   const c = JACK_TOPS[variant] ?? JACK_TOPS[0];
   return {
     id: `jack${variant}`, name: 'JACK', hp: 6 + variant * 3, speed: 64, width: 16, height: 44, points: 600 + variant * 200, grabbable: true,
-    rig: rig({ palette: pal({ top: c, topDark: '#707078', legs: '#404048', legsDark: '#202028', hair: '#f0c090', boots: '#202020', weapon: '#e0e8f0', weaponDark: '#604020' }), weapon: 'knife' }),
+    rig: rig({ palette: pal({ top: c, topDark: '#707078', legs: '#404048', legsDark: '#202028', hair: '#f0c090', boots: '#202020', weapon: '#e0e8f0', weaponDark: '#604020' }), weapon: 'knife' , look: LOOKS.jack }),
     attacks: { ...punchCombo(18, 2), shoot: { duration: 0.4, frames: [], pose: 'shoot' } },
     ai: { range: 20, cooldown: 2.2, flank: 0.3, caution: 0.4, approach: 1, ranged: { range: 150, speed: 230, damage: 3, height: 18, kind: 'knife', move: 'shoot' } },
   };
@@ -149,7 +151,7 @@ function hakuyo(variant: number): ActorDef {
   const c = HAKUYO_GIS[variant] ?? HAKUYO_GIS[0];
   return {
     id: `hakuyo${variant}`, name: 'HAKUYO', hp: 8 + variant * 3, speed: 66, width: 16, height: 44, points: 800 + variant * 200, grabbable: true,
-    rig: rig({ palette: pal({ top: c, topDark: '#9098a0', legs: c, legsDark: '#9098a0', hair: '#101010', boots: '#f0c090' }) }),
+    rig: rig({ palette: pal({ top: c, topDark: '#9098a0', legs: c, legsDark: '#9098a0', hair: '#101010', boots: '#f0c090' }) , look: LOOKS.hakuyo }),
     attacks: { ...kickCombo(24, 3), jumpAttack: { duration: 0.5, frames: [hit(0.05, 0.4, 2, 28, 3, 'down', 120, 0, 40)], pose: 'jumpKick' } },
     ai: { range: 26, cooldown: 1.3, flank: 0.4, caution: 0.6, approach: 1.05 },
   };
@@ -159,7 +161,7 @@ function hakuyo(variant: number): ActorDef {
 
 const antonio: ActorDef = {
   id: 'antonio', name: 'ANTONIO', hp: 36, speed: 58, width: 18, height: 48, points: 5000, grabbable: false,
-  rig: rig({ palette: pal({ top: '#8040a0', topDark: '#502070', legs: '#8040a0', legsDark: '#502070', hair: '#202020', boots: '#202020', weapon: '#e0c060', weaponDark: '#a08030' }), head: 'cap', weapon: 'boomerang', scale: 1.1 }),
+  rig: rig({ palette: pal({ top: '#8040a0', topDark: '#502070', legs: '#8040a0', legsDark: '#502070', hair: '#202020', boots: '#202020', weapon: '#e0c060', weaponDark: '#a08030' }), head: 'cap', weapon: 'boomerang', scale: 1.1 , look: LOOKS.antonio }),
   attacks: {
     combo1: { duration: 0.5, frames: [hit(0.18, 0.3, 4, 24, 3, 'hit', 80)], pose: 'punch' },
     combo2: { duration: 0.6, frames: [hit(0.2, 0.38, 2, 30, 4, 'down', 130)], pose: 'combo1' },
@@ -171,7 +173,7 @@ const antonio: ActorDef = {
 
 const souther: ActorDef = {
   id: 'souther', name: 'SOUTHER', hp: 40, speed: 86, width: 16, height: 46, points: 6000, grabbable: false,
-  rig: rig({ palette: pal({ legs: '#c03030', legsDark: '#801818', hair: '#202020', boots: '#202020', weapon: '#e0e8f0', weaponDark: '#8090a0' }), bareChest: true, weapon: 'claws', scale: 1.05, bulk: 0.3 }),
+  rig: rig({ palette: pal({ legs: '#c03030', legsDark: '#801818', hair: '#202020', boots: '#202020', weapon: '#e0e8f0', weaponDark: '#8090a0' }), bareChest: true, weapon: 'claws', scale: 1.05, bulk: 0.3 , look: LOOKS.souther }),
   attacks: {
     combo1: { duration: 0.4, frames: [hit(0.12, 0.26, 4, 26, 3, 'hit', 80)], pose: 'combo1' },
     combo2: { duration: 0.55, frames: [hit(0.1, 0.4, 2, 30, 4, 'down', 150)], pose: 'dashAttack', lunge: 150 },
@@ -182,7 +184,7 @@ const souther: ActorDef = {
 
 const abadede: ActorDef = {
   id: 'abadede', name: 'ABADEDE', hp: 50, speed: 54, width: 26, height: 60, points: 7000, grabbable: false,
-  rig: rig({ palette: pal({ legs: '#3040c0', legsDark: '#202880', hair: '#f0e060', boots: '#f0f0f0' }), bareChest: true, head: 'long', scale: 1.3, bulk: 1.2 }),
+  rig: rig({ palette: pal({ legs: '#3040c0', legsDark: '#202880', hair: '#f0e060', boots: '#f0f0f0' }), bareChest: true, head: 'long', scale: 1.3, bulk: 1.2 , look: LOOKS.abadede }),
   attacks: {
     combo1: { duration: 0.6, frames: [hit(0.2, 0.36, 4, 30, 4, 'hit', 90, 0, 50)], pose: 'punch' },
     combo2: { duration: 0.75, frames: [hit(0.15, 0.55, 2, 36, 5, 'down', 180, 0, 50)], pose: 'dashAttack', lunge: 240 },
@@ -193,7 +195,7 @@ const abadede: ActorDef = {
 
 const bongo: ActorDef = {
   id: 'bongo', name: 'BONGO', hp: 55, speed: 42, width: 30, height: 60, points: 8000, grabbable: false,
-  rig: rig({ palette: pal({ skin: '#e0b080', skinDark: '#b08050', legs: '#c03030', legsDark: '#801818', hair: '#302010', boots: '#302010' }), bareChest: true, scale: 1.35, bulk: 2 }),
+  rig: rig({ palette: pal({ skin: '#e0b080', skinDark: '#b08050', legs: '#c03030', legsDark: '#801818', hair: '#302010', boots: '#302010' }), bareChest: true, scale: 1.35, bulk: 2 , look: LOOKS.bongo }),
   attacks: {
     combo1: { duration: 0.8, frames: [hit(0.3, 0.5, 4, 36, 4, 'down', 150, 0, 50)], pose: 'punch' },
     breath: { duration: 0.9, frames: [], pose: 'breath' },
@@ -205,7 +207,7 @@ const bongo: ActorDef = {
 function twin(id: string, name: string, top: string): ActorDef {
   return {
     id, name, hp: 30, speed: 94, width: 14, height: 42, points: 4000, grabbable: false,
-    rig: rig({ palette: pal({ skin: '#f4d0a8', skinDark: '#d0a070', top, topDark: '#402040', legs: top, legsDark: '#402040', hair: '#f0e060', boots: '#202020', weapon: '#806040', weaponDark: '#503818' }), slim: true, head: 'long', weapon: 'whip' }),
+    rig: rig({ palette: pal({ skin: '#f4d0a8', skinDark: '#d0a070', top, topDark: '#402040', legs: top, legsDark: '#402040', hair: '#f0e060', boots: '#202020', weapon: '#806040', weaponDark: '#503818' }), slim: true, head: 'long', weapon: 'whip' , look: LOOKS.twin }),
     attacks: {
       ...whipCombo(42, 3, 0.8),
       combo3: { duration: 0.6, frames: [hit(0.1, 0.45, 2, 28, 4, 'down', 160, 0, 40)], pose: 'jumpKick', lunge: 200 },
@@ -216,7 +218,7 @@ function twin(id: string, name: string, top: string): ActorDef {
 
 const mrx: ActorDef = {
   id: 'mrx', name: 'MR. X', hp: 90, speed: 48, width: 20, height: 50, points: 20000, grabbable: false,
-  rig: rig({ palette: pal({ top: '#303040', topDark: '#181820', legs: '#303040', legsDark: '#181820', hair: '#9098a0', boots: '#101010', weapon: '#c0c8d0', weaponDark: '#404048' }), weapon: 'gun', scale: 1.15, bulk: 0.4 }),
+  rig: rig({ palette: pal({ top: '#303040', topDark: '#181820', legs: '#303040', legsDark: '#181820', hair: '#9098a0', boots: '#101010', weapon: '#c0c8d0', weaponDark: '#404048' }), weapon: 'gun', scale: 1.15, bulk: 0.4 , look: LOOKS.mrx }),
   attacks: {
     combo1: { duration: 0.6, frames: [hit(0.2, 0.38, 4, 30, 4, 'down', 140, 0, 50)], pose: 'combo1' },
     shoot: { duration: 0.5, frames: [], pose: 'shoot' },
@@ -225,7 +227,7 @@ const mrx: ActorDef = {
   ai: { range: 28, cooldown: 1.7, flank: 0.2, caution: 0.1, approach: 0.9, armor: 3, ranged: { range: 230, speed: 330, damage: 3, height: 20, kind: 'bullet', burst: 3, mixed: true, move: 'shoot' } },
 };
 
-export const ENEMIES: Record<string, ActorDef> = {
+const ENEMIES_BASE: Record<string, ActorDef> = {
   galsia0: galsia(0), galsia1: galsia(1), galsia2: galsia(2),
   donovan0: donovan(0), donovan1: donovan(1), donovan2: donovan(2),
   signal0: signal(0), signal1: signal(1),
@@ -244,4 +246,8 @@ export const BOSSES = ['antonio', 'souther', 'abadede', 'bongo', 'mona', 'lisa',
 export const WEAPONS = ['pipe', 'bat', 'knife', 'bottle', 'shaker'] as const;
 export const WEAPON_NAMES: Record<string, string> = { pipe: 'CANO', bat: 'TACO', knife: 'FACA', bottle: 'GARRAFA', shaker: 'PIMENTA' };
 
+/** sprites are drawn at cartridge size (heroes about 62 px tall): bodies and hit boxes follow */
+export const SIZE = 1.4;
+export const HEROES = scaleDefs(HEROES_BASE, SIZE);
+export const ENEMIES = scaleDefs(ENEMIES_BASE, SIZE);
 export const DEFS: Record<string, ActorDef> = { ...HEROES, ...ENEMIES };
