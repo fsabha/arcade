@@ -76,28 +76,33 @@ body.crt #crt {
   max-width: 560px;
   justify-content: space-between;
   align-items: center;
-  padding: 6px 12px 14px;
+  padding: calc(6px * var(--k, 1)) calc(12px * var(--k, 1)) calc(14px * var(--k, 1));
   box-sizing: border-box;
-  gap: 8px;
+  gap: calc(8px * var(--k, 1));
 }
 
 body.touch #touch {
   display: flex;
 }
 
+#touch .group,
+#touch button {
+  flex-shrink: 0; /* never squeezed: the whole row scales with --k instead (see bootstrap) */
+}
+
 #touch .group {
   display: flex;
-  gap: 8px;
+  gap: calc(8px * var(--k, 1));
 }
 
 #touch button {
-  width: 58px;
-  height: 58px;
-  border-radius: 12px;
+  width: calc(58px * var(--k, 1));
+  height: calc(58px * var(--k, 1));
+  border-radius: calc(12px * var(--k, 1));
   border: 2px solid #3a4452;
   background: #161b24;
   color: #dfe6ee;
-  font-size: 22px;
+  font-size: calc(22px * var(--k, 1));
   font-family: inherit;
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
@@ -106,29 +111,49 @@ body.touch #touch {
 
 #touch button.gas,
 #touch button.fire {
-  width: 76px;
+  width: calc(76px * var(--k, 1));
   background: #1d4f6e;
   border-color: #2b8ac0;
-  font-size: 15px;
+  font-size: calc(15px * var(--k, 1));
   font-weight: bold;
-  letter-spacing: 1px;
+  letter-spacing: calc(1px * var(--k, 1));
 }
 
 #touch button.brake,
 #touch button.unused {
-  width: 76px;
+  width: calc(76px * var(--k, 1));
   background: #6e1d1d;
   border-color: #c0392b;
-  font-size: 14px;
+  font-size: calc(14px * var(--k, 1));
   font-weight: bold;
-  letter-spacing: 1px;
+  letter-spacing: calc(1px * var(--k, 1));
 }
 
 #touch button.small {
-  width: 40px;
-  height: 40px;
-  font-size: 14px;
+  width: calc(40px * var(--k, 1));
+  height: calc(40px * var(--k, 1));
+  font-size: calc(14px * var(--k, 1));
 }
+
+/* Four directions as a cross (left, up/down stacked, right) instead of one long row. */
+#touch .group.dpad {
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  grid-template-rows: repeat(2, auto);
+  gap: calc(6px * var(--k, 1));
+}
+#touch .dpad [data-action="left"] { grid-column: 1; grid-row: 1 / span 2; align-self: center; }
+#touch .dpad [data-action="up"] { grid-column: 2; grid-row: 1; }
+#touch .dpad [data-action="down"] { grid-column: 2; grid-row: 2; }
+#touch .dpad [data-action="right"] { grid-column: 3; grid-row: 1 / span 2; align-self: center; }
+
+/* Action buttons in two rows: the special move above, jump and attack below. */
+#touch .group.pad {
+  display: grid;
+  grid-template-columns: repeat(2, auto);
+  gap: calc(6px * var(--k, 1));
+}
+#touch .pad [data-action="special"] { grid-column: 1 / span 2; justify-self: center; height: calc(44px * var(--k, 1)); }
 
 #touch button:active {
   background: #2d3644;

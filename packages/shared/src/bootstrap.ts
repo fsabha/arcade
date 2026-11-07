@@ -62,10 +62,15 @@ export function bootstrap<G extends GameLike>(opts: BootOptions<G>): void {
     let availW = window.innerWidth - 8;
     let availH = window.innerHeight - 8;
     if (touch && side) {
+      touchEl.style.setProperty('--k', '1');
       let used = 0;
       for (const grp of touchEl.querySelectorAll<HTMLElement>('.group')) used += grp.offsetWidth + 12;
       availW -= used + 16;
     } else if (touch) {
+      // the buttons shrink together when their row is wider than the screen (small phones)
+      touchEl.style.setProperty('--k', '1');
+      const need = touchEl.scrollWidth, have = touchEl.clientWidth;
+      if (need > have) touchEl.style.setProperty('--k', String(Math.max(0.5, Math.floor((have / need) * 100) / 100)));
       availH -= touchEl.offsetHeight + 8;
     }
     let scale = Math.min(availW / W, availH / H);
