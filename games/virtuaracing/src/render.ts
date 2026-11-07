@@ -156,7 +156,7 @@ export class Renderer {
       let ds = ((c.s % L) + L) % L - sNow;
       if (ds < -L / 2) ds += L; if (ds > L / 2) ds -= L;
       if (ds < -DRAW_BEHIND * SAMPLE || ds > DRAW_AHEAD * SAMPLE) continue;
-      this.drawCar(painter, track, c, time);
+      this.drawCar(painter, track, c, time, Math.abs(ds) < 45);
     }
     painter.draw(ctx);
     // the bumper view shows the nose of your own car
@@ -177,7 +177,7 @@ export class Renderer {
   }
 
   /** A formula car the Model 1 way: wedge body, sidepods, airbox, helmet, wings with endplates, eight-sided wheels. */
-  private drawCar(painter: Painter, track: Track, c: Car, time: number): void {
+  private drawCar(painter: Painter, track: Track, c: Car, time: number, near = true): void {
     const p = world(track, c.s, c.d);
     const f = at(track, c.s);
     const yaw = Math.atan2(f.fx, f.fz) + c.steer * 0.15;
@@ -192,30 +192,32 @@ export class Renderer {
     const white = '#f0f0f0';
     // monocoque: narrow nose, wider tail; the nose cone is two-tone like the arcade liveries
     add(wedge(p.x, lift(0.22), p.z, 1.2 * K, 0.42 * K, 0.55 * K, 4.6 * K, yaw + wobble, col, 0.28 * K));
-    { const o = L(0, 1.9); add(wedge(o.x, lift(0.24), o.z, 0.62 * K, 0.36 * K, 0.4 * K, 1.2 * K, yaw + wobble, white, 0.26 * K)); }
+    if (near) { const o = L(0, 1.9); add(wedge(o.x, lift(0.24), o.z, 0.62 * K, 0.36 * K, 0.4 * K, 1.2 * K, yaw + wobble, white, 0.26 * K)); }
     // sidepods with radiator intakes
     for (const side of [-1, 1]) {
+      if (!near) { const o = L(side * 0.9, -0.2); add(box(o.x, lift(0.22), o.z, 0.55 * K, 0.48 * K, 1.5 * K, yaw, shade(col, 0.95))); continue; }
       { const o = L(side * 0.9, -0.2); add(box(o.x, lift(0.22), o.z, 0.55 * K, 0.48 * K, 1.5 * K, yaw, shade(col, 0.95))); }
       { const o = L(side * 0.9, 0.56); add(box(o.x, lift(0.28), o.z, 0.45 * K, 0.34 * K, 0.06 * K, yaw, '#18181c')); }
     }
     // cockpit opening, driver's helmet with visor, airbox behind
     { const o = L(0, -0.1); add(box(o.x, lift(0.78), o.z, 0.78 * K, 0.18 * K, 1.2 * K, yaw, '#202024')); }
     { const o = L(0, -0.3); add(cylinder(o.x, lift(1.05), o.z, 0.24 * K, 0.42 * K, yaw + Math.PI / 2, 8, c.player ? '#f8f8f8' : '#f0d040', '#202020')); }
-    { const o = L(0, -0.12); add(box(o.x, lift(1.0), o.z, 0.36 * K, 0.1 * K, 0.06 * K, yaw, '#3060c0')); }
+    if (near) { const o = L(0, -0.12); add(box(o.x, lift(1.0), o.z, 0.36 * K, 0.1 * K, 0.06 * K, yaw, '#3060c0')); }
     { const o = L(0, -1.3); add(wedge(o.x, lift(0.78), o.z, 0.52 * K, 0.36 * K, 0.5 * K, 1.4 * K, yaw, shade(col, 0.85), 0.36 * K)); }
     // front wing with endplates, rear wing on pylons with big endplates
     { const o = L(0, 2.45); add(box(o.x, lift(0.1), o.z, 2.7 * K, 0.1 * K, 0.6 * K, yaw, col)); }
     for (const side of [-1, 1]) { const o = L(side * 1.36, 2.45); add(box(o.x, lift(0.04), o.z, 0.08 * K, 0.36 * K, 0.72 * K, yaw, white)); }
     { const o = L(0, -2.3); add(box(o.x, lift(0.98), o.z, 2.2 * K, 0.16 * K, 0.55 * K, yaw, col)); }
-    { const o = L(0, -2.3); add(box(o.x, lift(0.84), o.z, 2.2 * K, 0.1 * K, 0.4 * K, yaw, white)); }
+    if (near) { const o = L(0, -2.3); add(box(o.x, lift(0.84), o.z, 2.2 * K, 0.1 * K, 0.4 * K, yaw, white)); }
     for (const side of [-1, 1]) { const o = L(side * 1.12, -2.3); add(box(o.x, lift(0.6), o.z, 0.08 * K, 0.62 * K, 0.7 * K, yaw, white)); }
-    { const o = L(0, -2.05); add(box(o.x, lift(0.5), o.z, 0.34 * K, 0.42 * K, 0.3 * K, yaw, '#303030')); }
+    if (near) { const o = L(0, -2.05); add(box(o.x, lift(0.5), o.z, 0.34 * K, 0.42 * K, 0.3 * K, yaw, '#303030')); }
     // gearbox and diffuser
-    { const o = L(0, -2.05); add(box(o.x, lift(0.18), o.z, 0.7 * K, 0.36 * K, 0.5 * K, yaw, '#28282c')); }
+    if (near) { const o = L(0, -2.05); add(box(o.x, lift(0.18), o.z, 0.7 * K, 0.36 * K, 0.5 * K, yaw, '#28282c')); }
     // wheels: twelve-sided drums, fat rears, with a lighter rim face
     for (const [lx, lz, w, r] of [[-1.05, 1.5, 0.4, 0.36], [1.05, 1.5, 0.4, 0.36], [-1.12, -1.45, 0.56, 0.42], [1.12, -1.45, 0.56, 0.42]] as [number, number, number, number][]) {
       const o = L(lx, lz);
-      add(cylinder(o.x, lift(r), o.z, r * K, w * K, yaw, 12, '#1e1e22', '#55555c'));
+      add(cylinder(o.x, lift(r), o.z, r * K, w * K, yaw, near ? 12 : 6, '#1e1e22', '#55555c'));
+      if (!near) continue;
       const hub = L(lx + Math.sign(lx) * (w / 2 + 0.01), lz);
       add(cylinder(hub.x, lift(r), hub.z, r * 0.5 * K, 0.02, yaw, 10, '#a8a8b0', '#c8c8d0'));
     }

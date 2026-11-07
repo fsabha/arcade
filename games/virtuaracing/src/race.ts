@@ -48,7 +48,7 @@ export class Race {
       this.cars.push(this.makeCar(i + 1, track.length - 14 - row * 9, i % 2 ? 3.2 : -3.2, COLOURS[i % COLOURS.length], false));
     }
     const prow = Math.floor(opponents / 2);
-    this.player = this.makeCar(0, track.length - 14 - prow * 9, opponents % 2 ? 3.2 : -3.2, '#ffffff', true);
+    this.player = this.makeCar(0, track.length - 14 - prow * 9, opponents % 2 ? 3.2 : -3.2, '#e42a24', true);
     this.cars.push(this.player);
     // positions start just before the line: s counts from -gridOffset so lap 1 begins at the line
     for (const c of this.cars) c.s -= track.length;
