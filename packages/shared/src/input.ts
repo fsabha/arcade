@@ -1,5 +1,6 @@
 export type Action =
   | 'left' | 'right' | 'up' | 'down' | 'fire'
+  | 'jump' | 'special'
   | 'pause' | 'confirm' | 'back' | 'mute' | 'crt';
 
 const KEYMAP: Record<string, Action> = {
@@ -8,6 +9,8 @@ const KEYMAP: Record<string, Action> = {
   ArrowUp: 'up', KeyW: 'up',
   ArrowDown: 'down', KeyS: 'down',
   Space: 'fire', KeyX: 'fire',
+  KeyZ: 'jump', KeyK: 'jump',
+  KeyV: 'special', KeyL: 'special',
   KeyP: 'pause', Escape: 'pause',
   Enter: 'confirm',
   Backspace: 'back',
@@ -22,8 +25,8 @@ export function vibrate(pattern: number | number[] = 10): void {
   } catch { /* not allowed */ }
 }
 
-// Standard gamepad mapping: A/X fire, B back, Start pause, Select confirm, d-pad and left stick directions.
-const PAD_BUTTONS: Record<number, Action> = { 0: 'fire', 2: 'fire', 1: 'back', 9: 'pause', 8: 'confirm', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
+// Standard gamepad mapping: A fire, B jump, X special, Y back, Start pause, Select confirm, d-pad and left stick.
+const PAD_BUTTONS: Record<number, Action> = { 0: 'fire', 1: 'jump', 2: 'special', 3: 'back', 9: 'pause', 8: 'confirm', 12: 'up', 13: 'down', 14: 'left', 15: 'right' };
 const STICK_DEAD = 0.5;
 
 export class Input {
