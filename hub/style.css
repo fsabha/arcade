@@ -72,7 +72,11 @@ body.ranking .card .meta, body.ranking .card .blurb, body.ranking .card .thumb {
   display: none;
 }
 
-body:not(.ranking) .card .top {
+body:not(.ranking) .card .thumb.film {
+  image-rendering: auto; /* footage from the game: scaled smooth, not as pixel art */
+}
+
+.card .top {
   display: none;
 }
 
@@ -80,7 +84,7 @@ body:not(.ranking) .card .top {
    (keeping 64:40 and its pixels) so the title, meta line and description always fit whole. */
 .card .thumb {
   flex: 0 1 auto;
-  align-self: flex-start;
+  align-self: center;
   height: 90px;
   min-height: 30px;
   width: auto;

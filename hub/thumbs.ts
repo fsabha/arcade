@@ -153,7 +153,45 @@ const THUMBS: Record<string, Draw> = {
   },
 };
 
+/**
+ * The Mega Drive games show real footage instead: a strip of frames captured from the game itself
+ * (320x200 each, stacked vertically in one image), looped.
+ */
+const FILMS: Record<string, { src: string; frames: number; fps: number }> = {
+  goldenaxe: { src: '/thumbs/goldenaxe.webp', frames: 16, fps: 10 },
+  streetsofrage: { src: '/thumbs/streetsofrage.webp', frames: 16, fps: 10 },
+  virtuaracing: { src: '/thumbs/virtuaracing.webp', frames: 16, fps: 15 },
+};
+const FW = 320, FH = 200;
+const films = new Map<string, HTMLImageElement>();
+
+/** Canvas size for a game's preview. */
+export function thumbSize(id: string): [number, number] {
+  return FILMS[id] ? [FW, FH] : [TW, TH];
+}
+
+/** Whether the preview is footage (drawn smooth) rather than pixel drawing. */
+export function isFilm(id: string): boolean {
+  return id in FILMS;
+}
+
 export function drawThumb(id: string, ctx: CanvasRenderingContext2D, t: number): void {
+  const film = FILMS[id];
+  if (film) {
+    let img = films.get(id);
+    if (!img) { img = new Image(); img.decoding = 'async'; img.src = film.src; films.set(id, img); }
+    if (img.complete && img.naturalWidth > 0) {
+      const f = Math.floor(t * film.fps) % film.frames;
+      ctx.drawImage(img, 0, f * FH, FW, FH, 0, 0, FW, FH);
+      return;
+    }
+    // until the footage arrives, the little drawing at the canvas's size
+    ctx.save();
+    ctx.scale(FW / TW, FH / TH);
+    THUMBS[id]?.(ctx, t);
+    ctx.restore();
+    return;
+  }
   const fn = THUMBS[id];
   if (!fn) { rect(ctx, 0, 0, TW, TH, '#101418'); return; }
   fn(ctx, t);

@@ -1,7 +1,7 @@
 import './style.css';
 import { drawTextCentered, textWidth, installAnalytics, trackEvent } from '@arcade/shared';
 import { GAMES, GameInfo } from './games';
-import { drawThumb, TW, TH } from './thumbs';
+import { drawThumb, thumbSize, isFilm } from './thumbs';
 
 interface GlobalEntry { initials: string; score: number; label: string }
 type Board = Record<string, GlobalEntry[]>;
@@ -56,11 +56,10 @@ function card(g: GameInfo): HTMLButtonElement {
     });
   }
   const thumb = document.createElement('canvas');
-  thumb.className = 'thumb';
-  thumb.width = TW;
-  thumb.height = TH;
+  thumb.className = isFilm(g.id) ? 'thumb film' : 'thumb';
+  [thumb.width, thumb.height] = thumbSize(g.id);
   const tctx = thumb.getContext('2d')!;
-  tctx.imageSmoothingEnabled = false;
+  tctx.imageSmoothingEnabled = isFilm(g.id);
   thumbs.push({ id: g.id, ctx: tctx });
   // name, animated picture, description (and the top 5 in ranking mode)
   el.append(c, thumb, meta, blurb, top);
