@@ -70,17 +70,49 @@ export class Img {
     }
     for (const [x, y] of add) this.set(x, y, c);
   }
-  canvas(): HTMLCanvasElement | null {
+  /** The painted pixels as a canvas; `scale` 3 enlarges them with Scale3x (smooth diagonals, crisp edges). */
+  canvas(scale = 1): HTMLCanvasElement | null {
+    const k = scale === 3 ? 3 : 1;
+    const w = this.w * k, h = this.h * k;
     const c = document.createElement('canvas');
-    c.width = this.w; c.height = this.h;
+    c.width = w; c.height = h;
     const g = c.getContext('2d');
     if (!g || typeof g.createImageData !== 'function') return null;
-    const img = g.createImageData(this.w, this.h);
+    const img = g.createImageData(w, h);
     if (!img?.data) return null;
-    img.data.set(this.d);
+    img.data.set(k === 3 ? scale3x(this.d, this.w, this.h) : this.d);
     g.putImageData(img, 0, 0);
     return c;
   }
+}
+
+/** AdvMAME3x on RGBA pixels; wraps horizontally (strips tile), clamps vertically. */
+export function scale3x(src: Uint8ClampedArray, w: number, h: number): Uint8ClampedArray {
+  const p = new Uint32Array(src.buffer, src.byteOffset, w * h);
+  const out = new Uint32Array(w * h * 9);
+  const W3 = w * 3;
+  const at = (x: number, y: number) => p[Math.max(0, Math.min(h - 1, y)) * w + ((x % w) + w) % w];
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const A = at(x - 1, y - 1), B = at(x, y - 1), C = at(x + 1, y - 1);
+    const D = at(x - 1, y), E = p[y * w + x], F = at(x + 1, y);
+    const G = at(x - 1, y + 1), H = at(x, y + 1), I = at(x + 1, y + 1);
+    let e0 = E, e1 = E, e2 = E, e3 = E, e5 = E, e6 = E, e7 = E, e8 = E;
+    if (B !== H && D !== F) {
+      if (D === B) e0 = D;
+      if ((D === B && E !== C) || (B === F && E !== A)) e1 = B;
+      if (B === F) e2 = F;
+      if ((D === B && E !== G) || (D === H && E !== A)) e3 = D;
+      if ((B === F && E !== I) || (H === F && E !== C)) e5 = F;
+      if (D === H) e6 = D;
+      if ((D === H && E !== I) || (H === F && E !== G)) e7 = H;
+      if (H === F) e8 = F;
+    }
+    const o = y * 3 * W3 + x * 3;
+    out[o] = e0; out[o + 1] = e1; out[o + 2] = e2;
+    out[o + W3] = e3; out[o + W3 + 1] = E; out[o + W3 + 2] = e5;
+    out[o + 2 * W3] = e6; out[o + 2 * W3 + 1] = e7; out[o + 2 * W3 + 2] = e8;
+  }
+  return new Uint8ClampedArray(out.buffer);
 }
 
 export const ramp = (light: string, dark: string, n = 4): RGB[] => Array.from({ length: n }, (_, i) => mix(hex(light), hex(dark), i / (n - 1)));
@@ -115,7 +147,11 @@ export function drawStrips(ctx: CanvasRenderingContext2D, strips: Strip[] | null
   if (!strips) return false;
   for (const s of strips) {
     const off = ((Math.round(scrollX * s.speed) % TW) + TW) % TW;
-    for (let x = -off; x < W; x += TW) ctx.drawImage(s.canvas, x, s.y);
+    const k = s.canvas.width / TW; // strips may be stored enlarged
+    for (let x = -off; x < W; x += TW) {
+      if (k === 1) ctx.drawImage(s.canvas, x, s.y);
+      else ctx.drawImage(s.canvas, x, s.y, TW, s.canvas.height / k);
+    }
   }
   return true;
 }

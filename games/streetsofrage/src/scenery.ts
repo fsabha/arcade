@@ -422,7 +422,7 @@ export function roundStrips(theme: string, top: number, horizon: number): Strip[
   }
   const out: Strip[] = [];
   for (const [img, y, speed] of L) {
-    const c = img.canvas();
+    const c = img.canvas(3); // enlarged with Scale3x for the 3x screen
     if (!c) { cache.set(key, null); return null; }
     out.push({ canvas: c, y, speed });
   }

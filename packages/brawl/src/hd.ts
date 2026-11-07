@@ -79,13 +79,30 @@ const BUILDS: Record<Build, Dims> = {
 };
 
 const EMPTY = -1;
+
+/** Device pixels per game pixel the figures are painted at (games drawing at 3x set 3). */
+let RES = 1;
+export function setHdResolution(r: number): void {
+  if (r === RES) return;
+  RES = Math.max(1, Math.round(r));
+  cache.clear();
+  tinted.clear();
+}
 const LIGHT = (() => { const v = [0.32, -0.74, 0.6]; const l = Math.hypot(v[0], v[1], v[2]); return v.map((x) => x / l) as [number, number, number]; })();
 const OUTLINE: RGB = [20, 12, 26];
 
-/** Tone index from a unit normal (0 highlight .. 3 deep shadow). */
+/** Tone from a unit normal (0 highlight .. 3 deep shadow): four bands at game resolution, a smooth ramp in thirds when painted finer. */
 function toneOf(nx: number, ny: number, nz: number): number {
   const i = nx * LIGHT[0] + ny * LIGHT[1] + nz * LIGHT[2];
-  return i > 0.9 ? 0 : i > 0.6 ? 1 : i > 0.22 ? 2 : 3;
+  if (RES === 1) return i > 0.9 ? 0 : i > 0.6 ? 1 : i > 0.22 ? 2 : 3;
+  const t = i > 0.95 ? 0 : i > 0.75 ? (0.95 - i) / 0.2 * 0.8 : i > 0.4 ? 0.8 + (0.75 - i) / 0.35 * 1.0 : i > 0.0 ? 1.8 + (0.4 - i) / 0.4 * 0.9 : 2.7 + Math.min(0.3, -i);
+  return Math.round(t * 3) / 3;
+}
+
+function toneColor(r: RGB[], t: number): RGB {
+  const i = Math.max(0, Math.min(3, t));
+  const a = Math.floor(i), k = i - a;
+  return k < 0.01 || a >= 3 ? r[a] : mix(r[a], r[a + 1], k);
 }
 
 interface Px { mat: Mat; tone: number }
@@ -95,14 +112,14 @@ class Buf {
   col: Int32Array; // packed rgb, -1 empty
   grp: Int16Array;
   mark: Uint8Array;
-  tmpTone: Int8Array;
+  tmpTone: Float32Array;
   tmpMat: (Mat | null)[];
   touched: number[] = [];
   constructor(public w: number, public h: number, private ramps: Record<Mat, RGB[]>) {
     this.col = new Int32Array(w * h).fill(EMPTY);
     this.grp = new Int16Array(w * h).fill(EMPTY);
     this.mark = new Uint8Array(w * h);
-    this.tmpTone = new Int8Array(w * h);
+    this.tmpTone = new Float32Array(w * h);
     this.tmpMat = new Array(w * h).fill(null);
   }
   /** Paints one part: sample(x, y) gives a material + tone (or null) per pixel centre. */
@@ -125,35 +142,50 @@ class Buf {
         if (j < 0 || j >= this.mark.length || this.mark[j]) continue;
         if (this.grp[j] !== EMPTY && this.grp[j] !== group) { tone = 3; break; }
       }
-      const c = this.ramps[this.tmpMat[i]!][tone];
+      const c = toneColor(this.ramps[this.tmpMat[i]!], tone);
       this.col[i] = (Math.round(c[0]) << 16) | (Math.round(c[1]) << 8) | Math.round(c[2]);
       this.grp[i] = group;
     }
     for (const i of list) this.mark[i] = 0;
   }
-  toCanvas(): HTMLCanvasElement {
+  /** The painted figure with its dark outline, cropped to what was painted; (cx, cy) is the crop corner. */
+  toCanvas(): { canvas: HTMLCanvasElement; cx: number; cy: number } {
+    const w = this.w, h = this.h;
+    const ow = RES > 1 ? 2 : 1; // outline width in device pixels
+    let x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let i = 0; i < this.col.length; i++) if (this.col[i] !== EMPTY) {
+      const x = i % w, y = (i - x) / w;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    if (x1 < 0) { x0 = 0; y0 = 0; x1 = 0; y1 = 0; }
+    x0 = Math.max(0, x0 - ow); y0 = Math.max(0, y0 - ow); x1 = Math.min(w - 1, x1 + ow); y1 = Math.min(h - 1, y1 + ow);
+    const cw = x1 - x0 + 1, ch = y1 - y0 + 1;
     const c = document.createElement('canvas');
-    c.width = this.w; c.height = this.h;
+    c.width = cw; c.height = ch;
     const g = c.getContext('2d')!;
-    if (!g || typeof g.createImageData !== 'function') return c; // headless tests
-    const img = g.createImageData(this.w, this.h);
-    if (!img?.data) return c; // headless tests
+    const out = { canvas: c, cx: x0, cy: y0 };
+    if (!g || typeof g.createImageData !== 'function') return out; // headless tests
+    const img = g.createImageData(cw, ch);
+    if (!img?.data) return out; // headless tests
     const d = img.data;
-    const w = this.w;
-    for (let i = 0; i < this.col.length; i++) {
-      let v = this.col[i];
-      let rgb: RGB | null = null;
+    const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && this.col[y * w + x] !== EMPTY;
+    for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) {
+      const v = this.col[y * w + x];
+      let rgb: RGB;
       if (v === EMPTY) {
-        const x = i % w;
-        const solid = (j: number) => j >= 0 && j < this.col.length && this.col[j] !== EMPTY;
-        if ((x > 0 && solid(i - 1)) || (x < w - 1 && solid(i + 1)) || solid(i - w) || solid(i + w)) rgb = OUTLINE;
-        else continue;
+        let near = false;
+        for (let dy = -ow; dy <= ow && !near; dy++) for (let dx = -ow; dx <= ow; dx++) {
+          if (Math.abs(dx) + Math.abs(dy) > ow) continue;
+          if (solid(x + dx, y + dy)) { near = true; break; }
+        }
+        if (!near) continue;
+        rgb = OUTLINE;
       } else rgb = [(v >> 16) & 255, (v >> 8) & 255, v & 255];
-      v = i * 4;
-      d[v] = rgb[0]; d[v + 1] = rgb[1]; d[v + 2] = rgb[2]; d[v + 3] = 255;
+      const o = ((y - y0) * cw + (x - x0)) * 4;
+      d[o] = rgb[0]; d[o + 1] = rgb[1]; d[o + 2] = rgb[2]; d[o + 3] = 255;
     }
     g.putImageData(img, 0, 0);
-    return c;
+    return out;
   }
 }
 
@@ -211,6 +243,34 @@ function disc(buf: Buf, c: V, r: number, group: number, shift: number, mat: Mat)
   capsule(buf, c, { x: c.x + 0.001, y: c.y }, r, r, group, shift, () => mat);
 }
 
+/** Scale2x (EPX) on letter art: doubles it, rounding stair-step diagonals. */
+function scale2x(a: string[]): string[] {
+  const h = a.length, w = a[0]?.length ?? 0;
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? a[Math.max(0, Math.min(h - 1, y))][Math.max(0, Math.min(w - 1, x))] : a[y][x]);
+  const out: string[] = [];
+  for (let y = 0; y < h; y++) {
+    let r0 = '', r1 = '';
+    for (let x = 0; x < w; x++) {
+      const p = a[y][x], A = at(x, y - 1), B = at(x + 1, y), C = at(x - 1, y), D = at(x, y + 1);
+      let e0 = p, e1 = p, e2 = p, e3 = p;
+      if (C === A && C !== D && A !== B) e0 = A;
+      if (A === B && A !== C && B !== D) e1 = B;
+      if (D === C && D !== B && C !== A) e2 = C;
+      if (B === D && B !== A && D !== C) e3 = D;
+      r0 += e0 + e1; r1 += e2 + e3;
+    }
+    out.push(r0, r1);
+  }
+  return out;
+}
+const smoothed = new WeakMap<string[], string[]>();
+function smoothArt(a: string[]): string[] {
+  if (!a.length) return a;
+  let s = smoothed.get(a);
+  if (!s) { s = scale2x(scale2x(a)); smoothed.set(a, s); }
+  return s;
+}
+
 const HEAD_LETTERS: Record<string, [Mat | 'x' | 'y' | 'z' | 'e', number]> = {
   a: ['skin', 0], b: ['skin', 1], c: ['skin', 2], d: ['skin', 3],
   h: ['hair', 0], i: ['hair', 1], j: ['hair', 2], k: ['hair', 3],
@@ -266,14 +326,14 @@ export function hdFrame(rig: RigDef, pose: Pose): Built {
   const qp: Pose = { ...pose };
   for (const k of Object.keys(qp) as (keyof Pose)[]) qp[k] = k === 'crouch' ? Math.round(pose.crouch * 20) / 20 : Math.round(pose[k] * 10) / 10;
   const built = paint(rig, look, qp);
-  if (cache.size > 4000) cache.delete(cache.keys().next().value!);
+  if (cache.size > (RES > 1 ? 1500 : 4000)) cache.delete(cache.keys().next().value!);
   cache.set(key, built);
   return built;
 }
 
 function paint(rig: RigDef, look: Look, pose: Pose): Built {
   if (rig.beast) return paintBeast(rig, look, pose);
-  const H = look.height ?? Math.round(64 * rig.scale);
+  const H = (look.height ?? Math.round(64 * rig.scale)) * RES;
   const D = BUILDS[look.build ?? 'hero'];
   const std = D.thigh + D.shin + D.ankle + D.torso + D.neck + 12;
   const s = H / std;
@@ -409,15 +469,15 @@ function paint(rig: RigDef, look: Look, pose: Pose): Built {
       const pxT = t * T, pxU = across; // pixel distances for thin detail lines
       if (mat === 'skin' && top === 'bare' && look.build !== 'slim' && look.build !== 'fat') {
         const pec = (0.64 + 0.045 * (u - 0.25) * (u - 0.25)) * T;
-        if (Math.abs(pxT - pec) < 0.55 && u > -0.55 && u < 0.95) tone = Math.min(3, tone + 1);
-        if (Math.abs(pxU - 0.25 * hw) < 0.5 && t > 0.3 && t < 0.86) tone = Math.min(3, tone + 1);
-        for (const ab of [0.4, 0.5]) if (Math.abs(pxT - ab * T) < 0.5 && u > 0.02 && u < 0.62) tone = Math.min(3, tone + 1);
+        if (Math.abs(pxT - pec) < 0.55 * RES && u > -0.55 && u < 0.95) tone = Math.min(3, tone + 1);
+        if (Math.abs(pxU - 0.25 * hw) < 0.5 * RES && t > 0.3 && t < 0.86) tone = Math.min(3, tone + 1);
+        for (const ab of [0.4, 0.5]) if (Math.abs(pxT - ab * T) < 0.5 * RES && u > 0.02 && u < 0.62) tone = Math.min(3, tone + 1);
       }
-      if (mat === 'skin' && top === 'bare' && look.build === 'fat' && Math.abs(pxT - 0.62 * T) < 0.55 && u > 0) tone = Math.min(3, tone + 1);
-      if (top === 'ribs' && mat === 'bone' && t > 0.5 && t < 0.9 && Math.round(pxT / 2) % 2 === 0 && Math.abs(u) > 0.15) tone = 3;
-      if ((top === 'jacket' || top === 'vest') && mat === 'top' && Math.abs(u - (top === 'vest' ? 0.62 : 0.5)) * hw < 0.6) tone = 3; // lapel edge
-      if (mat === 'metal' && Math.abs(pxU - 0.28 * hw) < 0.5) tone = 0; // armour ridge
-      if (look.belt && t >= 0.17 && t < 0.25 && mat === 'belt' && Math.abs(pxT - 0.21 * T) < 0.5) tone = Math.max(0, tone - 1);
+      if (mat === 'skin' && top === 'bare' && look.build === 'fat' && Math.abs(pxT - 0.62 * T) < 0.55 * RES && u > 0) tone = Math.min(3, tone + 1);
+      if (top === 'ribs' && mat === 'bone' && t > 0.5 && t < 0.9 && Math.round(pxT / (2 * RES)) % 2 === 0 && Math.abs(u) > 0.15) tone = 3;
+      if ((top === 'jacket' || top === 'vest') && mat === 'top' && Math.abs(u - (top === 'vest' ? 0.62 : 0.5)) * hw < 0.6 * RES) tone = 3; // lapel edge
+      if (mat === 'metal' && Math.abs(pxU - 0.28 * hw) < 0.5 * RES) tone = 0; // armour ridge
+      if (look.belt && t >= 0.17 && t < 0.25 && mat === 'belt' && Math.abs(pxT - 0.21 * T) < 0.5 * RES) tone = Math.max(0, tone - 1);
       return { mat, tone };
     });
   };
@@ -445,17 +505,19 @@ function paint(rig: RigDef, look: Look, pose: Pose): Built {
 
   // ---- head: hand-drawn art, rotated by the tilt in 22.5 degree steps ----
   const drawHead = () => {
-    const art = look.head;
+    const art = RES > 1 ? smoothArt(look.head ?? []) : look.head;
+    const up = RES > 1 ? 4 : 1;
     if (!art || art.length === 0) return;
     const hw = art[0].length, hh = art.length;
-    const [ax, ay] = look.neck ?? [Math.round(hw * 0.45), hh - 1];
+    const [ax0, ay0] = look.neck ?? [Math.round((hw / up) * 0.45), hh / up - 1];
+    const ax = ax0 * up + (up - 1) / 2, ay = ay0 * up + (up - 1) / 2;
     const tilt = lean + pose.headTilt * 0.6;
     const step = Math.round(tilt / (Math.PI / 8)) * (Math.PI / 8);
     const anchor = add(neckBase, axis, D.neck * s * 0.5);
     // neck
     capsule(buf, add(neckBase, axis, -2 * s), add(anchor, axis, -1), 2.4 * s, 2.2 * s, 7, 0, () => (top === 'armor' ? 'metal' : 'skin'));
     const cs = Math.cos(step), sn = Math.sin(step);
-    const scale = Math.max(1, s);
+    const scale = Math.max(1, s) / up;
     const reach = Math.ceil(Math.hypot(hw, hh) * scale) + 2;
     const lookup = (m: Mat | 'x' | 'y' | 'z' | 'e', tone: number): Px | null => {
       if (m === 'x') return { mat: 'skin', tone: -1 };
@@ -468,7 +530,7 @@ function paint(rig: RigDef, look: Look, pose: Pose): Built {
     // head pixels are written directly (the art has its own shading)
     const X0 = Math.floor(anchor.x - reach), X1 = Math.ceil(anchor.x + reach), Y0 = Math.floor(anchor.y - reach), Y1 = Math.ceil(anchor.y + reach);
     for (let y = Math.max(0, Y0); y <= Math.min(BH - 1, Y1); y++) for (let x = Math.max(0, X0); x <= Math.min(W - 1, X1); x++) {
-      const dx = (x + 0.5 - anchor.x) / scale, dy = (y + 0.5 - anchor.y) / scale;
+      const dx = (x + 0.5 - anchor.x) / scale, dy = (y + 0.5 - anchor.y) / scale; // in art pixels
       // inverse rotation into art space
       const sx = Math.floor(ax + 0.5 + dx * cs + dy * sn);
       const sy = Math.floor(ay + 0.5 - dx * sn + dy * cs);
@@ -492,7 +554,7 @@ function paint(rig: RigDef, look: Look, pose: Pose): Built {
   drawSkirt();
   drawHead();
   drawArm(pose.rShoulder, pose.rElbow, false, true);
-  return { canvas: buf.toCanvas(), ox, oy };
+  { const t = buf.toCanvas(); return { canvas: t.canvas, ox: ox - t.cx, oy: oy - t.cy }; }
 }
 
 /** Weapons in the hand at `h`, pointing along limb angle `a`. */
@@ -579,7 +641,7 @@ function drawWeapon(buf: Buf, w: WeaponShape, h: V, a: number, reach: number, s:
  * the tail with pose.weapon and the head with pose.headTilt.
  */
 function paintBeast(rig: RigDef, look: Look, pose: Pose): Built {
-  const H = look.height ?? 60;
+  const H = (look.height ?? 60) * RES;
   const s = H / 60;
   const dragon = rig.beast === 'dragon';
   const W = Math.ceil(H * 2.8) + 8, BH = Math.ceil(H * 1.6) + 10;
@@ -650,15 +712,17 @@ function paintBeast(rig: RigDef, look: Look, pose: Pose): Built {
   // eye
   const eye = add(headC, { x: 0.35, y: -0.55 }, 3 * s);
   disc(buf, eye, 1.3 * s, 8, 0, 'bone' as Mat);
-  const ei = Math.round(eye.y) * W + Math.round(eye.x + 0.5);
-  if (ei >= 0 && ei < buf.col.length) buf.col[ei] = 0x180c10;
+  for (let dy = 0; dy < RES; dy++) for (let dx = 0; dx < RES; dx++) {
+    const ei = (Math.round(eye.y) + dy) * W + Math.round(eye.x + 0.5) + dx;
+    if (ei >= 0 && ei < buf.col.length) buf.col[ei] = 0x180c10;
+  }
 
   leg(pose.rHip, false);
   if (dragon) { // little arms
     const sh = body(10, -36);
     capsule(buf, add(sh, dirOf(0.9), 8 * s), sh, 1.6 * s, 2.6 * s, 9, 0, () => 'top');
   }
-  return { canvas: buf.toCanvas(), ox, oy };
+  { const t = buf.toCanvas(); return { canvas: t.canvas, ox: ox - t.cx, oy: oy - t.cy }; }
 }
 
 const tinted = new Map<string, HTMLCanvasElement>();
@@ -685,11 +749,13 @@ export function drawHd(ctx: CanvasRenderingContext2D, rig: RigDef, pose: Pose, f
     }
     img = t;
   }
+  const k = 1 / RES;
+  const px = Math.round(fx * RES) / RES, py = Math.round(fy * RES) / RES;
   if (flip) {
     ctx.save();
-    ctx.translate(Math.round(fx), Math.round(fy));
+    ctx.translate(px, py);
     ctx.scale(-1, 1);
-    ctx.drawImage(img, -f.ox, -f.oy);
+    ctx.drawImage(img, -f.ox * k, -f.oy * k, img.width * k, img.height * k);
     ctx.restore();
-  } else ctx.drawImage(img, Math.round(fx) - f.ox, Math.round(fy) - f.oy);
+  } else ctx.drawImage(img, px - f.ox * k, py - f.oy * k, img.width * k, img.height * k);
 }

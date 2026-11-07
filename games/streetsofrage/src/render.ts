@@ -3,7 +3,7 @@ import { Game, MENU_ITEMS } from './game';
 import { STAGES } from './stages';
 import { roundStrips } from './scenery';
 import { HEROES, WEAPON_NAMES } from './defs';
-import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, drawStrips, poseAt, POSES } from '@arcade/brawl';
+import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, drawStrips, poseAt, POSES, setHdResolution } from '@arcade/brawl';
 import type { Layer, Item, Projectile } from '@arcade/brawl';
 import {
   drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen, drawInitialsScreen, UI,
@@ -24,14 +24,20 @@ const THEMES: Record<string, Theme> = {
 
 const PROJECTILE_COLOURS: Record<string, string> = { knife: '#e0e8f0', boomerang: '#e0c060', flame: '#ff8020', bullet: '#ffe060' };
 
+/** Backing-store pixels per game pixel. */
+export const RES = 3;
+
 export class Renderer {
   private ctx: CanvasRenderingContext2D;
 
   constructor(canvas: HTMLCanvasElement) {
-    canvas.width = W;
-    canvas.height = H;
+    // drawn at three times the game resolution: figures are painted that fine, the HUD keeps its pixel font
+    canvas.width = W * RES;
+    canvas.height = H * RES;
     this.ctx = canvas.getContext('2d')!;
+    this.ctx.setTransform(RES, 0, 0, RES, 0, 0);
     this.ctx.imageSmoothingEnabled = false;
+    setHdResolution(RES);
   }
 
   draw(g: Game): void {
