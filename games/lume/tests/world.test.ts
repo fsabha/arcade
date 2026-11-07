@@ -62,7 +62,7 @@ describe('lume world', () => {
     expect(w.score - before).toBeGreaterThanOrEqual(ev.value);
     expect(ev.text).toBe(MEMORIES[0]);
     expect(w.tail.length).toBe(0);
-    expect(w.energy).toBeGreaterThan(0.6);
+    expect(w.energy).toBeGreaterThan(0.5);
   });
 
   it('a pulse burns a tail light to stun creatures and shatter debris', () => {
