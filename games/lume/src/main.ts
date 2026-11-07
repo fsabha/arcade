@@ -438,4 +438,19 @@ function frame(now: number): void {
 show('title');
 requestAnimationFrame(frame);
 
+// the story greets everyone who arrives; X, the button or Esc closes it
+const story = document.getElementById('story');
+if (story) {
+  const closeStory = () => {
+    if (story.hidden || story.classList.contains('closing')) return;
+    sound.unlock();
+    story.classList.add('closing');
+    setTimeout(() => { story.hidden = true; story.classList.remove('closing'); }, 300);
+  };
+  document.getElementById('story-close')?.addEventListener('click', closeStory);
+  document.getElementById('story-go')?.addEventListener('click', () => { closeStory(); start(); }); // the big button goes straight in
+  window.addEventListener('keydown', (e) => { if (!story.hidden && (e.code === 'Escape' || e.code === 'Enter')) { e.stopImmediatePropagation(); closeStory(); } }, true);
+  document.getElementById('story-close')?.focus();
+}
+
 if (import.meta.env.DEV) (window as unknown as Record<string, unknown>).__lume = { get world() { return world; }, renderer, start, sound };
