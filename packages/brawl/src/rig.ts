@@ -35,6 +35,8 @@ export interface RigDef {
   bulk?: number;
   /** custom 10x12 head sprite (see HEADS in rig.ts for the letters) */
   headMap?: string[];
+  /** 16-bit figure description (hd.ts): when set, the figure is painted pixel by pixel at cartridge size */
+  look?: import('./hd').Look;
 }
 
 /** Joint angles in radians (0 = hanging down for limbs; positive swings forward). */

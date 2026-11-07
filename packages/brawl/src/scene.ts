@@ -1,5 +1,6 @@
 import { drawText } from '@arcade/shared';
 import { drawRig, poseAt, POSES, REST } from './rig';
+import { drawHd } from './hd';
 import { frameCanvas, frameIndex } from './sheet';
 import type { Keyframe, RigDef, WeaponShape } from './rig';
 import { moveOf } from './world';
@@ -93,7 +94,9 @@ export function drawScene(ctx: CanvasRenderingContext2D, b: Brawl, opts: SceneOp
         const sw = a.def.width * a.def.rig.scale;
         ctx.fillRect(x - sw / 2, y - 2, sw, 3);
         const tint = a.team === 'hero' && a.invuln > 0 && Math.floor(a.t * 20) % 2 ? (opts.invulnTint ?? '#ffffff') : undefined;
-        if (!drawSheetFrame(ctx, a, x, y - Math.round(a.z), tint)) drawRig(ctx, actorRig(a), actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
+        const rg = actorRig(a);
+        if (rg.look && !rg.beast) drawHd(ctx, rg, actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
+        else if (!drawSheetFrame(ctx, a, x, y - Math.round(a.z), tint)) drawRig(ctx, actorRig(a), actorPose(a), x, y - Math.round(a.z), a.facing < 0, tint);
       },
     });
   }

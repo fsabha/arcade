@@ -149,3 +149,24 @@ export interface StageDef {
   /** thieves run across at the end of the stage (Golden Axe camp) */
   camp?: boolean;
 }
+
+/** Scales every spatial value of a definition (body, hit boxes, ranges) to match bigger sprites. */
+export function scaleDef(d: ActorDef, k: number): ActorDef {
+  const box = (b: Box): Box => ({ x: b.x * k, y: b.y * k, w: b.w * k, h: b.h * k });
+  const move = (m: MoveDef): MoveDef => ({ ...m, frames: m.frames.map((f) => ({ ...f, box: box(f.box) })) });
+  const moves = (r: Record<string, MoveDef>) => Object.fromEntries(Object.entries(r).map(([n, m]) => [n, move(m)]));
+  return {
+    ...d,
+    width: d.width * k,
+    height: d.height * k,
+    attacks: moves(d.attacks),
+    weaponAttacks: d.weaponAttacks && Object.fromEntries(Object.entries(d.weaponAttacks).map(([w, r]) => [w, moves(r)])),
+    mount: d.mount && { ...d.mount, attack: move(d.mount.attack) },
+    ai: d.ai && { ...d.ai, range: d.ai.range * k, ranged: d.ai.ranged && { ...d.ai.ranged, height: d.ai.ranged.height * k } },
+  };
+}
+
+/** scaleDef over a whole table. */
+export function scaleDefs<T extends Record<string, ActorDef>>(r: T, k: number): T {
+  return Object.fromEntries(Object.entries(r).map(([n, d]) => [n, scaleDef(d, k)])) as T;
+}
