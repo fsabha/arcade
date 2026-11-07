@@ -1,9 +1,9 @@
 import { W, H, HUD_H, FLOOR_TOP, BAR, MAX_POTS, MAGIC_NAMES, HERO_IDS, HERO_NAMES, CONTINUES } from './config';
 import { Game, MENU_ITEMS } from './game';
 import { STAGES } from './stages';
-import { drawStrips, themeStrips } from './scenery';
+import { themeStrips } from './scenery';
 import { HEROES } from './defs';
-import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, poseAt, POSES } from '@arcade/brawl';
+import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, drawStrips, poseAt, POSES } from '@arcade/brawl';
 import type { Layer } from '@arcade/brawl';
 import {
   drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen, drawInitialsScreen, UI,
@@ -72,7 +72,7 @@ export class Renderer {
     const t = THEMES[theme] ?? THEMES.wilderness;
     const horizon = FLOOR_TOP - 10;
     // 16-bit painted strips; the flat drawing below is only the fallback for headless tests
-    if (drawStrips(ctx, themeStrips(theme, HUD_H, horizon), scrollX)) {
+    if (drawStrips(ctx, themeStrips(theme, HUD_H, horizon), scrollX, W)) {
       if (theme === 'camp') this.campfire(ctx, scrollX, time);
       if (theme === 'castle' || theme === 'gate' || theme === 'dungeon') this.torchFlames(ctx, scrollX * 0.6, horizon, time);
       return;

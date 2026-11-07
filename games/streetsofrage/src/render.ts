@@ -1,8 +1,9 @@
 import { W, H, HUD_H, FLOOR_TOP, BAR_SEGMENTS, MAX_SPECIALS, HERO_IDS, HERO_FULL_NAMES, CONTINUES, POLICE_BLAST_AT, POLICE_TIME, HERO_HP } from './config';
 import { Game, MENU_ITEMS } from './game';
 import { STAGES } from './stages';
+import { roundStrips } from './scenery';
 import { HEROES, WEAPON_NAMES } from './defs';
-import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, poseAt, POSES } from '@arcade/brawl';
+import { drawScene, drawHealthBar, drawGoArrow, drawLayers, drawRig, drawStrips, poseAt, POSES } from '@arcade/brawl';
 import type { Layer, Item, Projectile } from '@arcade/brawl';
 import {
   drawText, drawTextCentered, drawMenuScreen, drawHowToScreen, drawRankingScreen, drawPausedScreen, drawGameOverScreen, drawInitialsScreen, UI,
@@ -71,6 +72,13 @@ export class Renderer {
     const ctx = this.ctx;
     const t = THEMES[theme] ?? THEMES.street;
     const horizon = FLOOR_TOP - 10;
+    // 16-bit painted strips (the elevator keeps its animated shaft); flat drawing is the headless fallback
+    if (theme !== 'elevator' && drawStrips(ctx, roundStrips(theme, HUD_H, horizon), scrollX, W)) {
+      if (theme === 'street') drawLayers(ctx, [{ speed: 1, draw: (c, s) => this.lamps(c, s, horizon) }], scrollX);
+      if (theme === 'bridge') drawLayers(ctx, [{ speed: 1, draw: (c, s) => this.railing(c, s, horizon, t.edge, 28) }], scrollX);
+      if (theme === 'ship') drawLayers(ctx, [{ speed: 1, draw: (c, s) => this.railing(c, s, horizon, t.edge, 22) }], scrollX);
+      return;
+    }
     for (let y = HUD_H; y < horizon; y += 4) {
       const k = (y - HUD_H) / (horizon - HUD_H);
       ctx.fillStyle = mix(t.sky[0], t.sky[1], k);

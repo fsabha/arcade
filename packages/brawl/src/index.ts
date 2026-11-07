@@ -4,3 +4,4 @@ export * from './world';
 export * from './scene';
 export * from './sheet';
 export * from './hd';
+export * from './paint';
