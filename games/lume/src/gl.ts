@@ -104,6 +104,18 @@ void main() {
     float nz = sqrt(max(0.0, 1.0 - dot(q, q)));
     float l = 0.35 + 0.65 * clamp(dot(vec3(q, nz), normalize(vec3(-0.4, -0.6, 0.7))), 0.0, 1.0);
     o = vec4(vCol.rgb * (r > 0.62 ? 0.6 : l), 1.0) * vCol.a;
+  } else if (k < 14.5) { // bell: bronze dome, lip and clapper, lit
+    vec2 q = vUv;
+    float w = 0.36 + 0.22 * smoothstep(-0.7, 0.55, q.y) + 0.12 * smoothstep(0.35, 0.62, q.y);
+    float body = step(abs(q.x), w) * step(-0.72, q.y) * step(q.y, 0.62);
+    float top = step(length(q - vec2(0.0, -0.72)), 0.36) * step(q.y, -0.6);
+    float crown = step(length(q - vec2(0.0, -0.9)), 0.1);
+    float clap = step(length(q - vec2(0.0, 0.72)), 0.11);
+    float a = max(max(body, top), max(crown, clap));
+    if (a < 0.5) discard;
+    float sh = 0.45 + 0.55 * clamp(1.0 - abs(q.x + 0.15) / max(w, 0.2), 0.0, 1.0);
+    float band = smoothstep(0.03, 0.0, abs(q.y - 0.42)) * 0.4;
+    o = vec4(vCol.rgb * (sh + band), 1.0) * vCol.a;
   } else { // lantern: a glass cage with a flame inside, additive
     vec2 q = abs(vUv);
     float frame = smoothstep(0.06, 0.0, abs(max(q.x * 1.4, q.y) - 0.7)) + smoothstep(0.04, 0.0, q.x) * step(q.y, 0.7) * 0.5;
@@ -167,6 +179,21 @@ void main() {
   gl_FragColor = vec4(c + uFlashCol * uFlash, 1.0);
 }`;
 
+/** The Black Tide, over everything: darkness pouring down with a living edge and a violet rim. */
+const FS_TIDE = `
+precision mediump float;
+uniform float uTide; uniform float uT;
+varying vec2 vUv;
+void main() {
+  float f = 1.0 - vUv.y;
+  float edge = uTide + 0.025 * sin(vUv.x * 23.0 + uT * 3.1) + 0.015 * sin(vUv.x * 51.0 - uT * 5.3);
+  float dark = smoothstep(edge + 0.01, edge - 0.08, f) * smoothstep(0.0, 0.04, uTide);
+  float rim = exp(-pow((f - edge) / 0.012, 2.0)) * smoothstep(0.0, 0.04, uTide);
+  vec3 swirl = vec3(0.1, 0.02, 0.16) * (0.5 + 0.5 * sin(f * 40.0 - uT * 4.0 + sin(vUv.x * 9.0)));
+  // premultiplied: the dark covers what is under it, the rim and the swirl glow on top
+  gl_FragColor = vec4(swirl * dark + vec3(0.5, 0.15, 0.8) * rim, dark * 0.96);
+}`;
+
 /** Water per sector: deep colour, shallow colour. */
 const WATERS: [number, number, number][][] = [
   [[0.02, 0.07, 0.11], [0.1, 0.32, 0.4]],
@@ -201,6 +228,7 @@ export class Renderer {
   private sprite: WebGLProgram;
   private water: WebGLProgram;
   private blit: WebGLProgram;
+  private tideProg: WebGLProgram;
   private quad: WebGLBuffer;
   private vbo: WebGLBuffer;
   private data = new Float32Array(FLOATS * 6 * 4096);
@@ -231,6 +259,7 @@ export class Renderer {
     this.sprite = compile(gl, VS_SPRITE, FS_SPRITE);
     this.water = compile(gl, VS_QUAD, FS_WATER);
     this.blit = compile(gl, VS_QUAD, FS_BLIT);
+    this.tideProg = compile(gl, VS_QUAD, FS_TIDE);
     this.quad = gl.createBuffer()!;
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quad);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, -1, 1, 1, -1, 1, 1]), gl.STATIC_DRAW);
@@ -348,6 +377,8 @@ export class Renderer {
     for (const ln of w.lanterns) this.addLight(X(ln.x), Y(ln.y), (ln.lit ? 0.42 : 0.12) * s, ln.lit ? 1.1 : 0.15, ln.lit ? 0.75 : 0.35, ln.lit ? 0.4 : 0.35);
     w.tail.forEach((nd, i) => { if (i % 2 === 0) this.addLight(X(nd.x), Y(nd.y), 0.1 * s, 0.45, 0.32, 0.15); });
     for (const p of w.loose) this.addLight(X(p.x), Y(p.y), 0.08 * s, 0.4 * Math.min(1, p.t), 0.3 * Math.min(1, p.t), 0.12);
+    if (w.firefly) this.addLight(X(w.firefly.x), Y(w.firefly.y), 0.14 * s, 0.35, 0.95, 0.4);
+    if (w.bell) this.addLight(X(w.bell.x), Y(w.bell.y), (w.bell.rung ? 0.5 : 0.1) * s, w.bell.rung ? 1 : 0.3, w.bell.rung ? 0.85 : 0.3, w.bell.rung ? 0.5 : 0.3);
     const near = [...w.lights].sort((a, b) => Math.abs(a.y - l.y) - Math.abs(b.y - l.y));
     for (const o of near) this.addLight(X(o.x), Y(o.y), 0.07 * s, 0.35, 0.26, 0.1);
 
@@ -433,11 +464,73 @@ export class Renderer {
       if (stun) this.push(x, y, c.r * s * 1.8, 0.6, 0.9, 1, 0.4, 5);
     }
 
-    // free lights
+    // the bell of Vau: count of lights it needs drawn as beads around it
+    if (w.bell) {
+      const b = w.bell, x = X(b.x), y = Y(b.y);
+      const sw = Math.sin(time * 9) * 0.35 * b.swing;
+      this.push(x, y, s * (b.rung ? 0.3 : 0.14), 1, 0.75, 0.4, b.rung ? 0.6 * (0.4 + b.swing) : 0.32, 0);
+      this.push(x, y, s * 0.075, 0.95, 0.68, 0.32, 1, 64, 0, sw);
+      if (!b.rung) for (let i = 0; i < b.need; i++) {
+        const a = -Math.PI / 2 + (i / b.need) * Math.PI * 2, on = i < w.tail.length;
+        const bx = x + Math.cos(a) * s * 0.12, by = y + Math.sin(a) * s * 0.12;
+        this.push(bx, by, s * 0.016, 1, on ? 0.8 : 0.4, on ? 0.4 : 0.3, on ? 0.9 : 0.3, 0);
+        this.push(bx, by, s * 0.006, 1, 0.9, 0.7, on ? 1 : 0.35, 1);
+      }
+      if (b.rung && b.swing > 0) this.push(x, y, s * (0.5 - b.swing * 0.3), 1, 0.85, 0.5, b.swing * 0.6, 5);
+    }
+
+    // constellation: threads between its stars
+    const stars = w.lights.filter((o) => o.g);
+    for (let i = 0; i < stars.length; i++) {
+      const a = stars[i], b = stars[(i + 1) % stars.length];
+      if (stars.length < 2) break;
+      const ax = X(a.x), ay = Y(a.y), bx = X(b.x), by = Y(b.y);
+      const len = Math.hypot(bx - ax, by - ay);
+      this.push((ax + bx) / 2, (ay + by) / 2, s * 0.006, 0.5, 0.75, 1, 0.35 + 0.1 * Math.sin(time * 3 + i), 0, 0, Math.atan2(by - ay, bx - ax), len / (s * 0.012));
+    }
+
+    // free lights (constellation stars are blue-white)
     for (const o of w.lights) {
       const p = 0.8 + 0.2 * Math.sin(time * 4 + o.phase);
-      this.push(X(o.x), Y(o.y), LIGHT_R * s * 3.2 * p, 1, 0.68, 0.28, 0.55, 0);
-      this.push(X(o.x), Y(o.y), LIGHT_R * s * 1.1, 1, 0.82, 0.5, 1, 1);
+      if (o.g) {
+        this.push(X(o.x), Y(o.y), LIGHT_R * s * 3.6 * p, 0.45, 0.7, 1, 0.6, 0);
+        this.push(X(o.x), Y(o.y), LIGHT_R * s * 1.2, 0.8, 0.9, 1, 1, 1);
+      } else {
+        this.push(X(o.x), Y(o.y), LIGHT_R * s * 3.2 * p, 1, 0.68, 0.28, 0.55, 0);
+        this.push(X(o.x), Y(o.y), LIGHT_R * s * 1.1, 1, 0.82, 0.5, 1, 1);
+      }
+    }
+
+    // the fleeing firefly, green, with a trail
+    if (w.firefly) {
+      const f = w.firefly, x = X(f.x), y = Y(f.y);
+      const blink = 0.75 + 0.25 * Math.sin(time * 11);
+      this.push(x, y, s * 0.09 * blink, 0.35, 1, 0.45, 0.6, 0);
+      this.push(x, y, s * 0.022, 0.75, 1, 0.6, 1, 1);
+      if (playing && Math.random() < 0.7) this.particles.push({ x: f.x, y: f.y, vx: -f.vx * 0.2, vy: -f.vy * 0.2 - 0.03, life: 0.6, max: 0.6, size: 0.006, r: 0.4, g: 1, b: 0.5, kind: 0 });
+    }
+
+    // the leviathan: a red line first, then a huge dark body sweeping across
+    if (w.leviathan) {
+      const v = w.leviathan, y = Y(v.y);
+      if (v.warn > 0) {
+        const pulse = 0.5 + 0.5 * Math.sin(time * 14);
+        this.push(this.W / 2, y, s * 0.02, 1, 0.15, 0.2, 0.25 + 0.25 * pulse, 0, 0, 0, this.W / (s * 0.04));
+        const ex = X(v.dir > 0 ? 0.03 : 0.97);
+        this.push(ex, y, s * 0.06 * (0.8 + pulse * 0.4), 1, 0.2, 0.15, 0.8, 0);
+        this.push(ex, y, s * 0.014, 1, 0.6, 0.4, 1, 1);
+      } else {
+        const mid = v.x - v.dir * v.len * 0.5;
+        const half = v.r / 0.26;
+        this.push(X(mid), y, s * half * 1.4, 0.45, 0.12, 0.3, 0.45, 0, 0, 0, (v.len * 0.6) / (half * 1.4));
+        this.push(X(mid), y, s * half, 0.2, 0.26, 0.34, 1, 11, 0.3, v.dir > 0 ? 0 : Math.PI, (v.len * 0.5) / half);
+        this.push(X(mid), y, s * half * 0.98, 0.5, 0.75, 0.9, 0.18, 61, 0.3, v.dir > 0 ? 0 : Math.PI, (v.len * 0.5) / (half * 0.98));
+        const hx = X(v.x - v.dir * 0.05);
+        for (const e of [-1, 1]) {
+          this.push(hx, y + e * s * 0.025, s * 0.03, 1, 0.15, 0.1, 0.8, 0);
+          this.push(hx, y + e * s * 0.025, s * 0.008, 1, 0.6, 0.4, 1, 1);
+        }
+      }
     }
     // loose pieces of tail, going out
     for (const p of w.loose) {
@@ -495,6 +588,15 @@ export class Renderer {
     gl.uniform1f(gl.getUniformLocation(this.sprite, 'uAmb'), amb * 0.6);
     this.setLights(this.sprite, 1);
     gl.drawArrays(gl.TRIANGLES, 0, this.n * 6);
+
+    const tide = w.over ? w.tide * 0.6 : w.tide;
+    if (tide > 0.002) {
+      gl.useProgram(this.tideProg);
+      this.bindQuad(this.tideProg);
+      gl.uniform1f(gl.getUniformLocation(this.tideProg, 'uTide'), tide);
+      gl.uniform1f(gl.getUniformLocation(this.tideProg, 'uT'), time % 1000);
+      gl.drawArrays(gl.TRIANGLES, 0, 6);
+    }
   }
 
   private bindQuad(p: WebGLProgram): void {

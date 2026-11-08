@@ -369,3 +369,31 @@ h2 {
   cursor: pointer;
 }
 .story-x:active { transform: scale(0.94); }
+
+/* ---------- trials ---------- */
+.trial {
+  position: absolute;
+  bottom: calc(var(--safe-b) + 78px);
+  left: 50%;
+  transform: translate(-50%, -6px);
+  padding: 5px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(4, 12, 18, 0.55);
+  backdrop-filter: blur(4px);
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  white-space: nowrap;
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+.trial.show { opacity: 1; transform: translate(-50%, 0); }
+.trial.constellation { color: #cfe6ff; border-color: rgba(140, 190, 255, 0.5); }
+.trial.firefly { color: #c9ffd2; border-color: rgba(90, 255, 130, 0.5); }
+.trial.tide { color: #e6c9ff; border-color: rgba(170, 80, 255, 0.6); animation: tide-pulse 0.8s ease-in-out infinite; }
+.trial.bell { color: #ffe2a8; border-color: rgba(255, 190, 90, 0.5); }
+@keyframes tide-pulse { 50% { box-shadow: 0 0 18px rgba(150, 60, 255, 0.55); } }
+.banner.violet .b-main { color: #f0dcff; text-shadow: 0 0 24px #9a3aff, 0 0 6px #c88aff; }
+.banner.blue .b-main { color: #e2f0ff; text-shadow: 0 0 24px #3a8aff, 0 0 6px #8ac0ff; }

@@ -1,6 +1,6 @@
 import './style.css';
 import { installAnalytics, trackEvent } from '@arcade/shared';
-import { World, MEMORIES } from './world';
+import { World, MEMORIES, CHALLENGE_NAMES, CHALLENGE_HINTS, FIREFLY_TIME, TIDE_TIME, type ChallengeKind } from './world';
 import { Renderer } from './gl';
 import { Sound } from './audio';
 
@@ -9,7 +9,7 @@ type State = 'title' | 'play' | 'pause' | 'over' | 'ranking' | 'memories';
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('gl');
 const ui = {
-  hud: $('hud'), score: $('score'), depth: $('depth'), tail: $('tail'), memory: $('memory'), banner: $('banner'), lightFill: $('light-fill'), hint: $('hint'),
+  hud: $('hud'), trial: $('trial'), score: $('score'), depth: $('depth'), tail: $('tail'), memory: $('memory'), banner: $('banner'), lightFill: $('light-fill'), hint: $('hint'),
   title: $('title'), pause: $('pause'), over: $('over'), ranking: $('ranking'), memories: $('memories'), fail: $('fail'), memList: $('mem-list'),
   fScore: $('f-score'), fDepth: $('f-depth'), fTail: $('f-tail'), fBanked: $('f-banked'), fBest: $('f-best'), best: $('best'),
   form: $<HTMLFormElement>('initials-form'), initials: $<HTMLInputElement>('initials'), sent: $('sent'), rankList: $('rank-list'),
@@ -141,7 +141,22 @@ function updateHud(): void {
   if (world.tail.length !== shownTail) { shownTail = world.tail.length; ui.tail.textContent = `✦ ${shownTail}`; }
   ui.lightFill.style.transform = `scaleX(${Math.max(0, world.energy)})`;
   lightbar.classList.toggle('low', world.energy < 0.25);
+  const c = world.challenge;
+  let text = '';
+  if (c) {
+    if (c.kind === 'constellation') text = `✧ ESTRELAS ${c.got}/${c.total}`;
+    else if (c.kind === 'firefly') text = `VAGA-LUME · ${Math.max(0, Math.ceil(FIREFLY_TIME - c.t))}s`;
+    else if (c.kind === 'tide') text = `MARÉ NEGRA · DESÇA! ${Math.max(0, Math.ceil(TIDE_TIME - c.t))}s`;
+    else text = `SINO · ${Math.min(world.tail.length, c.total)}/${c.total} ✦`;
+  }
+  if (text !== shownTrial) {
+    shownTrial = text;
+    if (text) { ui.trial.textContent = text; ui.trial.className = `trial show ${c!.kind}`; }
+    else ui.trial.classList.remove('show');
+  }
 }
+let shownTrial = '';
+const TRIAL_TONE: Record<ChallengeKind, string> = { constellation: 'blue', firefly: 'green', tide: 'violet', bell: 'gold' };
 
 let memTimer: ReturnType<typeof setTimeout> | null = null;
 function showMemory(text: string): void {
@@ -152,12 +167,12 @@ function showMemory(text: string): void {
 }
 
 let bannerTimer: ReturnType<typeof setTimeout> | null = null;
-function banner(main: string, sub: string): void {
+function banner(main: string, sub: string, tone = ''): void {
   ui.banner.innerHTML = '';
   const a = document.createElement('div'); a.className = 'b-sub'; a.textContent = sub;
   const b = document.createElement('div'); b.className = 'b-main'; b.textContent = main;
   ui.banner.append(a, b);
-  ui.banner.className = 'banner show';
+  ui.banner.className = `banner show ${tone}`;
   if (bannerTimer) clearTimeout(bannerTimer);
   bannerTimer = setTimeout(() => { ui.banner.className = 'banner'; }, 2400);
 }
@@ -384,6 +399,49 @@ function handleEvents(): void {
       case 'low':
         sound.low();
         break;
+      case 'challenge': {
+        const k = ev.text as ChallengeKind;
+        banner(CHALLENGE_NAMES[k], CHALLENGE_HINTS[k], TRIAL_TONE[k]);
+        if (k === 'tide') { sound.rumble(); vibrate([60, 40, 120]); renderer.hitFlash([0.3, 0.05, 0.45], 0.25, 0.8); }
+        else sound.chime();
+        break;
+      }
+      case 'win':
+        renderer.burst(ev.x, ev.y, 40, [1, 0.85, 0.5], 0.6, 0.014, 0.9);
+        renderer.ring(ev.x, ev.y, [1, 0.9, 0.6], 0.35, 0.7);
+        sound.win(); vibrate([15, 30, 15, 30, 40]);
+        banner(ev.text ?? '', `+${ev.value}`, 'gold');
+        break;
+      case 'fail':
+        sound.fail();
+        pop(world.lume.x, world.lume.y - 0.08, ev.text ?? '', '#9fb3c0');
+        break;
+      case 'ring':
+        renderer.ring(ev.x, ev.y, [1, 0.85, 0.5], 0.6, 1.4);
+        renderer.ring(ev.x, ev.y, [1, 0.85, 0.5], 0.9, 2);
+        renderer.hitFlash([1, 0.8, 0.45], 0.45, 1.2);
+        sound.bell(); vibrate([40, 80, 40, 80, 60]);
+        warp(0.25, 0.6);
+        showMemory(MEMORIES[7]);
+        break;
+      case 'need':
+        pop(ev.x, ev.y - 0.1, `faltam ${ev.value} ✦`, '#ffd894');
+        sound.low();
+        break;
+      case 'warn':
+        sound.warn(); vibrate([30, 60, 30]);
+        banner('ALGO ENORME SE APROXIMA', 'saia da linha vermelha', 'red');
+        break;
+      case 'leviathan':
+        sound.roar(); vibrate(220);
+        renderer.hitFlash([0.4, 0.05, 0.1], 0.2, 1.6);
+        break;
+      case 'triz':
+        warp(0.2, 0.5);
+        renderer.hitFlash([1, 0.85, 0.5], 0.35, 0);
+        pop(ev.x, ev.y - 0.08, 'POR UM TRIZ!', '#fff1c2', true);
+        vibrate([10, 20, 10]);
+        break;
       case 'over':
         renderer.burst(ev.x, ev.y, 50, [1, 0.7, 0.35], 0.4, 0.012, 2);
         warp(0.25, 1);
@@ -416,7 +474,7 @@ function frame(now: number): void {
     if (keys.has('ArrowDown') || keys.has('KeyS')) world.steer(0, dt * 0.9);
     world.update(sdt);
     sound.voices = world.tail.length;
-    sound.light = world.energy;
+    sound.light = Math.min(world.energy, 1 - world.tide);
     handleEvents();
     updateHud();
   } else if (state === 'title' || state === 'ranking' || state === 'memories') {

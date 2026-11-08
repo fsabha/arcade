@@ -164,6 +164,53 @@ export class Sound extends SoundBase {
     [24, 22, 19, 15, 12].forEach((n, i) => this.voice(note(n), t + i * 0.3, 1.6, 0.07, 'sine', 0.05, this.master!, 0, true));
   }
 
+  /** a trial begins: two rising glass notes */
+  chime(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    [19, 26, 31].forEach((n, i) => this.voice(note(n), t + i * 0.12, 1.2, 0.06, 'sine', 0.01, this.master!, 0, true));
+  }
+
+  win(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    [12, 19, 24, 27, 31, 36].forEach((n, i) => this.voice(note(n), t + i * 0.07, 1.6, 0.06, 'triangle', 0.01, this.master!, 0, true));
+  }
+
+  fail(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    [15, 12, 10].forEach((n, i) => this.voice(note(n), t + i * 0.22, 1, 0.05, 'sine', 0.02, this.master!, 0, true));
+  }
+
+  /** a bronze bell: inharmonic partials with a long ring */
+  bell(): void {
+    if (!this.ctx || !this.master) return;
+    const t = this.ctx.currentTime;
+    const f0 = note(-2);
+    [[1, 0.3], [2, 0.18], [2.4, 0.12], [3, 0.09], [4.2, 0.06], [5.4, 0.04]].forEach(([r, v]) => {
+      for (let k = 0; k < 3; k++) this.voice(f0 * r, t + k * 0.9, 3.2, v * (1 - k * 0.25), 'sine', 0.003, this.master!, 0, true);
+    });
+  }
+
+  /** the Black Tide wakes: a low swelling rumble */
+  rumble(): void {
+    this.noise(1.6, 0.35, 300);
+    this.tone(45, 2.2, 'sawtooth', 0.08, 30);
+  }
+
+  /** the leviathan's call */
+  roar(): void {
+    this.tone(70, 1.8, 'sawtooth', 0.14, 38);
+    this.tone(105, 1.6, 'square', 0.04, 52, 0.1);
+    this.noise(1.4, 0.25, 500);
+  }
+
+  warn(): void {
+    this.tone(note(10), 0.18, 'square', 0.04);
+    this.tone(note(10), 0.18, 'square', 0.04, undefined, 0.3);
+  }
+
   blip(): void {
     this.tone(note(24), 0.08, 'sine', 0.07);
   }

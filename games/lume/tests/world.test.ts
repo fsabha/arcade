@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { World, LINK, LOOSE_TIME, SECTOR_LEN, MEMORIES } from '../src/world';
+import { World, LINK, LOOSE_TIME, SECTOR_LEN, MEMORIES, TIDE_TIME, type ChallengeKind } from '../src/world';
 
 const run = (w: World, seconds: number, each?: (w: World) => void) => {
   for (let i = 0; i < seconds * 60; i++) { each?.(w); w.update(1 / 60); }
@@ -92,5 +92,119 @@ describe('lume world', () => {
     w.camY = SECTOR_LEN - 0.05;
     run(w, 0.5, (x) => { x.energy = 1; x.inv = 9; });
     expect(w.events.some((e) => e.kind === 'sector' && e.text === 'FLORESTA DE ALGAS')).toBe(true);
+  });
+});
+
+describe('lume trials', () => {
+  const begin = (w: World, kind: ChallengeKind) => {
+    const any = w as unknown as { order: ChallengeKind[]; startChallenge(y: number): void };
+    any.order = [kind];
+    any.startChallenge(w.camY + w.H);
+  };
+  const kinds = (w: World) => w.events.map((e) => e.kind);
+
+  it('a constellation completes when all seven stars are taken', () => {
+    const w = new World(2, 11);
+    clear(w);
+    begin(w, 'constellation');
+    expect(w.lights.filter((o) => o.g).length).toBe(7);
+    const s0 = w.score;
+    for (const o of w.lights) { o.x = w.lume.x; o.y = w.lume.y + 0.01; }
+    w.update(1 / 60);
+    w.update(1 / 60);
+    expect(w.challenge).toBeNull();
+    expect(kinds(w)).toContain('win');
+    expect(w.score).toBeGreaterThanOrEqual(s0 + 250);
+  });
+
+  it('a constellation fails when a star is lost', () => {
+    const w = new World(2, 12);
+    clear(w);
+    begin(w, 'constellation');
+    w.lights.splice(0, 1);
+    w.update(1 / 60);
+    expect(w.challenge).toBeNull();
+    expect(kinds(w)).toContain('fail');
+  });
+
+  it('the bell needs lights in the tail, then rings, stuns and keeps the tail', () => {
+    const w = new World(2, 13);
+    clear(w);
+    begin(w, 'bell');
+    w.lights = [];
+    const b = w.bell!;
+    b.x = w.lume.x; b.y = w.lume.y;
+    w.update(1 / 60);
+    expect(kinds(w)).toContain('need');
+    expect(b.rung).toBe(false);
+    for (let i = 0; i < b.need; i++) w.tail.push({ x: w.lume.x, y: w.lume.y - (i + 1) * LINK });
+    w.creatures.push({ kind: 'jelly', x: 0.1, y: w.camY + 1, r: 0.04, x0: 0.1, phase: 0, speed: 1, stun: 0, seed: 0, dir: 1 });
+    w.events.length = 0;
+    b.y = w.lume.y;
+    w.update(1 / 60);
+    expect(b.rung).toBe(true);
+    expect(kinds(w)).toContain('ring');
+    expect(w.creatures[0].stun).toBeGreaterThan(3);
+    expect(w.tail.length).toBe(b.need);
+  });
+
+  it('the Black Tide drains Lume near the top and is survived by diving', () => {
+    const hi = new World(2, 14);
+    clear(hi);
+    begin(hi, 'tide');
+    hi.lume.ty = hi.lume.sy = 0.12;
+    hi.energy = 1;
+    run(hi, 5, (w) => { w.lume.ty = 0.12; w.creatures = []; w.debris = []; });
+    expect(hi.over).toBe(true);
+
+    const lo = new World(2, 14);
+    clear(lo);
+    begin(lo, 'tide');
+    run(lo, TIDE_TIME + 0.5, (w) => { w.lume.ty = 0.75; w.energy = Math.max(w.energy, 0.6); w.creatures = []; w.debris = []; w.lanterns = []; });
+    expect(lo.over).toBe(false);
+    expect(kinds(lo)).toContain('win');
+  });
+
+  it('the firefly can be caught', () => {
+    const w = new World(2, 15);
+    clear(w);
+    begin(w, 'firefly');
+    const t0 = w.tail.length;
+    run(w, 6, (x) => { if (x.firefly) { x.lume.tx = x.firefly.x; x.lume.ty = (x.firefly.y - x.camY) / x.H; } x.creatures = []; x.debris = []; });
+    expect(kinds(w)).toContain('win');
+    expect(w.tail.length).toBeGreaterThanOrEqual(t0 + 3);
+  });
+
+  it('the leviathan warns on a new sector, then crosses and hurts what it touches', () => {
+    const w = new World(2, 16);
+    clear(w);
+    w.camY = SECTOR_LEN - 0.01;
+    w.update(1 / 30);
+    expect(w.leviathan).toBeNull(); // the sector's name first
+    run(w, 2.6, (x) => { x.lights = []; x.creatures = []; x.debris = []; x.energy = 1; });
+    expect(w.leviathan).not.toBeNull();
+    const v = w.leviathan!;
+    expect(v.warn).toBeGreaterThan(0);
+    expect(w.leviathanHit(v.x, v.y, 0.01)).toBe(false); // harmless while it is only a warning
+    v.warn = 0;
+    v.x = w.lume.x + 0.2 * v.dir;
+    expect(w.leviathanHit(w.lume.x, v.y, 0.01)).toBe(true);
+  });
+
+  it('a light grabbed with almost nothing left is a close call', () => {
+    const w = new World(2, 17);
+    clear(w);
+    w.energy = 0.05;
+    w.lights.push({ x: w.lume.x, y: w.lume.y, phase: 0 });
+    w.update(1 / 60);
+    expect(kinds(w)).toContain('triz');
+  });
+
+  it('trials come up on their own during a run', () => {
+    const w = new World(2, 18);
+    const seen: string[] = [];
+    run(w, 90, (x) => { x.energy = 1; x.inv = 1; for (const e of x.events) if (e.kind === 'challenge') seen.push(e.text!); x.events.length = 0; });
+    expect(seen.length).toBeGreaterThanOrEqual(2);
+    expect(seen[0]).toBe('constellation');
   });
 });
