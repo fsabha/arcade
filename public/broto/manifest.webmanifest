@@ -1,0 +1,20 @@
+{
+  "name": "Broto - Arcade",
+  "short_name": "Broto",
+  "description": "Solte uma enxurrada de sementes de luz contra a Cinza e faça o último jardim florescer. Criação original do projeto Arcade.",
+  "lang": "pt-BR",
+  "id": "/games/broto/",
+  "start_url": "/games/broto/index.html",
+  "scope": "/games/broto/",
+  "display": "fullscreen",
+  "display_override": ["fullscreen", "standalone"],
+  "orientation": "portrait",
+  "background_color": "#10141f",
+  "theme_color": "#10141f",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/broto/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/broto/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/broto/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

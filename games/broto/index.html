@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#10141f" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Broto" />
+    <meta name="description" content="BROTO: solte uma enxurrada de sementes de luz contra a Cinza e faça o último jardim florescer. Criação original do projeto Arcade." />
+    <link rel="manifest" href="/broto/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/broto/apple-touch-icon.png" />
+    <link rel="icon" href="/broto/icon-192.png" />
+    <title>Broto</title>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+    <div id="labels"></div>
+
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div class="score-box">
+          <div id="score" class="score">0</div>
+          <div id="lv" class="lv">FASE 1</div>
+          <div id="sproutbar" class="sproutbar"><span>MUDA</span><i><b id="sprout-fill"></b></i></div>
+        </div>
+        <div class="right-box">
+          <div id="petals" class="petals" aria-label="Pétalas"></div>
+          <button id="pause-btn" class="icon-btn" type="button" aria-label="Pausar">II</button>
+        </div>
+      </div>
+      <div class="heart-box">
+        <div id="heartbar" class="heartbar"><span>CORAÇÃO</span><i><b id="heart-fill"></b></i></div>
+        <div id="horde" class="horde"></div>
+      </div>
+      <div id="banner" class="banner"></div>
+      <div id="hint" class="hint">segure e arraste para semear &middot; 2º dedo: muda</div>
+    </div>
+    <div id="count" class="count"></div>
+
+    <section id="title" class="screen">
+      <h1 class="logo broto">BROTO</h1>
+      <p class="tag">criação original do Arcade</p>
+      <p class="intro">A Cinza cobriu o mundo.<br />Só a Semeadora ainda floresce.</p>
+      <div class="menu">
+        <button id="play" class="btn primary" type="button">SEMEAR</button>
+        <button id="rank-btn" class="btn" type="button">RANKING</button>
+        <div class="row">
+          <button id="snd-btn" class="btn small" type="button">SOM: SIM</button>
+          <button id="mus-btn" class="btn small" type="button">MÚSICA: SIM</button>
+        </div>
+        <button id="install-btn" class="btn small" type="button" hidden>INSTALAR NA TELA</button>
+      </div>
+      <ul class="how">
+        <li><b>Segure</b> para soltar sementes e <b>arraste</b> para mirar.</li>
+        <li>Os <b>portões</b> mudam as sementes: <b>×</b> multiplica, <b>+</b> soma, <b>−</b> e <b>÷</b> roubam. O azul só multiplica pelo <b>centro</b>.</li>
+        <li>Semente e cinza que se tocam se anulam. Vença a horda e as sementes racham o <b>Coração Seco</b>.</li>
+        <li>Cinza que chega à flor arranca uma <b>pétala</b>. Com o medidor cheio, toque com o <b>2º dedo</b> para soltar uma <b>Muda</b>.</li>
+      </ul>
+      <p id="ios-hint" class="small-note" hidden>No iPhone: Compartilhar &rsaquo; Adicionar à Tela de Início para jogar em tela cheia.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+      <p id="best" class="small-note"></p>
+    </section>
+
+    <section id="between" class="screen" hidden>
+      <h2 id="between-title">O CORAÇÃO FLORESCEU</h2>
+      <div id="stagebar" class="stagebar"></div>
+      <p id="between-score" class="small-note"></p>
+      <p class="small-note">Escolha uma Dádiva para a próxima fase:</p>
+      <div id="gifts" class="gifts"></div>
+    </section>
+
+    <section id="pause" class="screen" hidden>
+      <h2>PAUSA</h2>
+      <div class="menu">
+        <button id="resume" class="btn primary" type="button">CONTINUAR</button>
+        <button id="quit" class="btn" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="over" class="screen" hidden>
+      <h2 id="over-title">A CINZA VENCEU</h2>
+      <div class="final">
+        <div><span id="f-score" class="big">0</span><small>pontos</small></div>
+        <div class="stats"><span id="f-stage">fase 1</span> &middot; <span id="f-made">0 sementes</span></div>
+        <div id="f-best" class="small-note"></div>
+      </div>
+      <form id="initials-form" class="initials" autocomplete="off">
+        <label for="initials">Suas iniciais no ranking global</label>
+        <div class="row">
+          <input id="initials" maxlength="3" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="AAA" />
+          <button class="btn primary small" type="submit">ENVIAR</button>
+        </div>
+        <div id="sent" class="small-note"></div>
+      </form>
+      <div class="menu">
+        <button id="again" class="btn primary" type="button">SEMEAR DE NOVO</button>
+        <button id="over-rank" class="btn small" type="button">RANKING</button>
+        <button id="over-menu" class="btn small" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="ranking" class="screen" hidden>
+      <h2>RANKING GLOBAL</h2>
+      <ol id="rank-list" class="rank-list"></ol>
+      <div class="menu">
+        <button id="rank-back" class="btn primary" type="button">VOLTAR</button>
+      </div>
+    </section>
+
+    <div id="fail" class="screen" hidden>
+      <h2>Ops</h2>
+      <p>Este aparelho não conseguiu iniciar os gráficos (WebGL). Tente outro navegador.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+    </div>
+
+    <div id="story" class="story" role="dialog" aria-modal="true" aria-labelledby="story-title">
+      <div class="story-panel">
+        <button id="story-close" class="story-x" type="button" aria-label="Fechar">&times;</button>
+        <p class="story-kicker">A HISTÓRIA</p>
+        <h2 id="story-title">O ÚLTIMO JARDIM</h2>
+        <p>O mundo secou numa noite sem chuva. Do céu desceu a Cinza, e tudo o que era verde virou pedra.</p>
+        <p>Só uma flor resistiu, escondida no fundo do vale: a Semeadora.</p>
+        <p>Ela não sabe lutar. Sabe apenas florescer.</p>
+        <p>Cada semente que ela solta é uma pequena luz contra a Cinza, e juntas elas viram enxurrada.</p>
+        <p>Lá em cima, os Corações Secos ainda guardam a vida do jardim, presa na pedra.</p>
+        <p>Faça cada um deles rachar e florescer de novo.</p>
+        <button id="story-go" class="btn primary" type="button">SEMEAR</button>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>
