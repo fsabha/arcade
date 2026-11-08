@@ -72,8 +72,8 @@ body.ranking .card .meta, body.ranking .card .blurb, body.ranking .card .thumb {
   display: none;
 }
 
-body:not(.ranking) /* Our own game: a glowing gradient border */
-.card.featured {
+/* Our own game: a glowing gradient border */
+body:not(.ranking) .card.featured {
   position: relative;
   border: 2px solid transparent;
   background:
@@ -99,7 +99,8 @@ body:not(.ranking) /* Our own game: a glowing gradient border */
   image-rendering: auto; /* footage from the game: scaled smooth, not as pixel art */
 }
 
-.card .top {
+/* the top 5 shows only in ranking mode */
+body:not(.ranking) .card .top {
   display: none;
 }
 
