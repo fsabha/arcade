@@ -306,7 +306,7 @@ function buildLabels(): void {
   ui.labels.replaceChildren();
   labels = world.blocks.map((b) => {
     const el = document.createElement('div');
-    el.className = `glabel ${b.kind === 'box' ? (b.up ? 'box' : 'box empty') : b.kind}`;
+    el.className = `glabel ${b.kind === 'box' ? (b.up ? 'box' : 'box empty') : b.kind}${b.kind === 'mul' && b.n >= 5 ? ' big' : ''}`;
     if (b.golden || b.giant) el.classList.add('gold');
     const num = document.createTextNode('');
     const small = document.createElement('small');

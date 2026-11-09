@@ -258,9 +258,9 @@ export class World {
   }
 
   get top(): number { return 0.34; }
-  get bottom(): number { return this.H - 0.13; }
+  get bottom(): number { return this.H - 0.15; }
   /** where the cannon stands */
-  get cannonY(): number { return this.bottom + 0.05; }
+  get cannonY(): number { return this.bottom + 0.045; }
   get laneLen(): number { return this.bottom - this.top; }
   laneY(f: number): number { return this.top + f * this.laneLen; }
   get riverShare(): number { return this.riverTotal ? (this.riverLeft + this.red.n) / this.riverTotal : 0; }

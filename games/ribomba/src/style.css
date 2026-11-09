@@ -477,3 +477,14 @@ h2 {
 .banner.gold .b-main, .banner.red .b-main, .banner.green .b-main { -webkit-text-stroke: 0; }
 .banner .b-sub { text-shadow: 0 1px 3px #000; }
 .pop { text-shadow: 0 2px 0 rgba(0, 0, 0, 0.6), 0 0 10px rgba(0, 0, 0, 0.4); }
+
+/* gate and crate numbers: chunky, outlined, coloured by what they do */
+.glabel { font-size: clamp(20px, 6vw, 30px); font-weight: 900; letter-spacing: 0.01em; color: #fff; -webkit-text-stroke: 5px #12306e; paint-order: stroke fill; text-shadow: 0 3px 0 rgba(0, 0, 0, 0.35); line-height: 1; }
+.glabel.mul { -webkit-text-stroke-color: #12306e; }
+.glabel.mul.big { color: #fff6d0; -webkit-text-stroke-color: #7a4a00; }
+.glabel.add { -webkit-text-stroke-color: #0f4d22; }
+.glabel.box { color: #fff3dc; -webkit-text-stroke-color: #4a2a0c; }
+.glabel.box small { -webkit-text-stroke: 3px #4a2a0c; paint-order: stroke fill; color: #ffd66b; font-size: 9px; margin-top: 2px; }
+.glabel.box.empty { color: #e8e0d8; -webkit-text-stroke-color: #3a3430; }
+.glabel.box.empty small { color: #ffb0a0; -webkit-text-stroke-color: #3a3430; }
+.glabel.gold { color: #fff6d0; -webkit-text-stroke-color: #7a4a00; }

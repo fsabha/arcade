@@ -84,39 +84,100 @@ void main() {
     float aa = smoothstep(0.02, -0.03, d);
     o = vec4(c * aa, aa);
   } else if (k < 6.5) {
-    // gate panel (aspect in alpha)
+    // a gate: two posts with golden caps and, between them, a panel of coloured glass with a
+    // shimmer running across it (aspect in alpha, colour in rgb; s: flash 0..1)
     float ar = vCol.a;
     vec2 p = vec2(q.x * ar, q.y);
-    float d = box(p, vec2(ar, 1.0) * 0.96, 0.35);
-    if (d > 0.02) discard;
-    float aa = smoothstep(0.02, -0.03, d);
-    float rim = smoothstep(-0.22, -0.04, d);
-    float shine = 0.8 + 0.25 * smoothstep(0.6, -0.8, q.y);
-    vec3 c = vCol.rgb * shine;
-    c = mix(c, c * 1.4 + 0.15, rim);
-    c += step(0.5, fract((p.x + p.y) * 2.0)) * 0.06;
-    o = vec4(c * aa * 0.93, aa * 0.93);
+    float ex = ar - 0.32;
+    // the panel
+    float pd = box(p, vec2(ex, 0.78), 0.18);
+    float pa = smoothstep(0.03, -0.03, pd);
+    float v = q.y * 0.5 + 0.5;
+    vec3 base = vCol.rgb;
+    vec3 c = mix(base * 1.35 + 0.12, base * 0.62, v);
+    float sh = fract((p.x - p.y * 0.6) * 0.35 - uT * 0.6);
+    c += smoothstep(0.08, 0.0, abs(sh - 0.5)) * 0.35;
+    c += smoothstep(-0.12, -0.02, pd) * 0.35;
+    c += (1.0 - smoothstep(0.0, 0.25, v)) * 0.18;
+    c += s * 0.4;
+    float alpha = pa * 0.86;
+    // the posts
+    vec2 pp = vec2(abs(p.x) - (ar - 0.17), p.y);
+    float post = box(pp, vec2(0.15, 0.98), 0.08);
+    float poa = smoothstep(0.03, -0.03, post);
+    vec3 pc = vec3(0.32, 0.36, 0.46) * (0.75 + 0.5 * smoothstep(0.12, -0.12, pp.x));
+    float cap = smoothstep(0.03, -0.03, box(pp - vec2(0.0, -0.78), vec2(0.17, 0.2), 0.08));
+    pc = mix(pc, vec3(1.0, 0.8, 0.3) * (0.8 + 0.4 * smoothstep(0.1, -0.1, pp.x)), cap);
+    c = mix(c, pc, poa);
+    alpha = max(alpha, poa);
+    if (alpha < 0.01) discard;
+    o = vec4(c * alpha, alpha);
   } else if (k < 7.5) {
-    if (s < 0.5) { // carriage: wood with two wheels
-      float body = box(q - vec2(0.0, 0.15), vec2(0.62, 0.42), 0.15);
-      float w1 = circ(vec2(abs(q.x), q.y), vec2(0.72, 0.35), 0.3);
-      vec3 c = vec3(0.54, 0.35, 0.17) * (0.85 + 0.2 * sin(q.y * 14.0));
-      float a = fill(body);
-      float wa = fill(w1);
-      float hub = fill(circ(vec2(abs(q.x), q.y), vec2(0.72, 0.35), 0.1));
-      float rimG = fill(abs(w1 + 0.06) - 0.05);
-      vec3 wc = mix(vec3(0.23, 0.16, 0.1), vec3(0.79, 0.64, 0.15), max(rimG, hub));
-      c = mix(c, wc, wa);
-      a = max(a, wa);
+    if (s < 0.5) {
+      // the carriage seen from above and behind: a wooden trail with iron bolts, an axle and two
+      // spoked wheels with golden rims
+      vec2 t = q - vec2(0.0, 0.25);
+      float wdt = 0.46 - t.y * 0.12;
+      float trail = box(t, vec2(wdt, 0.62), 0.12);
+      float ta = fill(trail);
+      vec3 wood = vec3(0.6, 0.38, 0.18);
+      float grain = 0.85 + 0.12 * sin(t.y * 30.0 + sin(t.x * 9.0) * 2.0);
+      vec3 c = wood * grain * (0.75 + 0.45 * smoothstep(0.4, -0.3, t.x));
+      c = mix(c, wood * 0.45, smoothstep(-0.1, -0.02, trail));
+      float bolts = fill(circ(vec2(abs(t.x), t.y), vec2(wdt - 0.12, -0.35), 0.06)) + fill(circ(vec2(abs(t.x), t.y), vec2(wdt - 0.14, 0.35), 0.06));
+      c = mix(c, vec3(0.95, 0.8, 0.35), min(1.0, bolts));
+      float a = ta;
+      float axle = fill(box(q - vec2(0.0, 0.05), vec2(0.86, 0.07), 0.05));
+      c = mix(c, vec3(0.16, 0.14, 0.14), axle * (1.0 - ta * 0.6));
+      a = max(a, axle);
+      // wheels: ellipses (seen at an angle), spokes, a golden rim and hub
+      vec2 wp = vec2(abs(q.x) - 0.8, q.y - 0.05);
+      vec2 we = wp / vec2(0.2, 0.52);
+      float wr = length(we);
+      float wheel = fill((wr - 1.0) * 0.2);
+      float rim = smoothstep(0.78, 0.86, wr) * wheel;
+      float ang = atan(we.y, we.x);
+      float spokes = smoothstep(0.75, 0.95, abs(cos(ang * 4.0))) * step(wr, 0.8);
+      float hub = fill((length(we) - 0.28) * 0.2);
+      vec3 wc = mix(vec3(0.17, 0.1, 0.05), vec3(0.62, 0.42, 0.2) * (0.8 + 0.3 * smoothstep(0.3, -0.3, we.x)), max(spokes, step(0.8, wr)));
+      wc = mix(wc, vec3(0.98, 0.78, 0.25) * (0.8 + 0.3 * smoothstep(0.0, -0.6, we.x)), max(rim, hub));
+      c = mix(c, wc, wheel);
+      a = max(a, wheel);
       o = vec4(c * a, a);
-    } else { // a barrel pointing up: navy with a golden ring at the muzzle
-      float d = box(q, vec2(0.5, 0.95), 0.4);
-      float a = fill(d);
-      vec3 c = vec3(0.12, 0.31, 0.66) * (0.7 + 0.5 * smoothstep(0.5, -0.3, q.x));
-      float ring = fill(abs(q.y + 0.72) - 0.12) * a;
-      c = mix(c, vec3(0.95, 0.78, 0.25), ring);
-      float bore = fill(circ(q, vec2(0.0, -0.86), 0.28));
-      c = mix(c, vec3(0.03), bore * 0.8);
+    } else if (s < 1.5) {
+      // a barrel pointing up: a navy cylinder with a sheen, golden bands, a flared muzzle, the bore,
+      // and the knob at the back
+      float y = q.y;
+      float wdt = mix(0.56, 0.78, smoothstep(-0.9, 0.8, y)) + 0.14 * smoothstep(-0.72, -0.86, y);
+      float body = max(abs(q.x) - wdt, abs(y - 0.0) - 0.92);
+      float knob = circ(q, vec2(0.0, 0.92), 0.22);
+      float a = max(fill(body * 1.5), fill(knob));
+      float u = q.x / wdt;
+      float cyl = sqrt(max(0.0, 1.0 - u * u));
+      vec3 navy = vec3(0.12, 0.3, 0.68);
+      vec3 c = navy * (0.35 + 0.8 * cyl) + vec3(0.6, 0.75, 1.0) * smoothstep(0.18, 0.0, abs(u + 0.4)) * 0.55;
+      float bands = max(max(smoothstep(0.06, 0.0, abs(y + 0.78) - 0.06), smoothstep(0.05, 0.0, abs(y - 0.12) - 0.05)), smoothstep(0.05, 0.0, abs(y - 0.62) - 0.05));
+      vec3 gold = vec3(1.0, 0.8, 0.3) * (0.45 + 0.75 * cyl) + vec3(1.0) * smoothstep(0.15, 0.0, abs(u + 0.4)) * 0.3;
+      c = mix(c, gold, bands);
+      c = mix(c, gold, fill(knob));
+      float bore = fill(length((q - vec2(0.0, -0.9)) / vec2(0.42, 0.12)) - 1.0);
+      c = mix(c, vec3(0.02, 0.02, 0.05), bore);
+      o = vec4(c * a, a);
+    } else {
+      // twelve barrels in a spinning golden drum, seen from the muzzles
+      float a = fill(r - 0.96);
+      vec3 c = vec3(1.0, 0.78, 0.28) * (0.55 + 0.5 * smoothstep(0.6, -0.6, q.x + q.y));
+      c = mix(c, vec3(0.45, 0.3, 0.08), smoothstep(0.9, 0.96, r));
+      float spin = uT * 7.0;
+      for (int i = 0; i < 12; i++) {
+        float fi = float(i);
+        float rr = i < 4 ? 0.27 : 0.66;
+        float an = (i < 4 ? fi / 4.0 : (fi - 4.0) / 8.0) * 6.2832 + spin * (i < 4 ? -1.0 : 1.0);
+        vec2 cp = vec2(cos(an), sin(an)) * rr;
+        float d = length(q - cp);
+        c = mix(c, vec3(0.16, 0.42, 0.85) * (0.6 + 0.6 * smoothstep(0.17, 0.0, length(q - cp + vec2(0.05, 0.05)))), fill(d - 0.17));
+        c = mix(c, vec3(0.02, 0.02, 0.06), fill(d - 0.09));
+      }
       o = vec4(c * a, a);
     }
   } else if (k < 8.5) {
@@ -539,10 +600,11 @@ export class Renderer {
         if (b.golden || b.giant) this.push(bx, by, s * b.w * 0.6, 1, 0.8, 0.3, 0.2 + 0.1 * Math.sin(time * 6), 0);
       } else {
         const [r, g, bb] = gateColor(b);
-        const hh = 0.024;
+        const hh = 0.034;
         const ar = b.w / (hh * 2);
-        this.push(bx, by, s * b.w * 0.6, r, g, bb, 0.16 + b.flash * 0.3, 0);
-        this.push(bx, by, s * hh, Math.min(1, r + b.flash * 0.3), Math.min(1, g + b.flash * 0.3), Math.min(1, bb + b.flash * 0.3), ar, 6, 0, 0, ar);
+        this.push(bx, by + s * 0.012, s * hh * 1.1, 0, 0, 0, 0.28, 11, 0, 0, ar * 0.95);
+        this.push(bx, by, s * b.w * 0.6, r, g, bb, 0.14 + b.flash * 0.35, 0);
+        this.push(bx, by, s * hh, r, g, bb, ar, 6, b.flash, 0, ar);
       }
     }
 
@@ -595,23 +657,23 @@ export class Renderer {
     }
     const blink = w.inv > 0 && Math.floor(time * 14) % 2 === 0;
     if (!blink) {
-      this.push(cx, cy + s * 0.04, s * 0.085, 0, 0, 0, 0.35, 11, 0, 0, 1.3);
+      this.push(cx, cy + s * 0.035, s * 0.09, 0, 0, 0, 0.35, 11, 0, 0, 1.3);
+      // the carriage first, then the barrels on top of it
+      this.push(cx, cy + s * 0.008, s * 0.082, 1, 1, 1, 1, 7, 0);
       const n = w.barrels;
-      const rec = C.recoil * s * 0.006;
+      const rec = C.recoil * s * 0.008;
       if (n >= 12) {
-        for (let i = 0; i < 12; i++) {
-          const a = (i / 11 - 0.5) * 1.1;
-          this.push(cx + Math.sin(a) * s * 0.05, cy - s * 0.045 - Math.cos(a) * s * 0.045 + rec, s * 0.034, 1, 1, 1, 1, 7, 1, a, 0.45);
-        }
+        this.push(cx, cy - s * 0.035 + rec, s * 0.06, 1, 1, 1, 1, 7, 2);
       } else {
-        const fan = w.kit.fan ? 0.5 : 0;
+        const fan = w.kit.fan ? 0.45 : 0;
+        const gap = n > 1 ? 0.032 : 0;
         for (let i = 0; i < n; i++) {
           const off = n > 1 ? i / (n - 1) - 0.5 : 0;
-          this.push(cx + off * s * 0.036 * n, cy - s * 0.05 + rec, s * 0.05, 1, 1, 1, 1, 7, 1, off * fan, 0.42);
+          const a = off * fan;
+          this.push(cx + off * s * gap * (n - 1) + Math.sin(a) * s * 0.03, cy - s * 0.04 + rec, s * 0.062, 1, 1, 1, 1, 7, 1, a, n > 2 ? 0.36 : n > 1 ? 0.44 : 0.52);
         }
       }
-      this.push(cx, cy, s * 0.064, 1, 1, 1, 1, 7, 0);
-      if (C.recoil > 0.8 && Math.random() < 0.2) this.burst(C.x, w.cannonY - 0.07, 1, [1, 1, 1], 0.05, 0.012, 0.35, 0, 11);
+      if (C.recoil > 0.8 && Math.random() < 0.2) this.burst(C.x, w.cannonY - 0.1, 1, [1, 1, 1], 0.05, 0.012, 0.35, 0, 11);
     }
 
     gl.useProgram(this.sprite);
