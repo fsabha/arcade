@@ -25,6 +25,9 @@ export class Sound extends SoundBase {
   night = false;
   /** 0..1 how hard the crowds are fighting */
   fight = 0;
+  /** a guardian is on: drums come in; in its fury they speed up */
+  boss = false;
+  fury = false;
 
   constructor() {
     super(0.55);
@@ -73,7 +76,7 @@ export class Sound extends SoundBase {
 
   private schedule(): void {
     if (!this.ctx || !this.bus) return;
-    const beat = 60 / 84;
+    const beat = 60 / (this.fury ? 100 : this.boss ? 92 : 84);
     while (this.next < this.ctx.currentTime + 0.3) {
       const t = this.next, s = this.step;
       const chord = PROG[Math.floor(s / 8) % PROG.length];
@@ -83,6 +86,14 @@ export class Sound extends SoundBase {
         this.voice(note(chord + 4), t + 0.05, beat * 8, 0.03, 'triangle', 1.8, this.bus, -7);
       }
       if (s % 8 === 4) this.noiseAt(t, 2.4, 0.03 + (this.night ? 0.03 : 0), 700); // wind
+      if (this.boss) {
+        // the guardian's drums: kick on the beat, a dry tom on the offbeat, faster in fury
+        this.voice(58, t, 0.25, 0.32, 'sine', 0.003, this.bus);
+        this.voice(42, t, 0.3, 0.2, 'sine', 0.003, this.bus);
+        if (s % 2 === 1) this.noiseAt(t + beat * 0.5, 0.06, 0.06, 4000);
+        if (this.fury) this.noiseAt(t + beat * 0.25, 0.04, 0.05, 6000);
+        if (s % 4 === 2) this.voice(note(-12 + (s % 8 === 2 ? 0 : 3)), t, beat * 0.9, 0.08, 'sawtooth', 0.01, this.bus);
+      }
       // the crackle of the clash
       const grains = Math.round(this.fight * 6);
       for (let i = 0; i < grains; i++) this.noiseAt(t + Math.random() * beat, 0.03, 0.05 * this.fight, 2500 + Math.random() * 3000);
@@ -179,10 +190,11 @@ export class Sound extends SoundBase {
     else this.tone(note(19), 0.15, 'sine', 0.06);
   }
 
-  /** the music box plays the theme */
-  win(): void {
+  /** the music box plays the theme (short: a small fanfare for a trial) */
+  win(short = false): void {
     if (!this.ctx || !this.master) return;
     const t = this.ctx.currentTime;
+    if (short) { [12, 16, 19, 24].forEach((n, i) => this.voice(note(n + 12), t + i * 0.07, 0.6, 0.06, 'triangle', 0.003, this.master!)); return; }
     THEME.forEach((n, i) => {
       this.voice(note(n + 12), t + 0.4 + i * 0.16, 0.9, 0.06, 'sine', 0.002, this.master!);
       this.voice(note(n + 24), t + 0.4 + i * 0.16, 0.4, 0.015, 'sine', 0.002, this.master!);
@@ -190,11 +202,33 @@ export class Sound extends SoundBase {
     this.tone(48, 1.4, 'sine', 0.3, 30);
   }
 
-  lose(): void {
+  lose(short = false): void {
     if (!this.ctx || !this.master) return;
     const t = this.ctx.currentTime;
+    if (short) { [7, 3, 0].forEach((n, i) => this.voice(note(n), t + i * 0.14, 0.6, 0.06, 'triangle', 0.01, this.master!)); return; }
     [12, 9, 7, 4, 0].forEach((n, i) => this.voice(note(n), t + i * 0.28, 1.4, 0.06, 'sine', 0.04, this.master!));
   }
+
+  burst(): void { this.tone(note(24), 0.2, 'triangle', 0.06, note(31)); }
+  /** dry leaf: the Sower wilts */
+  wilt(): void { this.noise(0.5, 0.25, 1800); this.tone(note(7), 0.6, 'triangle', 0.06, note(-5)); }
+  reflect(): void { this.tone(note(31), 0.1, 'square', 0.03, note(19)); }
+  /** telegraph tick */
+  warn(): void { this.tone(note(22), 0.07, 'square', 0.03); }
+  hurt(): void { this.tone(80, 0.35, 'sawtooth', 0.12, 40); this.noise(0.3, 0.2, 1200); }
+  thud(): void { this.tone(48, 0.5, 'sine', 0.4, 28); this.noise(0.35, 0.25, 300); }
+  whoosh(): void { this.noise(0.35, 0.12, 2200); }
+  splat(): void { this.noise(0.3, 0.2, 500); this.tone(90, 0.25, 'sine', 0.12, 50); }
+  freeze(): void { if (!this.ctx || !this.master) return; const t = this.ctx.currentTime; [36, 31, 34, 29].forEach((n, i) => this.voice(note(n), t + i * 0.05, 0.8, 0.04, 'sine', 0.002, this.master!)); }
+  wind(): void { this.noise(2.5, 0.2, 600); }
+  inhale(): void { this.noise(1.6, 0.2, 900); this.tone(60, 1.6, 'sawtooth', 0.06, 110); }
+  burn(): void { this.noise(0.6, 0.3, 1500); }
+  heartbeat(): void { this.tone(52, 0.2, 'sine', 0.5, 40); this.tone(46, 0.2, 'sine', 0.35, 36, 0.22); }
+  shatter(): void { if (!this.ctx || !this.master) return; const t = this.ctx.currentTime; [31, 36, 40, 43].forEach((n, i) => this.voice(note(n), t + i * 0.04, 0.5, 0.05, 'sine', 0.002, this.master!)); this.noise(0.3, 0.15, 6000); }
+  trial(): void { if (!this.ctx || !this.master) return; const t = this.ctx.currentTime; [19, 24, 26].forEach((n, i) => this.voice(note(n), t + i * 0.1, 0.8, 0.05, 'triangle', 0.005, this.master!)); }
+  /** the guardian arrives: the music cuts, a low boom */
+  bossEnter(): void { this.tone(40, 1.4, 'sine', 0.5, 30); this.noise(1.2, 0.25, 250); this.tone(note(-24), 2, 'sawtooth', 0.06, note(-26)); }
+  roar(): void { this.tone(70, 1.2, 'sawtooth', 0.12, 40); this.noise(1, 0.2, 500); }
 
   blip(): void {
     this.tone(note(24), 0.07, 'sine', 0.06);

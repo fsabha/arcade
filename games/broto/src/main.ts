@@ -1,6 +1,7 @@
 import './style.css';
 import { installAnalytics, trackEvent } from '@arcade/shared';
 import { World, BASE_GIFTS, type Gifts, type Gate } from './world';
+import { TRIAL_NAMES, type Boss } from './boss';
 import { LEVELS, GIFTS, type GiftId } from './levels';
 import { Renderer } from './gl';
 import { Sound } from './audio';
@@ -10,7 +11,7 @@ type State = 'title' | 'count' | 'play' | 'pause' | 'between' | 'over' | 'rankin
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const canvas = $<HTMLCanvasElement>('gl');
 const ui = {
-  hud: $('hud'), score: $('score'), lv: $('lv'), petals: $('petals'), heartbar: $('heartbar'), heartFill: $('heart-fill'), horde: $('horde'),
+  hud: $('hud'), score: $('score'), lv: $('lv'), petals: $('petals'), heartbar: $('heartbar'), heartName: $('heart-name'), heartFill: $('heart-fill'), horde: $('horde'),
   sproutbar: $('sproutbar'), sproutFill: $('sprout-fill'), banner: $('banner'), hint: $('hint'), count: $('count'), labels: $('labels'),
   title: $('title'), pause: $('pause'), over: $('over'), ranking: $('ranking'), between: $('between'), fail: $('fail'),
   betweenTitle: $('between-title'), betweenScore: $('between-score'), stagebar: $('stagebar'), gifts: $('gifts'),
@@ -123,6 +124,8 @@ function beginLevel(k: number): void {
   ui.lv.textContent = `FASE ${k + 1}/${LEVELS.length}`;
   buildLabels();
   shownPetals = -1;
+  finalShown = false;
+  sound.boss = false; sound.fury = false;
   bigWindow = 0; bigT = 0;
   // 3, 2, 1, brota
   show('count');
@@ -212,6 +215,7 @@ function takeGift(id: GiftId): void {
   else if (id === 'raiz') g.head += 30;
   else if (id === 'brotacao') g.sproutEvery = Math.max(12, Math.round(g.sproutEvery * 0.7));
   else if (id === 'orvalho') run.petals = Math.min(5, run.petals + 1);
+  else if (id === 'cerne') g.sap += 30;
 }
 
 function finish(won: boolean): void {
@@ -234,6 +238,22 @@ function finish(won: boolean): void {
 // ---------- HUD ----------
 
 let shownScore = -1, shownPetals = -1;
+/** A short line under the guardian's bar: what to do now. */
+function bossHint(b: Boss): string {
+  if (b.intro > 0) return b.def.epithet;
+  if (b.mirror > 0) return 'ESPELHO! PARE DE ATIRAR';
+  if (b.contract > 0) return 'CONTRAÇÃO! PARE: AS SEMENTES O CURAM';
+  if (b.shell > 0) return 'CASCA FECHADA';
+  if (b.id === 9 && b.hp <= b.max * 0.1) return 'SÓ A MUDA QUEBRA O ÚLTIMO PEDAÇO';
+  if (b.id === 3) return b.open > 0 ? 'O OLHO PAROU: ATAQUE!' : 'espere o olho parar';
+  if (b.id === 4 && b.parts.some((p) => p.hp > 0)) return `quebre os cristais · ${b.parts.filter((p) => p.hp > 0).length}`;
+  if (b.id === 5) return b.mouth > 0 ? 'A BOCA ABRIU: ×5 E DANO DOBRADO!' : 'espere a boca abrir';
+  if (b.id === 6) return b.open > 0 ? 'A GEMA APARECEU: ATAQUE!' : 'sobreviva ao Pisão';
+  if (b.id === 7) return b.open > 0 ? 'OLHOS ACESOS: ATAQUE!' : 'ela caça quem segura a luz';
+  if (b.id === 8) return b.inhale > 0 ? 'INSPIRANDO: O PEITO ESTÁ EXPOSTO' : 'guarde a seiva';
+  return b.fury ? 'FÚRIA!' : '';
+}
+
 function placeHeartBar(): void {
   const [, y] = renderer.toCss(0.5, world.top + 0.035);
   heartBox.style.top = `${y}px`;
@@ -249,11 +269,26 @@ function updateHud(): void {
     const total = Math.max(world.petalsAtStart, world.petals);
     ui.petals.replaceChildren(...Array.from({ length: total }, (_, i) => { const el = document.createElement('i'); if (i >= world.petals) el.className = 'off'; return el; }));
   }
-  const open = world.open;
-  ui.heartFill.style.transform = `scaleX(${world.heartHp / world.heartMax})`;
-  ui.heartbar.classList.toggle('open', open);
-  const left = world.hordeLeft + world.ash.n;
-  ui.horde.textContent = world.done === 'win' ? 'FLORESCEU!' : open ? 'EXPOSTO! ATAQUE O CORAÇÃO' : `CINZA: ${left}`;
+  const b = world.boss;
+  heartBox.style.visibility = 'visible';
+  if (b) {
+    ui.heartName.textContent = b.def.name;
+    ui.heartFill.style.transform = `scaleX(${Math.max(0, b.hp) / b.max})`;
+    const vulnerable = b.open > 0 || b.mouth > 0 || b.inhale > 0;
+    ui.heartbar.classList.toggle('open', vulnerable);
+    ui.heartbar.classList.toggle('fury', b.fury);
+    ui.horde.textContent = world.done === 'win' ? 'FLORESCEU!' : bossHint(b);
+  } else {
+    ui.heartName.textContent = 'HORDA';
+    ui.heartFill.style.transform = `scaleX(${world.hordeShare})`;
+    ui.heartbar.classList.remove('open', 'fury');
+    const tr = world.trial;
+    if (tr) {
+      const left = Math.max(0, Math.ceil(tr.dur - tr.t));
+      const extra = tr.kind === 'race' ? ` · ${tr.targets.filter((c) => c.hp > 0).length} casulos` : tr.kind === 'protect' ? ` · broto ${Math.max(0, Math.ceil(tr.targets[0].hp))}/20` : '';
+      ui.horde.textContent = `${TRIAL_NAMES[tr.kind][0]} · ${left}s${extra}`;
+    } else ui.horde.textContent = `CINZA: ${world.hordeLeft + world.ash.n}`;
+  }
   ui.sproutFill.style.transform = `scaleX(${Math.min(1, world.charge / world.gifts.sproutEvery)})`;
   ui.sproutbar.classList.toggle('ready', world.sproutReady);
 }
@@ -265,7 +300,9 @@ function gateName(g: Gate): string {
   return GATE_NAMES[g.op];
 }
 function gateText(g: Gate): string {
+  if (g.gone) return '';
   if (g.uses !== undefined && g.used >= g.uses) return 'murchou';
+  if (world.winter > 0 && g.op === 'mul') return '÷2';
   switch (g.op) {
     case 'add': return `+${Math.round(g.n * world.gifts.pollen)}`;
     case 'mul': case 'well': return `×${g.n}`;
@@ -279,6 +316,7 @@ function buildLabels(): void {
   labels = world.gates.map((g) => {
     const el = document.createElement('div');
     el.className = g.op === 'sub' || g.op === 'div' ? 'glabel bad' : 'glabel';
+    if (g.op === 'well' && g.golden) el.className = 'glabel gold';
     const num = document.createTextNode('');
     const small = document.createElement('small');
     small.textContent = gateName(g);
@@ -288,12 +326,14 @@ function buildLabels(): void {
   });
 }
 function updateLabels(): void {
+  if (labels.length !== world.gates.length) buildLabels();
   world.gates.forEach((g, i) => {
     const L = labels[i];
     if (!L) return;
     const [x, y] = renderer.toCss(g.cx, world.laneY(g.y));
     L.el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%)`;
-    L.el.style.visibility = g.hidden > 0 ? 'hidden' : 'visible';
+    L.el.style.visibility = g.hidden > 0 || g.gone || world.eclipse > 0 ? 'hidden' : 'visible';
+    L.el.classList.toggle('gold', !!g.golden);
     const t = gateText(g);
     if (t !== L.text) { L.text = t; L.num.data = t; L.el.classList.toggle('off', t === 'murchou' || (g.op === 'sub' && g.left === 0)); }
   });
@@ -460,9 +500,18 @@ let endT = -1;
 
 function handleEvents(dt: number): void {
   gateSoundT -= dt; hitSoundT -= dt; shieldT -= dt; bigCool -= dt;
+  const lv = LEVELS[run.level];
   for (const ev of world.events) {
     switch (ev.kind) {
       case 'fire': sound.fire(); break;
+      case 'burst':
+        sound.burst(); renderer.ring(ev.x, ev.y, [1, 0.95, 0.6], 0.1, 0.4);
+        break;
+      case 'wilt':
+        sound.wilt(); vibrate([30, 40, 30]);
+        renderer.wilt = 1;
+        pop(world.sower.x, world.bottom - 0.08, 'MURCHOU!', '#ffb0a0', true);
+        break;
       case 'sprout':
         renderer.ring(ev.x, ev.y, [0.6, 1, 0.5], 0.12, 0.6);
         sound.sprout();
@@ -480,45 +529,95 @@ function handleEvents(dt: number): void {
         if (hitSoundT <= 0) { hitSoundT = 0.05; sound.hit(); }
         if (Math.random() < 0.4) renderer.burst(ev.x, ev.y, 3, [0.6, 1, 0.5], 0.3, 0.008, 0.6);
         break;
-      case 'crack':
-        sound.crack(); renderer.hitFlash([0.4, 0.9, 0.4], 0.12, 0.4); vibrate(15);
-        break;
       case 'shield':
-        if (shieldT <= 0) { shieldT = 0.25; sound.shield(); renderer.burst(ev.x, ev.y, 3, [0.55, 0.53, 0.62], 0.2, 0.006, 0.4); }
+        if (shieldT <= 0) { shieldT = 0.25; sound.shield(); renderer.burst(ev.x, ev.y, 3, ev.value ? [1, 0.4, 0.4] : [0.55, 0.53, 0.62], 0.2, 0.006, 0.4); }
         break;
-      case 'open':
-        sound.open(); vibrate([20, 40, 20]);
-        banner('O CORAÇÃO ESTÁ EXPOSTO', 'a horda acabou: ataque!', 'green');
-        renderer.ring(0.5, world.top - 0.08, [0.6, 1, 0.5], 0.3, 0.8);
+      case 'reflect':
+        if (shieldT <= 0) { shieldT = 0.12; sound.reflect(); }
+        renderer.burst(ev.x, ev.y, 3, [0.85, 0.7, 1], 0.25, 0.007, 0.4);
         break;
-      case 'surge':
-        sound.surge(); vibrate([40, 30, 80]);
-        renderer.hitFlash([0.3, 0.28, 0.36], 0.25, 1);
-        banner('A CINZA SOPRA!', `+${ev.value} na horda`, 'red');
+      case 'warn': sound.warn(); break;
+      case 'attack': {
+        // ev.value: hazard look (0-7) or a guardian state (8+)
+        const look = ev.value;
+        if (look === 1 || look === 5) { renderer.hitFlash([0.3, 0.3, 0.32], 0.05, 1.2); sound.thud(); vibrate(25); }
+        else if (look === 2) sound.thud();
+        else if (look === 9 || look === 13) sound.shield();
+        else if (look === 15) { sound.freeze(); renderer.hitFlash([0.5, 0.75, 1], 0.2, 0.2); banner('INVERNO', 'as Raízes viram Geada: ÷2', 'blue'); }
+        else if (look === 10 || look === 11 || look === 12 || look === 19) { sound.open(); vibrate(15); }
+        else if (look === 14) sound.wind();
+        else if (look === 20) { sound.inhale(); renderer.hitFlash([1, 0.4, 0.15], 0.15, 0.4); }
+        else if (look === 21) { sound.heartbeat(); renderer.hitFlash([0.9, 0.2, 0.2], 0.2, 0.8); }
+        else if (look === 22) { renderer.burst(ev.x, ev.y, 20, [1, 0.5, 0.2], 0.4, 0.01, 0.7); sound.burn(); }
+        else if (look === 16 || look === 17) sound.splat();
+        else sound.whoosh();
         break;
-      case 'stage':
-        sound.crack(); sound.surge(); vibrate([60, 40, 120]);
-        renderer.hitFlash([0.4, 0.9, 0.4], 0.35, 1.4);
-        warp(0.25, 0.6);
-        banner('O CORAÇÃO RESISTE', `estágio ${ev.value + 1} de ${LEVELS[run.level].stages ?? 1}`, 'red');
+      }
+      case 'struck':
+        sound.hurt(); vibrate([50, 30, 50]);
+        renderer.hurt = Math.max(renderer.hurt, 0.7);
+        renderer.hitFlash([1, 0.55, 0.2], 0.25, 1);
+        renderer.burst(ev.x, ev.y, 16, [1, 0.6, 0.3], 0.45, 0.01, 0.6);
         break;
       case 'petal':
         sound.petal(); vibrate([60, 40, 60]);
         renderer.hurt = 1;
         renderer.hitFlash([0.88, 0.34, 0.23], 0.25, 1.2);
-        renderer.burst(world.sower.x, world.bottom + 0.04, 14, [0.9, 1, 0.92], 0.35, 0.012, 1.4, 0.6);
-        warp(0.3, 0.4);
+        renderer.burst(world.sower.x, world.sowerY, 14, [0.9, 1, 0.92], 0.35, 0.012, 1.4, 0.6);
+        warp(0.3, 0.3);
         pop(world.sower.x, world.bottom - 0.06, ev.value > 0 ? `${ev.value} pétala${ev.value > 1 ? 's' : ''}` : 'última pétala!', '#ffb0a0', true);
         break;
+      case 'trial': {
+        const k = ev.text as keyof typeof TRIAL_NAMES;
+        const [name, hint] = TRIAL_NAMES[k];
+        banner(name, hint, k === 'golden' ? 'gold' : k === 'protect' || k === 'race' ? 'green' : 'red');
+        sound.trial();
+        if (k === 'eclipse') sound.night = true;
+        break;
+      }
+      case 'trialEnd':
+        sound.night = !!lv.dark;
+        if (ev.text === 'golden' || ev.text === 'drought' || ev.text === 'eclipse' || ev.text === 'avalanche' || ev.text === 'flank' || ev.text === 'embers') break;
+        if (ev.value) { sound.win(true); banner('CONSEGUIU!', ev.text === 'protect' ? '+1 pétala' : '+300', 'green'); }
+        else { sound.lose(true); banner('NÃO DEU', ev.text === 'race' ? 'os casulos se abriram' : 'o broto se apagou', 'red'); }
+        break;
+      case 'part':
+        sound.shatter(); vibrate(20);
+        renderer.burst(ev.x, ev.y, 30, [0.7, 0.9, 1], 0.6, 0.012, 0.8);
+        break;
+      case 'boss': {
+        const b = world.boss!;
+        sound.bossEnter(); vibrate([80, 60, 160]);
+        renderer.hitFlash([0, 0, 0], 0, 1.5);
+        banner(b.def.name, b.def.epithet.toUpperCase(), 'red');
+        sound.boss = true;
+        break;
+      }
+      case 'fury':
+        sound.fury = true; sound.roar(); vibrate([40, 30, 40, 30, 80]);
+        renderer.hitFlash([0.9, 0.15, 0.1], 0.3, 1.4);
+        banner('FÚRIA!', world.boss?.def.name ?? '', 'red');
+        break;
+      case 'stage':
+        sound.roar(); vibrate([60, 40, 120]);
+        renderer.hitFlash([0.4, 0.9, 0.4], 0.35, 1.4);
+        warp(0.25, 0.6);
+        banner('O CORAÇÃO RESISTE', `estágio ${ev.value + 1} de 3`, 'red');
+        break;
+      case 'final':
+        if (!finalShown) { finalShown = true; banner('O ÚLTIMO PEDAÇO', 'só a Muda o quebra: 2º dedo!', 'green'); sound.heartbeat(); }
+        break;
       case 'win':
+        sound.boss = false; sound.fury = false;
         sound.win(); vibrate([30, 50, 30, 50, 120]);
         warp(0.15, 0.9);
         renderer.hitFlash([0.7, 1, 0.6], 0.6, 1.6);
-        for (let i = 0; i < 4; i++) renderer.burst(0.5, world.top - 0.08, 40, i % 2 ? [0.91, 1, 0.94] : [1, 0.84, 0.42], 0.9, 0.014, 1.6, 0.3);
-        banner('FLORESCEU!', LEVELS[run.level].name, 'green');
+        for (let i = 0; i < 4; i++) renderer.burst(ev.x, ev.y, 40, i % 2 ? [0.91, 1, 0.94] : [1, 0.84, 0.42], 0.9, 0.014, 1.6, 0.3);
+        banner('FLORESCEU!', world.boss?.def.name ?? lv.name, 'green');
         endT = 2.6;
         break;
       case 'lose':
+        sound.boss = false; sound.fury = false;
         sound.lose(); vibrate([80, 60, 200]);
         warp(0.25, 1);
         endT = 2.2;
@@ -526,7 +625,6 @@ function handleEvents(dt: number): void {
     }
   }
   world.events.length = 0;
-  // a big bloom: a ×3 or ×5 crossed by a crowd
   bigT += dt;
   if (bigT >= 0.5) {
     if (bigWindow >= 50 && bigCool <= 0) { bigCool = 4; warp(0.35, 0.4); renderer.hitFlash([0.9, 1, 0.7], 0.12, 0.2); pop(world.sower.x, world.laneY(0.5), 'FLORADA!', '#e8fff0', true); }
@@ -537,6 +635,7 @@ function handleEvents(dt: number): void {
   sound.fight = fight;
   if (fight > 0.5) renderer.hitFlash([0, 0, 0], 0, fight * 0.25);
 }
+let finalShown = false;
 
 function frame(now: number): void {
   requestAnimationFrame(frame);
