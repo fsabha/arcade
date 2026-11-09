@@ -25,7 +25,7 @@ export const SAP_REFILL = 35;
 export const SAP_DELAY = 0.3;
 export const WILT_TIME = 3;
 export const BURST = 10;
-export const INVULNERABLE = 1;
+export const INVULNERABLE = 1.4;
 
 /**
  * add: Orvalho (lets out n seeds when crossed, then refills) · mul: Raiz/Florada/Vento (×n)
@@ -270,11 +270,12 @@ export class World {
     this.ash.add(x, y, vx, vy, ember ? 3 : 1, ember ? 1 : 0, 1, this.rng.next());
   }
 
-  /** Damage to the Sower (petals), with a moment of grace after each blow. */
-  hurt(dmg: number, x = this.sower.x): void {
+  /** A direct blow from a guardian: it tears off a whole petal, then a moment of grace. */
+  hurt(dmg: number, x = this.sower.x, full = true): void {
     if (this.done || this.inv > 0 || dmg <= 0) return;
     const before = this.petals;
-    this.petalHp -= dmg;
+    // a lasting strike (a sweeping band) only scorches: partial damage
+    this.petalHp = full ? (before - 1) * PETAL_HP : this.petalHp - dmg;
     this.inv = INVULNERABLE;
     this.emit('struck', x, this.sowerY, dmg);
     if (this.petals < before) this.emit('petal', this.sower.x, this.bottom, Math.max(0, this.petals));
@@ -596,7 +597,7 @@ export class World {
         if (Math.abs(h.y - sy) < 0.05 && Math.abs(S.x - h.x) < h.w / 2 + 0.03) this.hurt(h.dmg, h.x);
         if (h.y > this.H + 0.2) h.done = true;
       } else if (h.kind === 'band') {
-        if (!World.inGap(h, S.x)) this.hurt(h.dmg, S.x);
+        if (!World.inGap(h, S.x)) this.hurt(h.dmg, S.x, h.life < 1);
         h.life -= dt;
         if (h.life <= 0) h.done = true;
       } else if (h.kind === 'wall') {

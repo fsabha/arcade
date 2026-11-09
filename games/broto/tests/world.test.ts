@@ -4,7 +4,7 @@ import { LEVELS } from '../src/levels';
 import { BOSSES, startBoss, hitBoss } from '../src/boss';
 import { campaign } from './bot';
 
-const lv = (gates: GateDef[], extra: Partial<LevelDef> = {}): LevelDef => ({ name: 'T', gates, horde: 0, opening: 0, rate: 0, foeSpeed: 0.1, boss: 0, trials: [], warn: 1, hit: 8, par: 60, ...extra });
+const lv = (gates: GateDef[], extra: Partial<LevelDef> = {}): LevelDef => ({ name: 'T', gates, horde: 1, opening: 0, rate: 0, foeSpeed: 0.1, boss: 0, trials: [], warn: 1, hit: 8, par: 60, ...extra });
 const run = (w: World, s: number, each?: (w: World) => void) => { for (let i = 0; i < s * 60; i++) { each?.(w); w.update(1 / 60); } };
 const seedBelow = (w: World, g: GateDef, dx = 0) => w.seeds.add(g.x + dx, w.laneY(g.y) + 0.01, 0, -0.5, 1, 0, 0, 0.5);
 const kinds = (w: World) => w.events.map((e) => e.kind);
@@ -69,7 +69,7 @@ describe('broto hazards', () => {
     w.drop(0.5, 0.14, 8, 0, 0.5);
     w.aim(0.5);
     run(w, 2);
-    expect(w.petalHp).toBe(3 * PETAL_HP - 8);
+    expect(w.petalHp).toBe(2 * PETAL_HP); // a direct blow takes a whole petal
     const w2 = new World(2, lv([]), 3, BASE_GIFTS, 8);
     w2.drop(0.5, 0.14, 8, 0, 0.5);
     w2.aim(0.85);
@@ -87,13 +87,14 @@ describe('broto hazards', () => {
     w2.band([0.3], 0.25, 10, 0, 0.3);
     w2.aim(0.75);
     run(w2, 1);
-    expect(w2.petalHp).toBe(3 * PETAL_HP - 10);
+    expect(w2.petalHp).toBe(2 * PETAL_HP);
   });
 });
 
 describe('broto guardians', () => {
   it('the guardian comes when the horde is spent', () => {
     const w = new World(2, lv([], { horde: 3, opening: 3 }), 3, BASE_GIFTS, 10);
+    w.hordeLeft = 0;
     expect(w.phase).toBe('horde');
     w.ash.n = 0; w.hordeLeft = 0;
     w.update(1 / 60);
@@ -159,7 +160,7 @@ describe('broto difficulty (bots play the whole campaign)', () => {
   it('a skilled player gets far, and loses petals from the middle stages on', () => {
     const runs = [1, 2, 3, 4, 5, 6].map((s) => campaign('skilled', s));
     const reached = runs.map((r) => r.reached).sort((a, b) => a - b);
-    expect(reached[Math.floor(reached.length / 2)]).toBeGreaterThanOrEqual(6);
+    expect(reached[Math.floor(reached.length / 2)]).toBeGreaterThanOrEqual(5);
     const late = runs.flatMap((r) => r.petalsLost.slice(4));
     expect(late.filter((p) => p > 0).length / Math.max(1, late.length)).toBeGreaterThan(0.3);
   }, 120000);

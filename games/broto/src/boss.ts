@@ -127,7 +127,7 @@ export function updateBoss(w: World, b: Boss, dt: number): void {
   b.t += dt;
   b.flash = Math.max(0, b.flash - dt * 4);
   for (const k of ['open', 'shell', 'mirror', 'mouth', 'inhale', 'contract', 'tell', 'diving'] as const) b[k] = Math.max(0, b[k] - dt);
-  if (b.pullT > 0) { b.pullT -= dt; w.pull = b.fury ? 0.6 : 0.4; if (b.pullT <= 0) w.pull = 0; }
+  if (b.pullT > 0) { b.pullT -= dt; w.pull = b.fury ? 0.45 : 0.3; if (b.pullT <= 0) w.pull = 0; }
   // queued follow-ups
   for (const q of b.queue) if (b.t >= q.at) q.fn();
   b.queue = b.queue.filter((q) => b.t < q.at);
@@ -220,7 +220,7 @@ function attack(w: World, b: Boss): void {
       if (a === 'succao') { b.tell = 0.6; at(0.6, () => { b.pullT = 3; w.emit('attack', b.x, b.y, 14); }); }
       else {
         const gaps = b.fury ? [rng.range(0.2, 0.8)] : [rng.range(0.15, 0.4), rng.range(0.6, 0.85)];
-        w.band(gaps, b.fury ? 0.26 : 0.32, hit * 0.5, 0, warn, 2, (rng.chance(0.5) ? 1 : -1) * 0.16);
+        w.band(gaps, b.fury ? 0.28 : 0.34, 4, 0, warn, 2, (rng.chance(0.5) ? 1 : -1) * 0.12);
       }
       break;
     }
@@ -251,7 +251,7 @@ function attack(w: World, b: Boss): void {
     case 6: {
       const a = pick(['rolamento', 'pisao']);
       if (a === 'rolamento') {
-        w.drop(rng.chance(0.6) ? S.x : rng.range(0.15, 0.85), 0.18, hit, 1, warn, 1.1);
+        w.drop(rng.chance(0.45) ? S.x : rng.range(0.15, 0.85), 0.18, hit, 1, warn, 1.1);
         if (b.fury) at(0.5, () => w.drop(rng.range(0.15, 0.85), 0.18, hit, 1, warn, 1.1));
       } else {
         w.band([rng.range(0.2, 0.8)], 0.32, hit, 5);

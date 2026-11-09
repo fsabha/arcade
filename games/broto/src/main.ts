@@ -1,6 +1,6 @@
 import './style.css';
 import { installAnalytics, trackEvent } from '@arcade/shared';
-import { World, BASE_GIFTS, type Gifts, type Gate } from './world';
+import { World, BASE_GIFTS, PETAL_HP, type Gifts, type Gate } from './world';
 import { TRIAL_NAMES, type Boss } from './boss';
 import { LEVELS, GIFTS, type GiftId } from './levels';
 import { Renderer } from './gl';
@@ -187,7 +187,7 @@ function levelWon(): void {
     finish(true);
     return;
   }
-  ui.betweenTitle.textContent = 'O CORAÇÃO FLORESCEU';
+  ui.betweenTitle.textContent = `${world.boss?.def.name ?? 'O GUARDIÃO'} FLORESCEU`;
   ui.betweenScore.textContent = `+${gained} pontos · total ${run.score}`;
   ui.stagebar.replaceChildren(...LEVELS.map((_, i) => { const el = document.createElement('i'); el.className = i <= run.level ? 'done' : i === run.level + 1 ? 'now' : ''; return el; }));
   // one of three gifts
@@ -259,15 +259,26 @@ function placeHeartBar(): void {
   heartBox.style.top = `${y}px`;
 }
 const heartBox = document.querySelector('.heart-box') as HTMLElement;
+const dangerMark = Object.assign(document.createElement('div'), { className: 'danger-mark', textContent: '!', hidden: true });
+document.body.appendChild(dangerMark);
 
 function updateHud(): void {
   placeHeartBar();
+  // a red "!" over the flower when an attack is aimed at it
+  dangerMark.hidden = !renderer.danger || state !== 'play';
+  if (!dangerMark.hidden) { const [x, y] = renderer.toCss(world.sower.x, world.sowerY - 0.09); dangerMark.style.left = `${x}px`; dangerMark.style.top = `${y}px`; }
   const sc = run.score + world.score;
   if (sc !== shownScore) { ui.score.textContent = String(sc); shownScore = sc; }
   if (world.petals !== shownPetals) {
     shownPetals = world.petals;
     const total = Math.max(world.petalsAtStart, world.petals);
     ui.petals.replaceChildren(...Array.from({ length: total }, (_, i) => { const el = document.createElement('i'); if (i >= world.petals) el.className = 'off'; return el; }));
+  }
+  // the outermost petal fades as ash gets through
+  const lastPetal = ui.petals.children[Math.max(0, world.petals - 1)] as HTMLElement | undefined;
+  if (lastPetal && world.petals > 0) {
+    const frac = (world.petalHp - (world.petals - 1) * PETAL_HP) / PETAL_HP;
+    lastPetal.style.opacity = String(0.35 + 0.65 * Math.max(0, Math.min(1, frac)));
   }
   const b = world.boss;
   heartBox.style.visibility = 'visible';

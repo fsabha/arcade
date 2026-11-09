@@ -328,6 +328,8 @@ export class Renderer {
   bloom = 0;
   /** desaturation while the Sower is wilted */
   wilt = 0;
+  /** an attack is aimed at the Sower right now */
+  danger = false;
   pixelRatio = 1;
   ox = 0;
   /** top offset in device pixels (the safe area) */
@@ -508,7 +510,18 @@ export class Renderer {
       }
     }
     // telegraphs and hazards
-    for (const h of w.hazards) this.drawHazard(w, h, time, X, Y);
+    let danger = false;
+    for (const h of w.hazards) {
+      this.drawHazard(w, h, time, X, Y);
+      if (h.kind === 'drop' && h.y < w.sowerY && Math.abs(h.x - w.sower.x) < h.w / 2 + 0.03) danger = true;
+      if ((h.kind === 'band' || h.kind === 'wall') && !h.gaps.some((g) => Math.abs(w.sower.x - g) < h.gapW / 2)) danger = true;
+    }
+    this.danger = danger;
+    if (danger) {
+      const k = 0.5 + 0.5 * Math.sin(time * 24);
+      this.push(X(w.sower.x), Y(w.sowerY), s * 0.15, 1, 0.15, 0.1, 0.3 + 0.3 * k, 0);
+      this.push(X(w.sower.x), Y(w.sowerY), s * 0.13, 1, 0.25, 0.2, 0.9, 2);
+    }
 
     // ash
     const A = w.ash;
@@ -585,6 +598,7 @@ export class Renderer {
   private drawBoss(w: World, time: number, X: (x: number) => number, Y: (y: number) => number): void {
     const s = this.pw;
     const b: Boss | null = w.boss;
+    if (b && w.done === 'win') return; // it burst into petals
     if (!b) {
       // the stage's guardian sleeps above the lane: a dark shape that breathes
       const hx = X(0.5), hy = Y(w.top - 0.08);
@@ -650,7 +664,11 @@ export class Renderer {
         this.push(X(h.x), Y(w.sowerY), s * h.w * 0.55, red[0], red[1], red[2], 0.35 * blink, 2);
         return;
       }
-      const x = X(h.x), y = Y(h.y), r = s * h.w * 0.45;
+      const x = X(h.x), y = Y(h.y), r = s * h.w * 0.62;
+      // a streak behind it, and its shadow growing at the Sower's line
+      this.push(x, y - r * 1.4, r * 0.9, 1, 0.4, 0.25, 0.3, 0, 0, Math.PI / 2, 2.2);
+      const near = Math.max(0, 1 - Math.abs(w.sowerY - h.y) / 0.6);
+      this.push(x, Y(w.sowerY), s * h.w * 0.5 * (0.5 + near), 1, 0.2, 0.15, 0.25 + 0.4 * near, 0);
       if (h.look === 1) this.push(x, y, r, 0, 0, 0, 1, 8, h.x * 7, time * 2, 1);
       else if (h.look === 2) { this.push(x, y, r * 1.1, 1, 1, 1, 0, 11, 1); for (const e of [-1, 1]) this.push(x + e * r * 0.4, y + r * 0.3, r * 0.25, 1, 0.6, 0.2, 1, 1); }
       else if (h.look === 3) { this.push(x, y, r * 1.6, 0.6, 0.85, 1, 0.4, 0); this.push(x, y, r * 0.9, 0.85, 0.95, 1, 1, 4, h.x, time); }
