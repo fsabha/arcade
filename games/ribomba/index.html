@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#1b2433" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Ribomba" />
+    <meta name="description" content="RIBOMBA: o canhão Bocão contra o rio vermelho. Multiplique seus soldadinhos nos portões, quebre caixas e derrube os capitães do Rei Rubro. Criação original do projeto Arcade." />
+    <link rel="manifest" href="/ribomba/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/ribomba/apple-touch-icon.png" />
+    <link rel="icon" href="/ribomba/icon-192.png" />
+    <title>Ribomba</title>
+  </head>
+  <body>
+    <canvas id="gl"></canvas>
+    <div id="labels"></div>
+
+    <div id="hud" hidden>
+      <div class="hud-top">
+        <div class="score-box">
+          <div id="score" class="score">0</div>
+          <div id="lv" class="lv">FASE 1</div>
+          <div id="kit" class="kit"></div>
+        </div>
+        <div class="right-box">
+          <div id="lives" class="lives" aria-label="Vidas"></div>
+          <button id="pause-btn" class="icon-btn" type="button" aria-label="Pausar">II</button>
+        </div>
+      </div>
+      <div class="heart-box">
+        <div id="heartbar" class="heartbar"><span id="heart-name">RIO VERMELHO</span><i><b id="heart-fill"></b></i></div>
+        <div id="horde" class="horde"></div>
+      </div>
+      <div id="banner" class="banner"></div>
+      <div id="hint" class="hint">arraste para mover o Bocão &middot; ele atira sozinho</div>
+    </div>
+    <div id="count" class="count"></div>
+
+    <section id="title" class="screen">
+      <h1 class="logo ribomba">RIBOMBA</h1>
+      <p class="tag">criação original do Arcade</p>
+      <p class="intro">O Rei Rubro soltou o exército vermelho.<br />Só o Bocão segura o desfiladeiro.</p>
+      <div class="menu">
+        <button id="play" class="btn primary" type="button">FOGO!</button>
+        <button id="rank-btn" class="btn" type="button">RANKING</button>
+        <div class="row">
+          <button id="snd-btn" class="btn small" type="button">SOM: SIM</button>
+          <button id="mus-btn" class="btn small" type="button">MÚSICA: SIM</button>
+        </div>
+        <button id="install-btn" class="btn small" type="button" hidden>INSTALAR NA TELA</button>
+      </div>
+      <ul class="how">
+        <li><b>Arraste</b> para mover o Bocão. Ele atira soldadinhos azuis sozinho: o que importa é <b>onde</b>.</li>
+        <li>Os <b>portões</b> multiplicam quem passa (<b>×</b> e <b>+</b>). As <b>caixas</b> comem soldados até quebrar e dão um <b>upgrade</b> ao canhão. Caixa cinza não tem nada dentro.</li>
+        <li>O rio vermelho <b>muda de margem</b>. Azul e vermelho se anulam 1 a 1. Se um vermelho chega à sua linha, você perde uma <b>vida</b>.</li>
+        <li>No fim, o <b>capitão</b> da fase: fuja das faixas <b>vermelhas</b>, a placa do meio é blindada, mire no <b>alvo que acende</b>.</li>
+      </ul>
+      <p id="ios-hint" class="small-note" hidden>No iPhone: Compartilhar &rsaquo; Adicionar à Tela de Início para jogar em tela cheia.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+      <p id="best" class="small-note"></p>
+    </section>
+
+    <section id="between" class="screen" hidden>
+      <h2 id="between-title">CAPITÃO DERRUBADO</h2>
+      <div id="stagebar" class="stagebar"></div>
+      <p id="between-score" class="small-note"></p>
+      <p class="small-note">Escolha uma recompensa para a próxima fase:</p>
+      <div id="gifts" class="gifts"></div>
+    </section>
+
+    <section id="pause" class="screen" hidden>
+      <h2>PAUSA</h2>
+      <div class="menu">
+        <button id="resume" class="btn primary" type="button">CONTINUAR</button>
+        <button id="quit" class="btn" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="over" class="screen" hidden>
+      <h2 id="over-title">O RIO VERMELHO PASSOU</h2>
+      <div class="final">
+        <div><span id="f-score" class="big">0</span><small>pontos</small></div>
+        <div class="stats"><span id="f-stage">fase 1</span> &middot; <span id="f-made">0 rubros</span></div>
+        <div id="f-best" class="small-note"></div>
+      </div>
+      <form id="initials-form" class="initials" autocomplete="off">
+        <label for="initials">Suas iniciais no ranking global</label>
+        <div class="row">
+          <input id="initials" maxlength="3" inputmode="text" autocapitalize="characters" spellcheck="false" placeholder="AAA" />
+          <button class="btn primary small" type="submit">ENVIAR</button>
+        </div>
+        <div id="sent" class="small-note"></div>
+      </form>
+      <div class="menu">
+        <button id="again" class="btn primary" type="button">DE NOVO</button>
+        <button id="over-rank" class="btn small" type="button">RANKING</button>
+        <button id="over-menu" class="btn small" type="button">MENU</button>
+      </div>
+    </section>
+
+    <section id="ranking" class="screen" hidden>
+      <h2>RANKING GLOBAL</h2>
+      <ol id="rank-list" class="rank-list"></ol>
+      <div class="menu">
+        <button id="rank-back" class="btn primary" type="button">VOLTAR</button>
+      </div>
+    </section>
+
+    <div id="fail" class="screen" hidden>
+      <h2>Ops</h2>
+      <p>Este aparelho não conseguiu iniciar os gráficos (WebGL). Tente outro navegador.</p>
+      <a class="back" href="../../index.html">&larr; ARCADE</a>
+    </div>
+
+    <div id="story" class="story" role="dialog" aria-modal="true" aria-labelledby="story-title">
+      <div class="story-panel">
+        <button id="story-close" class="story-x" type="button" aria-label="Fechar">&times;</button>
+        <p class="story-kicker">A HISTÓRIA</p>
+        <h2 id="story-title">O DESFILADEIRO</h2>
+        <p>Num tanque de areia de quintal, os soldadinhos azuis guardam a boca de um desfiladeiro de pedra.</p>
+        <p>Do alto, o Rei Rubro soltou o exército vermelho, que desce feito rio pelas curvas do cânion.</p>
+        <p>Embaixo só existe um canhão de brinquedo: o Bocão, que cospe soldadinhos azuis.</p>
+        <p>Cada desfiladeiro termina num capitão do Rei. São oito vales, e no último espera o próprio Rei Rubro.</p>
+        <p>Segure a linha.</p>
+        <button id="story-go" class="btn primary" type="button">FOGO!</button>
+      </div>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
+  </body>
+</html>

@@ -158,6 +158,7 @@ const THUMBS: Record<string, Draw> = {
  * (320x200 each, stacked vertically in one image), looped.
  */
 const FILMS: Record<string, { src: string; frames: number; fps: number }> = {
+  ribomba: { src: '/thumbs/ribomba.webp', frames: 24, fps: 15 },
   broto: { src: '/thumbs/broto.webp', frames: 24, fps: 15 },
   lume: { src: '/thumbs/lume.webp', frames: 24, fps: 15 },
   cometa: { src: '/thumbs/cometa.webp', frames: 24, fps: 15 },

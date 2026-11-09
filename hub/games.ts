@@ -21,6 +21,7 @@ export function platformOf(g: GameInfo): Platform {
 }
 
 export const GAMES: GameInfo[] = [
+  { id: 'ribomba', title: 'RIBOMBA', original: 'Criação original do Arcade', year: 2026, blurb: 'Nossa criação: o canhão Bocão cospe soldadinhos contra o rio vermelho do Rei Rubro. Multiplique nos portões, quebre caixas, derrube os capitães.', accent: '#5aa2ff', w: 320, h: 200, featured: true, page: true },
   { id: 'broto', title: 'BROTO', original: 'Criação original do Arcade', year: 2026, blurb: 'Nossa criação: solte uma enxurrada de sementes de luz contra a Cinza e faça o último jardim florescer.', accent: '#9be88a', w: 320, h: 200, featured: true, page: true },
   { id: 'lume', title: 'LUME', original: 'Criação original do Arcade', year: 2026, blurb: 'Nossa criação: a última faísca do farol de Vau desce o abismo resgatando as luzes perdidas.', accent: '#ffb347', w: 320, h: 200, featured: true, page: true },
   { id: 'cometa', title: 'COMETA', original: 'Criação original do Arcade', year: 2026, blurb: 'Nossa criação e colaboração pessoal para o projeto: guie o cometa com um dedo pela nebulosa.', accent: '#9fe0ff', w: 320, h: 200, featured: true, page: true },
