@@ -6,8 +6,8 @@ export const PLAY_H = H - HUD_H; // 272
 
 // Player sits at a fixed screen position; world y of its bottom edge = camY + PLAYER_Y_OFFSET
 export const PLAYER_Y_OFFSET = 24;
-export const PLAYER_W = 16;
-export const PLAYER_H = 16;
+export const PLAYER_W = 12;
+export const PLAYER_H = 12;
 export const PLAYER_VX = 110; // px/s lateral (max)
 export const PLAYER_ACCEL = 420; // px/s^2 ramp-up while holding
 export const PLAYER_DECEL = 900; // px/s^2 when released

@@ -157,7 +157,7 @@ export class Renderer {
       // exhaust flicker
       if (Math.floor(g.time * 20) % 2 === 0) {
         ctx.fillStyle = g.speedMode === 'fast' ? '#ffb020' : '#ff6a1a';
-        ctx.fillRect(Math.round(p.x) + 7, sy + 16, 2, g.speedMode === 'fast' ? 4 : 2);
+        ctx.fillRect(Math.round(p.x) + 5, sy + 12, 2, g.speedMode === 'fast' ? 4 : 2);
       }
     }
 
@@ -268,7 +268,7 @@ export class Renderer {
 
   private drawMenu(g: Game): void {
     const bob = Math.round(Math.sin(g.time * 2) * 2);
-    this.ctx.drawImage(sprite('player'), W / 2 - 16, 74 + bob, 32, 32);
+    this.ctx.drawImage(sprite('player'), W / 2 - 18, 72 + bob, 36, 36);
     drawMenuScreen(this.ctx, W, PLAY_H, {
       title: 'RIVER RAID', titleColor: C.gold, titleY: 34, subtitle: 'EDICAO BROWSER',
       labels: MENU_ITEMS.map((item) => g.shell.label(item)),

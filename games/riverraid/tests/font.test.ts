@@ -20,7 +20,7 @@ describe('sprite maps', () => {
       const w = rows[0].length;
       for (const r of rows) expect(r.length, `${name} row width`).toBe(w);
     }
-    expect([maps.player[0].length, maps.player.length]).toEqual([16, 16]);
+    expect([maps.player[0].length, maps.player.length]).toEqual([12, 12]);
     expect([maps.ship[0].length, maps.ship.length]).toEqual([32, 8]);
     expect([maps.heli0[0].length, maps.heli0.length]).toEqual([16, 12]);
     expect([maps.jet[0].length, maps.jet.length]).toEqual([16, 8]);
