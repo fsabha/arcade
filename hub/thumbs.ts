@@ -38,6 +38,20 @@ const THUMBS: Record<string, Draw> = {
     for (let i = 0; i < 3; i++) rect(ctx, mod(i * 24 + t * 15, TW + 8) - 8, 22 + i * 5, 6, 2, '#40d040');
     rect(ctx, mod(-t * 12, TW + 8) - 8, 32, 5, 3, '#f0c0a0');
   },
+  spaceinvaders(ctx, t) {
+    rect(ctx, 0, 0, TW, TH, '#05070c');
+    const dx = Math.floor(mod(t * 2, 8)) - 4;
+    const leg = Math.floor(t * 2) % 2;
+    for (let r = 0; r < 3; r++) for (let c = 0; c < 6; c++) {
+      const x = 8 + c * 8 + dx, y = 4 + r * 6;
+      rect(ctx, x, y, 5, 3, r === 0 ? '#e0e0ff' : '#5cf06a');
+      rect(ctx, x + (leg ? 0 : 1), y + 3, 1, 1, '#5cf06a'); rect(ctx, x + (leg ? 4 : 3), y + 3, 1, 1, '#5cf06a');
+    }
+    for (let i = 0; i < 3; i++) rect(ctx, 8 + i * 20, 28, 8, 3, '#5cf06a');
+    const px = 30 + 16 * Math.sin(t * 0.8);
+    rect(ctx, px, 35, 7, 3, '#5cf06a'); rect(ctx, px + 3, 33, 1, 2, '#5cf06a');
+    rect(ctx, px + 3, 32 - mod(t * 40, 28), 1, 3, '#ffffff');
+  },
   pacman(ctx, t) {
     rect(ctx, 0, 0, TW, TH, '#000');
     rect(ctx, 2, 2, TW - 4, 1, '#2020e0'); rect(ctx, 2, TH - 3, TW - 4, 1, '#2020e0');
